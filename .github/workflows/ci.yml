@@ -1,0 +1,64 @@
+name: CRM POC CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # --- PARTIE PYTHON (Scripts Data) ---
+  python-analysis:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./data-scripts
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Lint and Format check (Ruff)
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+
+      - name: Run Python Tests
+        run: uv run pytest
+
+  # --- PARTIE NEXT.JS (Application) ---
+  nextjs-analysis:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./apps/crm-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: "./apps/crm-app/package-lock.json"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript Check
+        run: npx tsc --noEmit
+
+      - name: Lint check
+        run: npm run lint
+
+      - name: Build Next.js app
+        run: npm run build

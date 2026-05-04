@@ -1,0 +1,23 @@
+services:
+  # Base de données "Finale" (Développement locale)
+  db_finale:
+    image: postgres:15
+    container_name: crm_db_finale
+    restart: always
+    environment:
+      POSTGRES_USER: lx_dev
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: crm_dev
+    ports:
+      - "5440:5432" # Accessible sur le port 5440
+
+  # Base de données de "Test" (CI locale / Scripts)
+  db_test:
+    image: postgres:15
+    container_name: crm_db_test
+    environment:
+      POSTGRES_USER: lx
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: crm_test
+    ports:
+      - "5441:5432" # Accessible sur le port 5441

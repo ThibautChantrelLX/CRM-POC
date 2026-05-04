@@ -1,0 +1,15 @@
+# Python
+data-scripts/.venv/
+data-scripts/__pycache__/
+data-scripts/**/__pycache__/
+data-scripts/**/*.pyc
+data-scripts/.pytest_cache/
+data-scripts/.ruff_cache/
+
+# Next.js
+apps/crm-app/.next/
+apps/crm-app/node_modules/
+apps/crm-app/.env*.local
+
+# OS
+.DS_Store
