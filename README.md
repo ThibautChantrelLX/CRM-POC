@@ -2,6 +2,8 @@
 
 CRM interne Lexavoué : gestion des personnes physiques, personnes morales, dossiers et facturation. Ce dépôt est un POC pour valider l'architecture technique avant mise en production.
 
+Déployé sur **Vercel** — une seule instance Next.js couvre le frontend et le backend.
+
 ---
 
 ## Table des matières
@@ -18,59 +20,77 @@ CRM interne Lexavoué : gestion des personnes physiques, personnes morales, doss
 ```
 crm-poc/
 ├── apps/
-│   ├── crm-app/        ← Frontend (Next.js)
-│   ├── crm-api/        ← Backend (NestJS)
-│   └── crm-shared/     ← Types & validateurs partagés (TypeScript)
+│   └── crm-app/        ← Application Next.js (front + back)
 └── data-scripts/       ← Scripts d'import de données (Python / uv)
 ```
 
 ### Principe général
 
-Le projet suit une séparation stricte frontend / backend :
+Tout tourne dans une seule application Next.js pour permettre le déploiement gratuit sur Vercel. Le front et le back sont séparés **par convention de dossiers** plutôt que par processus distincts :
 
-- **`crm-api`** expose une API REST. C'est le seul point d'accès à la base de données. Il est organisé en **modules NestJS** (un par domaine métier), chacun contenant son controller, son service et ses DTOs.
-- **`crm-app`** est un frontend Next.js qui consomme l'API via le dossier `lib/api-client/`. Il ne touche jamais directement la base de données.
-- **`crm-shared`** contient les types TypeScript et validateurs communs aux deux apps, pour éviter la duplication.
-- **`data-scripts`** contient les scripts Python d'import (Anaba, Expert, etc.), indépendants du reste. Ils écrivent directement en base via psycopg2.
+| Dossier | Rôle | Exécution |
+|---|---|---|
+| `app/api/` | Endpoints HTTP (route handlers) | Serveur (Vercel Functions) |
+| `lib/server/` | Logique métier, accès Prisma | Serveur uniquement |
+| `lib/client/` | Fetch wrappers vers `app/api/` | Navigateur |
+| `app/(pages)/` | Pages et composants React | Navigateur + SSR |
 
-### Backend — NestJS (`crm-api`)
+La règle fondamentale : **`lib/server/` n'est jamais importé depuis un composant client.** Next.js garantit cet isolement via les directives `"use server"` / `"use client"`.
 
-```
-src/
-├── main.ts                  ← Point d'entrée, bootstrap NestJS
-├── app.module.ts            ← Module racine, importe tous les modules
-├── config/                  ← ConfigModule (@nestjs/config), variables d'env
-├── prisma/
-│   ├── prisma.module.ts     ← Module global Prisma
-│   └── prisma.service.ts    ← PrismaClient injecté dans tous les services
-├── common/
-│   ├── filters/             ← Exception filters (gestion d'erreurs globale)
-│   ├── guards/              ← Guards d'authentification (JWT, rôles)
-│   ├── interceptors/        ← Formatage uniforme des réponses
-│   └── decorators/          ← Décorateurs custom (@CurrentUser, etc.)
-└── modules/
-    ├── auth/                ← Authentification (login, JWT)
-    ├── personnes-physiques/ ← CRUD contacts
-    ├── personnes-morales/   ← CRUD entreprises / cabinets
-    ├── rattachements/       ← Liens PP ↔ PM
-    ├── dossiers/            ← Dossiers juridiques
-    └── segments/            ← Segmentation & ciblage
-```
-
-Chaque module respecte la même structure :
+### Structure détaillée
 
 ```
-mon-module/
-├── mon-module.module.ts      ← Déclare le controller et le service
-├── mon-module.controller.ts  ← Routes HTTP, validation des entrées
-├── mon-module.service.ts     ← Logique métier, appels Prisma
-├── dto/                      ← Data Transfer Objects (entrée / sortie)
-└── entities/                 ← Classes de réponse (swagger, sérialisation)
+apps/crm-app/
+├── app/
+│   ├── api/                              ← Backend : route handlers (minces, délèguent à lib/server)
+│   │   ├── personnes-physiques/
+│   │   │   ├── route.ts                  ← GET /api/personnes-physiques, POST
+│   │   │   └── [id]/route.ts             ← GET /api/personnes-physiques/:id, PATCH, DELETE
+│   │   ├── personnes-morales/
+│   │   │   ├── route.ts
+│   │   │   └── [id]/route.ts
+│   │   ├── rattachements/route.ts
+│   │   ├── dossiers/
+│   │   │   ├── route.ts
+│   │   │   └── [id]/route.ts
+│   │   ├── segments/route.ts
+│   │   └── auth/route.ts
+│   └── (pages)/                          ← Frontend : pages et layouts
+│
+├── lib/
+│   ├── server/                           ← Code server-only (jamais importé côté client)
+│   │   ├── prisma.ts                     ← Singleton PrismaClient
+│   │   └── modules/                      ← Un module par domaine métier
+│   │       ├── personnes-physiques/
+│   │       │   ├── service.ts            ← Requêtes Prisma, logique métier
+│   │       │   └── dto.ts                ← Types entrée / sortie
+│   │       ├── personnes-morales/
+│   │       ├── rattachements/
+│   │       ├── dossiers/
+│   │       └── segments/
+│   └── client/                           ← Fetch wrappers (un fichier par domaine)
+│       ├── personnes-physiques.ts         ← fetch('/api/personnes-physiques', ...)
+│       ├── personnes-morales.ts
+│       ├── rattachements.ts
+│       ├── dossiers.ts
+│       └── segments.ts
+│
+└── prisma/                               ← Schéma et migrations Prisma
+    ├── schema.prisma
+    └── migrations/
+```
+
+### Flux d'une requête
+
+```
+Composant React (client)
+  └─ lib/client/personnes-physiques.ts    ← fetch('/api/personnes-physiques')
+       └─ app/api/personnes-physiques/route.ts   ← valide la requête
+            └─ lib/server/modules/personnes-physiques/service.ts  ← requête Prisma
+                 └─ PostgreSQL
 ```
 
 ### Base de données — Prisma
-
-Le schéma Prisma est dans `apps/crm-api/` (ou `apps/crm-app/prisma/` en attendant la migration). Les migrations SQL sont versionnées dans `prisma/migrations/`.
 
 Modèles principaux :
 
@@ -82,10 +102,6 @@ Modèles principaux :
 | `Dossier` | `dossiers` | Dossiers juridiques |
 | `MappingSource` | `mapping_sources` | Traçabilité des imports externes |
 | `JournalMigration` | `journal_migrations` | Historique des imports |
-
-### Frontend — Next.js (`crm-app`)
-
-Application Next.js (App Router). Consomme `crm-api` via `lib/api-client/`. Ne contient aucune logique métier ni accès direct à la base.
 
 ---
 
@@ -102,48 +118,33 @@ Application Next.js (App Router). Consomme `crm-api` via `lib/api-client/`. Ne c
 ```bash
 git clone <repo>
 cd crm-poc
-
-# Backend
-cp apps/crm-api/.env.example apps/crm-api/.env
-
-# Frontend
 cp apps/crm-app/.env.example apps/crm-app/.env
-
-# Scripts Python
 cp data-scripts/.env.example data-scripts/.env
 ```
 
 ### 2. Démarrer les bases de données
 
 ```bash
-# Base de test (port 5441) — utilisée par défaut pour les scripts
-docker compose up db_test -d
-
-# Base de dev (port 5440) — utilisée par crm-api et crm-app
+# Base de dev (port 5440)
 docker compose up db_finale -d
+
+# Base de test (port 5441)
+docker compose up db_test -d
 ```
 
 ### 3. Appliquer les migrations
 
 ```bash
-cd apps/crm-app   # ou crm-api une fois le schéma déplacé
+cd apps/crm-app
 npx prisma migrate deploy
 ```
 
-### 4. Démarrer le backend
-
-```bash
-cd apps/crm-api
-npm install
-npm run start:dev   # http://localhost:3001
-```
-
-### 5. Démarrer le frontend
+### 4. Démarrer l'application
 
 ```bash
 cd apps/crm-app
 npm install
-npm run dev         # http://localhost:3000
+npm run dev    # http://localhost:3000
 ```
 
 ---
