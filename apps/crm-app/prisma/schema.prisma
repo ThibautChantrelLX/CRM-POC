@@ -1,0 +1,408 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../app/generated/prisma"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [pgcrypto]
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum TypeEntite {
+  GROUPE
+  FILIALE
+  SITE
+}
+
+// Relation d'une personne morale vis-à-vis des dossiers
+enum TypeRelationPm {
+  CABINET_POSTULATION
+  CLIENT_DIRECT
+  HYBRIDE
+}
+
+// Relation d'une personne physique vis-à-vis des dossiers
+enum TypeRelationPp {
+  CONTACT
+  CLIENT
+  HYBRIDE
+}
+
+enum StatutDossier {
+  OUVERT
+  CLOTURE
+  ARCHIVE
+}
+
+enum ContexteIntervenant {
+  POSTULATION
+  PLEIN_EXERCICE
+  DIVERS
+  ADVERSE
+}
+
+enum StatutMigration {
+  EN_COURS
+  SUCCES
+  ECHEC
+  PARTIEL
+}
+
+enum StatutRgpd {
+  OPT_IN        @map("Opt-in")
+  OPT_OUT       @map("Opt-out")
+  NON_RENSEIGNE @map("Non renseigné")
+}
+
+// ==========================================
+// 0. MULTI-TENANT
+// ==========================================
+
+model Entite {
+  id              Int        @id @default(autoincrement())
+  entiteParenteId Int?       @map("entite_parente_id")
+  typeEntite      TypeEntite @map("type_entite")
+  raisonSociale   String     @map("raison_sociale") @db.VarChar(255)
+  siret           String?    @unique @db.VarChar(20)
+  actif           Boolean    @default(true)
+  creerLe         DateTime   @default(now()) @map("creer_le")
+  modifierLe      DateTime   @updatedAt @map("modifier_le")
+
+  entiteParente      Entite?              @relation("EntiteHierarchie", fields: [entiteParenteId], references: [id])
+  sousEntites        Entite[]             @relation("EntiteHierarchie")
+  dossiers           Dossier[]
+  factures           Facture[]
+  auditModifications AuditModification[]
+  journalMigrations  JournalMigration[]
+  segments           Segment[]
+
+  @@map("entites")
+}
+
+// ==========================================
+// 1. RÉFÉRENTIELS ADRESSES
+// ==========================================
+
+model Adresse {
+  id                Int      @id @default(autoincrement())
+  rue               String?  @db.VarChar(255)
+  complementAdresse String?  @map("complement_adresse") @db.VarChar(255)
+  codePostal        String?  @map("code_postal") @db.VarChar(10)
+  ville             String?  @db.VarChar(100)
+  pays              String?  @default("France") @db.VarChar(100)
+  typeAdresse       String?  @default("SIEGE") @map("type_adresse") @db.VarChar(30)
+  creerLe           DateTime @default(now()) @map("creer_le")
+  modifierLe        DateTime @updatedAt @map("modifier_le")
+
+  personnesMorales   PersonneMorale[]
+  personnesPhysiques PersonnePhysique[]
+
+  @@map("adresses")
+}
+
+// ==========================================
+// 2. PERSONNES MORALES
+// ==========================================
+
+model PersonneMorale {
+  id           Int            @id @default(autoincrement())
+  maisonMereId Int?           @map("maison_mere_id")
+  email        String?        @unique @db.VarChar(255)
+  telephone    String?        @db.VarChar(50)
+  // Utilisé uniquement en contexte de migration pour déduire les liens depuis un domaine mail
+  nomDomaine   String?        @map("nom_domaine")
+  raisonSociale String        @map("raison_sociale") @db.VarChar(255)
+  siretSiren   String?        @map("siret_siren") @db.VarChar(20)
+  // Valeur brute issue de T_Param (AdrLngTypeSocieteId → ParStrNom)
+  typeStructure String?       @map("type_structure") @db.VarChar(255)
+  typeRelation  TypeRelationPm @map("type_lien_dossier")
+  adresseId    Int?           @map("adresse_id")
+  sourceOrigine String?       @default("EXPERT") @map("source_origine") @db.VarChar(20)
+  actif        Boolean        @default(true)
+  creerLe      DateTime       @default(now()) @map("creer_le")
+  modifierLe   DateTime       @updatedAt @map("modifier_le")
+  creerPar     String?        @map("creer_par") @db.VarChar(100)
+  modifierPar  String?        @map("modifier_par") @db.VarChar(100)
+  // Enrichissement Anaba
+  categorieEntreprise String? @map("categorie_entreprise") @db.VarChar(255)
+  secteurActivite     String? @map("secteur_activite") @db.VarChar(255)
+  siteWeb             String? @map("site_web")
+
+  maisonMere           PersonneMorale?              @relation("HierarchiePM", fields: [maisonMereId], references: [id])
+  filiales             PersonneMorale[]             @relation("HierarchiePM")
+  adresse              Adresse?                     @relation(fields: [adresseId], references: [id])
+  rattachements        RattachementPpPm[]
+  dossiersIntervenants DossierIntervenantContexte[]
+
+  @@index([raisonSociale], map: "idx_pm_raison_sociale")
+  @@index([siretSiren], map: "idx_pm_siret")
+  @@index([nomDomaine], map: "idx_pm_nom_domaine")
+  @@map("personnes_morales")
+}
+
+// ==========================================
+// 3. PERSONNES PHYSIQUES
+// ==========================================
+
+model PersonnePhysique {
+  id           Int            @id @default(autoincrement())
+  nom          String         @db.VarChar(255)
+  prenom       String?        @db.VarChar(255)
+  email        String?        @unique @db.VarChar(255)
+  telephone    String?        @db.VarChar(50)
+  portable     String?        @db.VarChar(50)
+  specialite   String?        @db.VarChar(255)
+  // Valeur brute issue de T_Param (PhyLngQualiteId → ParStrNom)
+  profession   String?        @db.VarChar(255)
+  // Date de prestation de serment (renseignée uniquement pour les avocats)
+  dateSerment  DateTime?      @map("date_serment") @db.Date
+  barreau      String?        @db.VarChar(255)
+  adresseId    Int?           @map("adresse_id")
+  // Données Anaba
+  seniorite    String?        @map("seniorité") @db.VarChar(50)
+  poste        String?        @db.VarChar(50)
+  dernierEmailLe   DateTime?  @map("dernier_email_le") @db.Date
+  dernierEmailAvec String?    @map("dernier_email_avec") @db.VarChar(500)
+  totalEmails      Int?       @default(0) @map("total_emails")
+  echangesAvec     String?    @map("echanges_avec")
+  departement      String?    @db.VarChar(100)
+  linkedinUrl      String?    @map("linkedin_url") @db.VarChar(255)
+  actif            Boolean    @default(true)
+  typeRelation     TypeRelationPp @map("type_relation_dossier")
+  optInEmail       Boolean    @default(true) @map("opt_in_email")
+  optInSms         Boolean    @default(false) @map("opt_in_sms")
+  optOutGlobal     Boolean    @default(false) @map("opt_out_global")
+  statutRgpd       StatutRgpd? @map("statut_rgpd")
+  emailInvalide    Boolean    @default(false) @map("email_invalide")
+  creerLe          DateTime   @default(now()) @map("creer_le")
+  modifierLe       DateTime   @updatedAt @map("modifier_le")
+  creerPar         String?    @map("creer_par") @db.VarChar(100)
+  modifierPar      String?    @map("modifier_par") @db.VarChar(100)
+
+  adresse              Adresse?                     @relation(fields: [adresseId], references: [id])
+  rattachements        RattachementPpPm[]
+  dossiersIntervenants DossierIntervenantContexte[]
+
+  @@index([email], map: "idx_pp_email")
+  @@index([portable], map: "idx_pp_portable")
+  @@map("personnes_physiques")
+}
+
+// ==========================================
+// 4. RATTACHEMENTS PP ↔ PM (N:N)
+// ==========================================
+
+model RattachementPpPm {
+  id                 Int       @id @default(autoincrement())
+  personnePhysiqueId Int       @map("personne_physique_id")
+  personneMoraleId   Int       @map("personne_morale_id")
+  titreFonction      String?   @map("titre_fonction") @db.VarChar(100)
+  dateDebut          DateTime  @map("date_debut") @db.Date
+  dateFin            DateTime? @map("date_fin") @db.Date
+  creerLe            DateTime  @default(now()) @map("creer_le")
+  modifierLe         DateTime  @updatedAt @map("modifier_le")
+
+  personnePhysique PersonnePhysique @relation(fields: [personnePhysiqueId], references: [id])
+  personneMorale   PersonneMorale   @relation(fields: [personneMoraleId], references: [id])
+
+  // Index partiel (rattachements actifs) non supporté par Prisma — ajouté via migration SQL :
+  // CREATE INDEX idx_rattachements_pp_actif ON rattachements_pp_pm (personne_physique_id) WHERE date_fin IS NULL;
+  @@index([personnePhysiqueId], map: "idx_rattachements_pp")
+  @@index([personneMoraleId], map: "idx_rattachements_pm")
+  @@map("rattachements_pp_pm")
+}
+
+// ==========================================
+// 5. DOSSIERS
+// ==========================================
+
+model Dossier {
+  id               Int            @id @default(autoincrement())
+  entiteId         Int            @map("entite_id")
+  numDossierMetier String?        @map("num_dossier_metier") @db.VarChar(100)
+  intitule         String?        @db.VarChar(500)
+  matiere          String?        @db.VarChar(255)
+  nature           String?        @db.VarChar(255)
+  statut           StatutDossier?
+  dateOuverture    DateTime?      @map("date_ouverture") @db.Date
+  dateCloture      DateTime?      @map("date_cloture") @db.Date
+  sourceLogiciel   String?        @default("EXPERT") @map("source_logiciel") @db.VarChar(20)
+  // Unicité garantie par la combinaison (sourceId, sourceLogiciel) — cf. @@unique ci-dessous
+  sourceId         Int?           @map("source_id")
+  actif            Boolean        @default(true)
+  creerLe          DateTime       @default(now()) @map("creer_le")
+  modifierLe       DateTime       @updatedAt @map("modifier_le")
+  creerPar         String?        @map("creer_par") @db.VarChar(100)
+  modifierPar      String?        @map("modifier_par") @db.VarChar(100)
+
+  entite       Entite                       @relation(fields: [entiteId], references: [id])
+  intervenants DossierIntervenantContexte[]
+  factures     Facture[]
+
+  @@unique([sourceId, sourceLogiciel])
+  @@unique([entiteId, numDossierMetier])
+  @@index([entiteId], map: "idx_dossiers_entite")
+  @@index([statut], map: "idx_dossiers_statut")
+  @@map("dossiers")
+}
+
+// ==========================================
+// 6. DOSSIER INTERVENANTS CONTEXTE
+// ==========================================
+
+model DossierIntervenantContexte {
+  id                 Int                 @id @default(autoincrement())
+  dossierId          Int                 @map("dossier_id")
+  contexteParentId   Int?                @map("contexte_parent_id")
+  personnePhysiqueId Int?                @map("personne_physique_id")
+  personneMoraleId   Int?                @map("personne_morale_id")
+  // CHECK à ajouter via migration SQL (non supporté par Prisma) :
+  // ALTER TABLE dossier_intervenants_contexte ADD CONSTRAINT chk_intervenant
+  //   CHECK (personne_physique_id IS NOT NULL OR personne_morale_id IS NOT NULL);
+  contexte           ContexteIntervenant
+  roleDossier        String              @map("role_dossier") @db.VarChar(50)
+  // Code du rôle source (EleLngTypeLienId) pour traçabilité migration
+  expertRoleCode     Int?                @map("expert_role_code")
+  dateEntree         DateTime?           @map("date_entree") @db.Date
+  dateSortie         DateTime?           @map("date_sortie") @db.Date
+  creerLe            DateTime            @default(now()) @map("creer_le")
+  modifierLe         DateTime            @updatedAt @map("modifier_le")
+
+  dossier          Dossier                      @relation(fields: [dossierId], references: [id])
+  contexteParent   DossierIntervenantContexte?  @relation("ContexteHierarchie", fields: [contexteParentId], references: [id])
+  sousContextes    DossierIntervenantContexte[] @relation("ContexteHierarchie")
+  personnePhysique PersonnePhysique?            @relation(fields: [personnePhysiqueId], references: [id])
+  personneMorale   PersonneMorale?              @relation(fields: [personneMoraleId], references: [id])
+  factures         Facture[]
+
+  @@index([dossierId], map: "idx_dic_dossier")
+  @@index([personnePhysiqueId], map: "idx_dic_pp")
+  @@index([personneMoraleId], map: "idx_dic_pm")
+  @@map("dossier_intervenants_contexte")
+}
+
+// ==========================================
+// 7. FACTURES
+// ==========================================
+
+model Facture {
+  id               Int       @id @default(autoincrement())
+  entiteId         Int       @map("entite_id")
+  dossierId        Int       @map("dossier_id")
+  contexteId       Int       @map("contexte_id")
+  // Unicité partielle (WHERE numero_facture IS NOT NULL) à ajouter via migration SQL :
+  // CREATE UNIQUE INDEX idx_factures_numero_unique ON factures (numero_facture, contexte_id) WHERE numero_facture IS NOT NULL;
+  numeroFacture    String?   @map("numero_facture") @db.VarChar(100)
+  montantHt        Decimal?  @map("montant_ht") @db.Decimal(12, 2)
+  montantTtc       Decimal?  @map("montant_ttc") @db.Decimal(12, 2)
+  regleTtc         Decimal?  @default(0) @map("regle_ttc") @db.Decimal(12, 2)
+  montantAlloueTtc Decimal?  @map("montant_alloue_ttc") @db.Decimal(12, 2)
+  regleAlloueTtc   Decimal?  @default(0) @map("regle_alloue_ttc") @db.Decimal(12, 2)
+  dateFacture      DateTime? @map("date_facture") @db.Date
+  sourceLogiciel   String?   @default("EXPERT") @map("source_logiciel") @db.VarChar(20)
+  sourceId         Int?      @map("source_id")
+  creerLe          DateTime  @default(now()) @map("creer_le")
+  modifierLe       DateTime  @updatedAt @map("modifier_le")
+  creerPar         String?   @map("creer_par") @db.VarChar(100)
+  modifierPar      String?   @map("modifier_par") @db.VarChar(100)
+
+  entite   Entite                     @relation(fields: [entiteId], references: [id])
+  dossier  Dossier                    @relation(fields: [dossierId], references: [id])
+  contexte DossierIntervenantContexte @relation(fields: [contexteId], references: [id])
+
+  @@index([entiteId], map: "idx_factures_entite")
+  @@index([dossierId], map: "idx_factures_dossier")
+  @@index([sourceId], map: "idx_factures_source")
+  @@map("factures")
+}
+
+// ==========================================
+// 8. MDM & AUDIT
+// ==========================================
+
+model MappingSource {
+  id                  Int      @id @default(autoincrement())
+  entiteCrm           String   @map("entite_crm") @db.VarChar(100)
+  entiteCrmId         Int      @map("entite_crm_id")
+  sourceNom           String   @map("source_nom") @db.VarChar(20)
+  sourceIdExterne     String   @map("source_id_externe") @db.VarChar(100)
+  dateDerniereSynchro DateTime @default(now()) @map("date_derniere_synchro")
+
+  @@unique([entiteCrm, sourceNom, sourceIdExterne])
+  @@index([entiteCrm, entiteCrmId], map: "idx_mapping_entite")
+  @@map("mapping_sources")
+}
+
+model AuditModification {
+  id             Int      @id @default(autoincrement())
+  entiteId       Int?     @map("entite_id")
+  entiteCible    String   @map("entite_cible") @db.VarChar(100)
+  entiteCibleId  Int      @map("entite_cible_id")
+  champModifie   String   @map("champ_modifie") @db.VarChar(100)
+  ancienneValeur String?  @map("ancienne_valeur")
+  nouvelleValeur String?  @map("nouvelle_valeur")
+  sourceDonnee   String?  @map("source_donnee") @db.VarChar(20)
+  utilisateur    String?  @db.VarChar(100)
+  dateMaj        DateTime @default(now()) @map("date_maj")
+
+  entite Entite? @relation(fields: [entiteId], references: [id])
+
+  @@index([entiteCible, entiteCibleId], map: "idx_audit_cible")
+  @@map("audit_modifications")
+}
+
+// ==========================================
+// 9. JOURNAL DES MIGRATIONS
+// ==========================================
+
+model JournalMigration {
+  id              Int             @id @default(autoincrement())
+  entiteId        Int?            @map("entite_id")
+  nomLogiciel     String          @map("nom_logiciel") @db.VarChar(50)
+  versionLogiciel String?         @map("version_logiciel") @db.VarChar(50)
+  perimetre       String?
+  dateEffet       DateTime?       @map("date_effet") @db.Date
+  dateMigration   DateTime        @default(now()) @map("date_migration")
+  termineLe       DateTime?       @map("termine_le")
+  statut          StatutMigration
+  // JSON libre selon le connecteur : {"dossiers": 120, "erreurs": 2, ...}
+  stats           Json            @default("{}")
+  detailsErreurs  String?         @map("details_erreurs")
+  executePar      String?         @map("execute_par") @db.VarChar(100)
+
+  entite Entite? @relation(fields: [entiteId], references: [id])
+
+  @@index([nomLogiciel, dateMigration(sort: Desc)], map: "idx_journal_migrations")
+  @@map("journal_migrations")
+}
+
+// ==========================================
+// 10. SEGMENTS
+// ==========================================
+
+model Segment {
+  id           Int      @id @default(autoincrement())
+  entiteId     Int      @map("entite_id")
+  nom          String   @db.VarChar(255)
+  description  String?
+  // Entités de sortie souhaitées : ['pp', 'pm', 'dossiers', 'factures']
+  outputCibles String[] @map("output_cibles")
+  // Arbre de conditions : {"op":"AND","rules":[]}
+  conditions   Json     @default("{\"op\":\"AND\",\"rules\":[]}")
+  actif        Boolean  @default(true)
+  creerLe      DateTime @default(now()) @map("creer_le")
+  modifierLe   DateTime @updatedAt @map("modifier_le")
+  creerPar     String?  @map("creer_par") @db.VarChar(100)
+
+  entite Entite @relation(fields: [entiteId], references: [id])
+
+  @@index([entiteId], map: "idx_segments_entite")
+  @@index([conditions], type: Gin, map: "idx_segments_conditions")
+  @@index([outputCibles], type: Gin, map: "idx_segments_output")
+  @@map("segments")
+}
