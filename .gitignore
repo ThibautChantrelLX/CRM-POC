@@ -1,4 +1,5 @@
 # Python
+data-scripts/.env
 data-scripts/.venv/
 data-scripts/__pycache__/
 data-scripts/**/__pycache__/
