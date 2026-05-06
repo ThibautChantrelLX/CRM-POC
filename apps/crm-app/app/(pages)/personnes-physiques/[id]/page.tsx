@@ -160,10 +160,7 @@ export default async function PersonnePhysiquePage({
                         {pp.portable}
                       </span>
                     ) : null,
-                  },
-                  { label: "Barreau", value: pp.barreau },
-                  { label: "Date de serment", value: fmtDate(pp.dateSerment) },
-                  { label: "Département", value: pp.departement },
+                  }
                 ]}
               />
             </DetailSection>
@@ -174,7 +171,11 @@ export default async function PersonnePhysiquePage({
                 cols={2}
                 items={[
                   { label: "Profession", value: pp.profession },
+                  { label: "Poste", value: pp.poste },
                   { label: "Spécialité", value: pp.specialite, span: 2 },
+                  { label: "Barreau", value: pp.barreau },
+                  { label: "Date de serment", value: fmtDate(pp.dateSerment) },
+                  { label: "Département", value: pp.departement },
                   {
                     label: "Type de relation",
                     value: (
@@ -230,7 +231,6 @@ export default async function PersonnePhysiquePage({
               <InfoGrid
                 cols={2}
                 items={[
-                  { label: "Poste", value: pp.poste },
                   {
                     label: "Total emails",
                     value: pp.totalEmails != null ? (

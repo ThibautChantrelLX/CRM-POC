@@ -4,20 +4,20 @@ import { Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { DataListPage } from "@/components/data-list/DataListPage";
 import { useDataListState } from "@/lib/hooks/useDataListState";
-import { usePersonnesPhysiques } from "@/lib/hooks/usePersonnesPhysiques";
-import { PP_FIELDS, PP_COLUMNS } from "./config";
-import type { PersonnePhysiqueListItem } from "@/lib/server/modules/personnes-physiques/dto";
+import { usePersonnesMorales } from "@/lib/hooks/usePersonnesMorales";
+import { PM_FIELDS, PM_COLUMNS } from "./config";
+import type { PersonneMoraleListItem } from "@/lib/server/modules/personnes-morales/dto";
 
-function PersonnesPhysiquesContent() {
+function PersonnesMoralesContent() {
   const router = useRouter();
-  const ds = useDataListState(PP_FIELDS, { defaultSortBy: "nom" });
-  const { data, isLoading, isFetching } = usePersonnesPhysiques(ds.params);
+  const ds = useDataListState(PM_FIELDS, { defaultSortBy: "raisonSociale" });
+  const { data, isLoading, isFetching } = usePersonnesMorales(ds.params);
 
   return (
-    <DataListPage<PersonnePhysiqueListItem>
-      title="Personnes Physiques"
-      fields={PP_FIELDS}
-      columns={PP_COLUMNS}
+    <DataListPage<PersonneMoraleListItem>
+      title="Personnes Morales"
+      fields={PM_FIELDS}
+      columns={PM_COLUMNS}
       data={data?.data ?? []}
       total={data?.total ?? 0}
       totalPages={data?.totalPages ?? 1}
@@ -35,12 +35,12 @@ function PersonnesPhysiquesContent() {
       onRemoveCondition={ds.removeCondition}
       onClearConditions={ds.clearConditions}
       onSearch={ds.setSearch}
-      onRowClick={(row) => router.push(`/personnes-physiques/${row.id}`)}
+      onRowClick={(row) => router.push(`/personnes-morales/${row.id}`)}
     />
   );
 }
 
-export default function PersonnesPhysiquesPage() {
+export default function PersonnesMoralesPage() {
   return (
     <Suspense
       fallback={
@@ -49,7 +49,7 @@ export default function PersonnesPhysiquesPage() {
         </div>
       }
     >
-      <PersonnesPhysiquesContent />
+      <PersonnesMoralesContent />
     </Suspense>
   );
 }

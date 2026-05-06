@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Scale } from "lucide-react";
+import { Users, Building2, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_SECTIONS = [
@@ -10,6 +10,7 @@ const NAV_SECTIONS = [
     label: "Contacts",
     items: [
       { href: "/personnes-physiques", label: "Personnes Physiques", icon: Users },
+      { href: "/personnes-morales", label: "Personnes Morales", icon: Building2 },
     ],
   },
 ];
