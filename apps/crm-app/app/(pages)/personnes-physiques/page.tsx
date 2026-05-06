@@ -1,18 +1,16 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Suspense, useCallback, useMemo, useRef, useState } from "react";
 import { createColumnHelper, type ColumnDef, type SortingState } from "@tanstack/react-table";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Search, SlidersHorizontal, Mail, Phone, Smartphone } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
 import { AdvancedFilters } from "@/components/ui/advanced-filters";
+import { FilterBadges } from "@/components/ui/filter-badges";
 import { Avatar } from "@/components/ui/avatar";
 import { usePersonnesPhysiques } from "@/lib/hooks/usePersonnesPhysiques";
-import {
-  buildQueryParams,
-  type FieldDef,
-  type FilterCondition,
-  type FilterState,
-} from "@/lib/filters";
+import { buildQueryParams, type FieldDef, type FilterCondition, type FilterState } from "@/lib/filters";
+import { urlToState, stateToURL } from "@/lib/url-state";
 import type {
   PersonnePhysiqueListItem,
   TypeRelationPp,
@@ -20,7 +18,7 @@ import type {
 } from "@/lib/server/modules/personnes-physiques/dto";
 import { cn } from "@/lib/utils";
 
-// ─── Field definitions (generic query builder) ────────────────────────────────
+// ─── Field definitions ────────────────────────────────────────────────────────
 
 const PP_FIELDS: FieldDef[] = [
   { key: "nom", label: "Nom", type: "text", param: "nom" },
@@ -62,7 +60,7 @@ const PP_FIELDS: FieldDef[] = [
   },
 ];
 
-// ─── Labels / badges ──────────────────────────────────────────────────────────
+// ─── Badges / colors ──────────────────────────────────────────────────────────
 
 const RELATION_LABELS: Record<TypeRelationPp, string> = {
   CONTACT: "Contact",
@@ -85,7 +83,7 @@ const RGPD_COLORS: Record<StatutRgpd, string> = {
   NON_RENSEIGNE: "bg-zinc-100 text-zinc-500",
 };
 
-// ─── Column definitions ───────────────────────────────────────────────────────
+// ─── Columns ──────────────────────────────────────────────────────────────────
 
 const col = createColumnHelper<PersonnePhysiqueListItem>();
 
@@ -114,7 +112,7 @@ const COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
             <div className="text-zinc-600 leading-tight">{r.prenom}</div>
           )}
           {r.profession && (
-            <div className="text-xs text-zinc-400 leading-tight mt-0.5 truncate max-w-[200px]">
+            <div className="text-xs text-zinc-400 mt-0.5 truncate max-w-[220px]">
               {r.profession}
             </div>
           )}
@@ -131,7 +129,7 @@ const COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
         <a
           href={`mailto:${v}`}
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1.5 text-blue-600 hover:underline max-w-[200px] truncate"
+          className="flex items-center gap-1.5 text-blue-600 hover:underline max-w-[200px]"
         >
           <Mail size={12} className="shrink-0 text-blue-400" />
           <span className="truncate">{v}</span>
@@ -168,7 +166,7 @@ const COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
     cell: ({ getValue }) => {
       const v = getValue<string | null>();
       return v ? (
-        <span className="text-zinc-600 max-w-[180px] truncate block">{v}</span>
+        <span className="text-zinc-600 max-w-[200px] truncate block">{v}</span>
       ) : (
         <span className="text-zinc-300">—</span>
       );
@@ -180,12 +178,7 @@ const COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
     cell: ({ getValue }) => {
       const v = getValue<TypeRelationPp>();
       return (
-        <span
-          className={cn(
-            "inline-flex px-2 py-0.5 rounded-full text-xs font-medium",
-            RELATION_COLORS[v],
-          )}
-        >
+        <span className={cn("inline-flex px-2 py-0.5 rounded-full text-xs font-medium", RELATION_COLORS[v])}>
           {RELATION_LABELS[v]}
         </span>
       );
@@ -198,12 +191,7 @@ const COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
       const v = getValue<StatutRgpd | null>();
       if (!v) return <span className="text-zinc-300">—</span>;
       return (
-        <span
-          className={cn(
-            "inline-flex px-2 py-0.5 rounded-full text-xs font-medium",
-            RGPD_COLORS[v],
-          )}
-        >
+        <span className={cn("inline-flex px-2 py-0.5 rounded-full text-xs font-medium", RGPD_COLORS[v])}>
           {RGPD_LABELS[v]}
         </span>
       );
@@ -223,120 +211,139 @@ const COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
   }),
 ];
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Inner content (needs Suspense) ───────────────────────────────────────────
 
-const INITIAL_STATE: FilterState = {
-  search: "",
-  conditions: [],
-  sortBy: "nom",
-  sortOrder: "asc",
-  page: 1,
-  limit: 20,
-};
+function PersonnesPhysiquesContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
 
-export default function PersonnesPhysiquesPage() {
-  const [state, setState] = useState<FilterState>(INITIAL_STATE);
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [filterKey, setFilterKey] = useState(0);
-  const [searchInput, setSearchInput] = useState("");
-  const [searchTimer, setSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
-
-  // Build query params from filter state
+  // Entire filter state is derived from URL
+  const state = useMemo(() => urlToState(searchParams, PP_FIELDS), [searchParams]);
   const params = useMemo(() => buildQueryParams(state, PP_FIELDS), [state]);
 
   const { data, isLoading, isFetching } = usePersonnesPhysiques(params);
 
-  // Derived sorting for the table
   const sorting: SortingState = useMemo(
-    () => (state.sortBy ? [{ id: state.sortBy, desc: state.sortOrder === "desc" }] : []),
+    () =>
+      state.sortBy ? [{ id: state.sortBy, desc: state.sortOrder === "desc" }] : [],
     [state.sortBy, state.sortOrder],
   );
 
-  const set = (patch: Partial<FilterState>) =>
-    setState((prev) => ({ ...prev, ...patch }));
+  // Push a partial state change to URL
+  const push = useCallback(
+    (patch: Partial<FilterState>) => {
+      const next = { ...state, ...patch };
+      const qs = stateToURL(next, PP_FIELDS);
+      router.replace(`${pathname}${qs ? `?${qs}` : ""}`, { scroll: false });
+    },
+    [state, pathname, router],
+  );
 
-  const handleSearch = (value: string) => {
-    setSearchInput(value);
-    if (searchTimer) clearTimeout(searchTimer);
-    setSearchTimer(
-      setTimeout(() => set({ search: value, page: 1 }), 300),
-    );
+  // Local search input (debounced)
+  const [searchInput, setSearchInput] = useState(state.search);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearch = (v: string) => {
+    setSearchInput(v);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => push({ search: v, page: 1 }), 300);
   };
 
-  const handleSorting = (updater: SortingState | ((prev: SortingState) => SortingState)) => {
+  const handleSorting = (
+    updater: SortingState | ((prev: SortingState) => SortingState),
+  ) => {
     const next = typeof updater === "function" ? updater(sorting) : updater;
-    set({
+    push({
       sortBy: next[0]?.id ?? "nom",
       sortOrder: next[0]?.desc ? "desc" : "asc",
       page: 1,
     });
   };
 
-  const applyFilters = (conditions: FilterCondition[]) => {
-    set({ conditions, page: 1 });
-  };
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filterKey, setFilterKey] = useState(0);
 
   const openFilters = () => {
     setFilterKey((k) => k + 1);
     setFilterOpen(true);
   };
 
-  const activeConditions = state.conditions.length;
+  const applyFilters = (conditions: FilterCondition[]) =>
+    push({ conditions, page: 1 });
+
+  const removeCondition = (id: string) =>
+    push({ conditions: state.conditions.filter((c) => c.id !== id), page: 1 });
+
+  const clearConditions = () => push({ conditions: [], page: 1 });
 
   return (
     <div className="flex flex-col h-full">
-      {/* Top search bar */}
-      <div className="bg-white border-b border-zinc-200 px-6 py-3 flex items-center gap-3 sticky top-0 z-10">
-        <div className="relative flex-1 max-w-lg">
-          <Search
-            size={15}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
-          />
-          <input
-            type="text"
-            placeholder="Rechercher par nom, email, téléphone…"
-            value={searchInput}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 bg-zinc-50 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-blue-400 focus:bg-white transition-colors"
-          />
-        </div>
-
-        {/* Filtres button */}
-        <div className="relative">
-          <button
-            type="button"
-            onClick={openFilters}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors",
-              activeConditions > 0
-                ? "border-orange-400 bg-orange-50 text-orange-700"
-                : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
-            )}
-          >
-            <SlidersHorizontal size={15} />
-            Filtres
-            {activeConditions > 0 && (
-              <span className="bg-orange-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                {activeConditions}
-              </span>
-            )}
-          </button>
-
-          {filterOpen && (
-            <AdvancedFilters
-              key={filterKey}
-              fields={PP_FIELDS}
-              initialConditions={state.conditions}
-              onApply={applyFilters}
-              onClose={() => setFilterOpen(false)}
+      {/* Search bar */}
+      <div className="bg-white border-b border-zinc-200 px-6 py-3 sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-lg">
+            <Search
+              size={15}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"
             />
-          )}
+            <input
+              type="text"
+              placeholder="Rechercher par nom, email, téléphone…"
+              value={searchInput}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 bg-zinc-50 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-blue-400 focus:bg-white transition-colors"
+            />
+          </div>
+
+          {/* Filtres button */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={openFilters}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors",
+                state.conditions.length > 0
+                  ? "border-orange-400 bg-orange-50 text-orange-700"
+                  : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
+              )}
+            >
+              <SlidersHorizontal size={15} />
+              Filtres
+              {state.conditions.length > 0 && (
+                <span className="bg-orange-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {state.conditions.length}
+                </span>
+              )}
+            </button>
+
+            {filterOpen && (
+              <AdvancedFilters
+                key={filterKey}
+                fields={PP_FIELDS}
+                initialConditions={state.conditions}
+                onApply={applyFilters}
+                onClose={() => setFilterOpen(false)}
+              />
+            )}
+          </div>
         </div>
       </div>
 
+      {/* Active filter badges */}
+      {state.conditions.length > 0 && (
+        <div className="bg-white border-b border-zinc-100 pt-2 pb-2">
+          <FilterBadges
+            conditions={state.conditions}
+            fields={PP_FIELDS}
+            onRemove={removeCondition}
+            onClearAll={clearConditions}
+          />
+        </div>
+      )}
+
       {/* Main content */}
       <div className="flex-1 px-6 py-5 flex flex-col gap-4 overflow-auto">
-        {/* Title + count */}
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-zinc-900">Personnes Physiques</h1>
           {data && (
@@ -349,7 +356,6 @@ export default function PersonnesPhysiquesPage() {
           )}
         </div>
 
-        {/* Table */}
         <DataTable
           data={data?.data ?? []}
           columns={COLUMNS}
@@ -359,11 +365,28 @@ export default function PersonnesPhysiquesPage() {
           limit={state.limit}
           sorting={sorting}
           onSortingChange={handleSorting}
-          onPageChange={(page) => set({ page })}
-          onLimitChange={(limit) => set({ limit, page: 1 })}
+          onPageChange={(page) => push({ page })}
+          onLimitChange={(limit) => push({ limit, page: 1 })}
+          onRowClick={(row) => router.push(`/personnes-physiques/${row.id}`)}
           isLoading={isLoading}
         />
       </div>
     </div>
+  );
+}
+
+// ─── Page (requires Suspense for useSearchParams) ─────────────────────────────
+
+export default function PersonnesPhysiquesPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center h-32 text-sm text-zinc-400">
+          Chargement…
+        </div>
+      }
+    >
+      <PersonnesPhysiquesContent />
+    </Suspense>
   );
 }

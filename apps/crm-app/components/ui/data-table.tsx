@@ -25,6 +25,7 @@ type DataTableProps<T> = {
   onSortingChange: OnChangeFn<SortingState>;
   onPageChange: (page: number) => void;
   onLimitChange?: (limit: number) => void;
+  onRowClick?: (row: T) => void;
   isLoading?: boolean;
 };
 
@@ -39,6 +40,7 @@ export function DataTable<T>({
   onSortingChange,
   onPageChange,
   onLimitChange,
+  onRowClick,
   isLoading,
 }: DataTableProps<T>) {
   const table = useReactTable({
@@ -109,7 +111,11 @@ export function DataTable<T>({
               table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="hover:bg-orange-50/40 transition-colors cursor-pointer"
+                  onClick={() => onRowClick?.(row.original)}
+                  className={cn(
+                    "hover:bg-orange-50/40 transition-colors",
+                    onRowClick && "cursor-pointer",
+                  )}
                 >
                   {row.getVisibleCells().map((cell) => (
                     <td key={cell.id} className="px-4 py-3 text-zinc-700">
