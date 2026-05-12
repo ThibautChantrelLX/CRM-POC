@@ -176,12 +176,12 @@ export default async function PersonneMoralePage({
                   { label: "Source d'origine", value: pm.sourceOrigine },
                   {
                     label: "Type de relation",
-                    value: (
+                    value: pm.typeRelation ? (
                       <Badge
                         label={RELATION_LABELS[pm.typeRelation]}
                         color={RELATION_COLORS[pm.typeRelation]}
                       />
-                    ),
+                    ) : null,
                   },
                   {
                     label: "Actif",

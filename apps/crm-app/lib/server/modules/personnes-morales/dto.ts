@@ -10,7 +10,7 @@ export type PersonneMoraleListItem = {
   siretSiren: string | null;
   nomDomaine: string | null;
   typeStructure: string | null;
-  typeRelation: TypeRelationPm;
+  typeRelation: TypeRelationPm | null;
   actif: boolean;
   sourceOrigine: string | null;
   secteurActivite: string | null;
@@ -75,7 +75,7 @@ export type PersonneMoraleDetail = {
   siretSiren: string | null;
   nomDomaine: string | null;
   typeStructure: string | null;
-  typeRelation: TypeRelationPm;
+  typeRelation: TypeRelationPm | null;
   actif: boolean;
   sourceOrigine: string | null;
   // Anaba
@@ -108,7 +108,7 @@ export type CreatePersonneMoraleInput = {
   telephone?: string;
   siretSiren?: string;
   typeStructure?: string;
-  typeRelation: TypeRelationPm;
+  typeRelation?: TypeRelationPm;
   actif?: boolean;
 };
 

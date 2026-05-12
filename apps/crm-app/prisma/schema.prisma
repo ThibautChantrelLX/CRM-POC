@@ -120,7 +120,7 @@ model PersonneMorale {
   siretSiren   String?        @map("siret_siren") @db.VarChar(20)
   // Valeur brute issue de T_Param (AdrLngTypeSocieteId → ParStrNom)
   typeStructure String?       @map("type_structure") @db.VarChar(255)
-  typeRelation  TypeRelationPm @map("type_lien_dossier")
+  typeRelation  TypeRelationPm? @map("type_lien_dossier")
   adresseId    Int?           @map("adresse_id")
   sourceOrigine String?       @default("EXPERT") @map("source_origine") @db.VarChar(20)
   actif        Boolean        @default(true)
@@ -153,7 +153,7 @@ model PersonnePhysique {
   id           Int            @id @default(autoincrement())
   nom          String         @db.VarChar(255)
   prenom       String?        @db.VarChar(255)
-  email        String?        @unique @db.VarChar(255)
+  email        String?        @db.VarChar(500)
   telephone    String?        @db.VarChar(50)
   portable     String?        @db.VarChar(50)
   specialite   String?
@@ -164,12 +164,10 @@ model PersonnePhysique {
   barreau      String?        @db.VarChar(255)
   adresseId    Int?           @map("adresse_id")
   // Données Anaba
-  poste        String?
   dernierEmailLe   DateTime?  @map("dernier_email_le") @db.Date
   dernierEmailAvec String?    @map("dernier_email_avec") @db.VarChar(500)
   totalEmails      Int?       @default(0) @map("total_emails")
   echangesAvec     String?    @map("echanges_avec")
-  departement      String?    @db.VarChar(100)
   linkedinUrl      String?    @map("linkedin_url") @db.VarChar(255)
   actif            Boolean    @default(true)
   typeRelation     TypeRelationPp @map("type_relation_dossier")

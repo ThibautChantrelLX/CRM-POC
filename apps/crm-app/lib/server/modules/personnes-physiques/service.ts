@@ -38,7 +38,7 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
       OR: [
         { nom: s }, { prenom: s }, { email: s },
         { telephone: s }, { portable: s },
-        { profession: s }, { specialite: s }, { poste: s },
+        { profession: s }, { specialite: s },
       ],
     });
   }
@@ -157,7 +157,6 @@ export async function getPersonnePhysiqueDetail(
     portable: pp.portable,
     specialite: pp.specialite,
     profession: pp.profession,
-    poste: pp.poste,
     barreau: pp.barreau,
     dateSerment: fmtDate(pp.dateSerment),
     typeRelation: pp.typeRelation as PersonnePhysiqueDetail["typeRelation"],
@@ -171,7 +170,6 @@ export async function getPersonnePhysiqueDetail(
     dernierEmailLe: fmtDate(pp.dernierEmailLe),
     dernierEmailAvec: pp.dernierEmailAvec,
     echangesAvec: pp.echangesAvec,
-    departement: pp.departement,
     linkedinUrl: pp.linkedinUrl,
     creerLe: (pp.creerLe as Date).toISOString(),
     modifierLe: (pp.modifierLe as Date).toISOString(),

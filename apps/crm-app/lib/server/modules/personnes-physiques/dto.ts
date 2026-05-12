@@ -12,7 +12,6 @@ export type PersonnePhysiqueListItem = {
   portable: string | null;
   specialite: string | null;
   profession: string | null;
-  poste: string | null;
   barreau: string | null;
   typeRelation: TypeRelationPp;
   statutRgpd: StatutRgpd | null;
@@ -95,7 +94,6 @@ export type PersonnePhysiqueDetail = {
   portable: string | null;
   specialite: string | null;
   profession: string | null;
-  poste: string | null;
   barreau: string | null;
   dateSerment: string | null;
   typeRelation: TypeRelationPp;
@@ -110,7 +108,6 @@ export type PersonnePhysiqueDetail = {
   dernierEmailLe: string | null;
   dernierEmailAvec: string | null;
   echangesAvec: string | null;
-  departement: string | null;
   linkedinUrl: string | null;
   // Metadata
   creerLe: string;
@@ -138,7 +135,6 @@ export type CreatePersonnePhysiqueInput = {
   portable?: string;
   specialite?: string;
   profession?: string;
-  poste?: string;
   barreau?: string;
   typeRelation: TypeRelationPp;
   statutRgpd?: StatutRgpd;

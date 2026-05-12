@@ -137,7 +137,8 @@ export const PM_COLUMNS: ColumnDef<PersonneMoraleListItem, any>[] = [
     header: "Relation",
     enableSorting: true,
     cell: ({ getValue }) => {
-      const v = getValue<TypeRelationPm>();
+      const v = getValue<TypeRelationPm | null>();
+      if (!v) return <span className="text-zinc-300">—</span>;
       return (
         <span
           className={cn(

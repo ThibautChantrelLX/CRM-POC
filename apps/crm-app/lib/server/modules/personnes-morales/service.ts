@@ -138,7 +138,7 @@ export async function getPersonneMoraleDetail(
     siretSiren: pm.siretSiren,
     nomDomaine: pm.nomDomaine,
     typeStructure: pm.typeStructure,
-    typeRelation: pm.typeRelation as PersonneMoraleDetail["typeRelation"],
+    typeRelation: (pm.typeRelation ?? null) as PersonneMoraleDetail["typeRelation"],
     actif: pm.actif,
     sourceOrigine: pm.sourceOrigine,
     categorieEntreprise: pm.categorieEntreprise,
@@ -187,7 +187,8 @@ export async function getPersonneMorale(id: number): Promise<PersonneMoraleListI
 export async function createPersonneMorale(
   data: CreatePersonneMoraleInput,
 ): Promise<PersonneMoraleListItem> {
-  const pm = await prisma.personneMorale.create({ data });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pm = await prisma.personneMorale.create({ data: data as any });
   return pm as unknown as PersonneMoraleListItem;
 }
 
