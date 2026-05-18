@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, Plus, ChevronDown, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -171,7 +171,10 @@ function ConditionRow({
         </button>
       </div>
       {field.type === "text" && <TextRow condition={condition} onChange={onChange} />}
-      {field.type === "select" && field.options && (
+      {field.type === "select" && field.optionsUrl && (
+        <SelectSearchRow condition={condition} field={field} onChange={onChange} />
+      )}
+      {field.type === "select" && !field.optionsUrl && field.options && (
         <SelectRow condition={condition} field={field} onChange={onChange} />
       )}
       {field.type === "date" && <DateRow condition={condition} onChange={onChange} />}
@@ -235,6 +238,88 @@ function SelectRow({
           {opt.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function SelectSearchRow({
+  condition,
+  field,
+  onChange,
+}: {
+  condition: FilterCondition;
+  field: FieldDef;
+  onChange: (p: Partial<FilterCondition>) => void;
+}) {
+  const [options, setOptions] = useState<SelectOption[]>([]);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (!field.optionsUrl) return;
+    fetch(field.optionsUrl)
+      .then((r) => r.json())
+      .then((data: string[]) =>
+        setOptions(data.map((v) => ({ value: v, label: v })))
+      )
+      .catch(() => {});
+  }, [field.optionsUrl]);
+
+  const selected = (condition.value as string[]) ?? [];
+  const toggle = (v: string) => {
+    const next = selected.includes(v)
+      ? selected.filter((x) => x !== v)
+      : [...selected, v];
+    onChange({ value: next });
+  };
+
+  const filtered = search
+    ? options.filter((o) => o.label.toLowerCase().includes(search.toLowerCase()))
+    : options;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <input
+        type="text"
+        placeholder="Rechercher…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-orange-400 placeholder:text-zinc-300"
+      />
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {selected.map((v) => (
+            <span
+              key={v}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500 text-white text-xs font-medium"
+            >
+              {v}
+              <button type="button" onClick={() => toggle(v)} className="hover:opacity-75">
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="max-h-35 overflow-y-auto flex flex-col gap-0.5 pr-1">
+        {filtered.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => toggle(opt.value)}
+            className={cn(
+              "w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors",
+              selected.includes(opt.value)
+                ? "bg-orange-50 text-orange-700 font-medium"
+                : "text-zinc-600 hover:bg-zinc-50",
+            )}
+          >
+            {opt.label}
+          </button>
+        ))}
+        {filtered.length === 0 && (
+          <p className="text-xs text-zinc-400 px-2.5 py-1.5">Aucun résultat</p>
+        )}
+      </div>
     </div>
   );
 }

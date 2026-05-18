@@ -18,6 +18,13 @@ export const PP_FIELDS: FieldDef[] = [
   { key: "profession", label: "Profession", type: "text", param: "profession" },
   { key: "specialite", label: "Spécialité", type: "text", param: "specialite" },
   {
+    key: "barreau",
+    label: "Barreau",
+    type: "select",
+    param: "barreau",
+    optionsUrl: "/api/personnes-physiques/barreaux",
+  },
+  {
     key: "typeRelation",
     label: "Type de relation",
     type: "select",
@@ -95,7 +102,7 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
     cell: ({ row }) => {
       const r = row.original;
       return (
-        <div className="min-w-[160px]">
+        <div className="min-w-40">
           <div className="font-semibold text-zinc-900 leading-tight">
             {r.nom.toUpperCase()}
           </div>
@@ -103,7 +110,7 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
             <div className="text-zinc-600 leading-tight">{r.prenom}</div>
           )}
           {r.profession && (
-            <div className="text-xs text-zinc-400 mt-0.5 truncate max-w-[220px]">
+            <div className="text-xs text-zinc-400 mt-0.5 truncate max-w-55">
               {r.profession}
             </div>
           )}
@@ -120,7 +127,7 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
         <a
           href={`mailto:${v}`}
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1.5 text-blue-600 hover:underline max-w-[200px]"
+          className="flex items-center gap-1.5 text-blue-600 hover:underline max-w-50"
         >
           <Mail size={12} className="shrink-0 text-blue-400" />
           <span className="truncate">{v}</span>
@@ -157,7 +164,7 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
     cell: ({ getValue }) => {
       const v = getValue<string | null>();
       return v ? (
-        <span className="text-zinc-600 max-w-[200px] truncate block">{v}</span>
+        <span className="text-zinc-600 max-w-50 truncate block">{v}</span>
       ) : (
         <span className="text-zinc-300">—</span>
       );

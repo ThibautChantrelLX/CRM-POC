@@ -48,6 +48,7 @@ export type PersonnePhysiqueListQuery = {
   // Filtres multi-select
   typeRelation?: TypeRelationPp[];
   statutRgpd?: StatutRgpd[];
+  barreau?: string[];
   // Filtres booléens
   actif?: boolean;
   optOutGlobal?: boolean;

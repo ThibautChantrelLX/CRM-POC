@@ -9,6 +9,7 @@ export type FieldDef = {
   label: string;
   type: FieldType;
   options?: SelectOption[];
+  optionsUrl?: string; // select → URL pour charger les options dynamiquement
   param?: string;      // text/select → query param name (select: repeatable)
   paramGte?: string;   // date → gte param name
   paramLte?: string;   // date → lte param name

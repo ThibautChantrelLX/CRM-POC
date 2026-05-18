@@ -26,6 +26,7 @@ export async function GET(request: Request) {
     specialite: g("specialite"),
     typeRelation: searchParams.getAll("typeRelation") as TypeRelationPp[],
     statutRgpd: searchParams.getAll("statutRgpd") as StatutRgpd[],
+    barreau: searchParams.getAll("barreau"),
     actif: searchParams.has("actif") ? searchParams.get("actif") === "true" : undefined,
     creerLeApres: g("creerLeApres"),
     creerLeAvant: g("creerLeAvant"),

@@ -51,6 +51,7 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
 
   if (q.typeRelation?.length) and.push({ typeRelation: { in: q.typeRelation } });
   if (q.statutRgpd?.length) and.push({ statutRgpd: { in: q.statutRgpd } });
+  if (q.barreau?.length) and.push({ barreau: { in: q.barreau } });
 
   if (q.actif !== undefined) and.push({ actif: q.actif });
   if (q.optOutGlobal !== undefined) and.push({ optOutGlobal: q.optOutGlobal });
