@@ -1,6 +1,10 @@
 import requests
-import json
 import csv
+import os
+import re
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime
 
 # ==========================================
 # 1. TES IDENTIFIANTS (Tirés de ton curl)
@@ -18,9 +22,6 @@ BASE64_CONFIG = "2H1pgl18vkddjK+F9b9zq6KYnDn/AwwmWuUjWQF3hhRW2fAYJjczAH3oqpYP5m8
 
 OUTPUT_FILE = 'extraction_barotech.csv'
 
-import csv, os, re, time
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
 
 _DIR       = os.path.dirname(os.path.abspath(__file__))
 INPUT_CSV  = os.path.join(_DIR, 'extraction_barotech_specialities_activites.csv')

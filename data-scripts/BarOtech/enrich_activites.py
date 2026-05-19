@@ -1,6 +1,6 @@
 import requests
-import json
 import csv
+import os
 
 # ==========================================
 # 1. TES IDENTIFIANTS (Tirés de ton curl)
@@ -18,7 +18,6 @@ BASE64_CONFIG = "2H1pgl18vkddjK+F9b9zq6KYnDn/AwwmWuUjWQF3hhRW2fAYJjczAH3oqpYP5m8
 
 OUTPUT_FILE = 'extraction_barotech.csv'
 
-import csv, os
 
 ACTIVITES = {
     0:  "Contentieux, médiation, arbitrage",

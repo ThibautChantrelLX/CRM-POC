@@ -1,6 +1,6 @@
 import requests
-import json
 import csv
+import os
 
 # ==========================================
 # 1. TES IDENTIFIANTS (Tirés de ton curl)
@@ -18,7 +18,6 @@ BASE64_CONFIG = "2H1pgl18vkddjK+F9b9zq6KYnDn/AwwmWuUjWQF3hhRW2fAYJjczAH3oqpYP5m8
 
 OUTPUT_FILE = 'extraction_barotech.csv'
 
-import csv
 
 SPECIALITES = {
     0:  "Droit bancaire et boursier",
@@ -51,7 +50,6 @@ SPECIALITES = {
     27: "Procédure d'Appel",
 }
 
-import os
 _DIR = os.path.dirname(os.path.abspath(__file__))
 INPUT_CSV  = os.path.join(_DIR, 'extraction_barotech.csv')
 OUTPUT_CSV = os.path.join(_DIR, 'extraction_barotech_specialities.csv')
