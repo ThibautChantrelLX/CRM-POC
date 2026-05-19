@@ -36,7 +36,11 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.FileHandler(os.path.join(os.path.dirname(os.path.abspath(__file__)), "output", "import_anaba.log")),
+        logging.FileHandler(
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "output", "import_anaba.log"
+            )
+        ),
         logging.StreamHandler(),
     ],
 )
@@ -45,6 +49,7 @@ logger = logging.getLogger(__name__)
 # =============================================================================
 # CONFIGURATION
 # =============================================================================
+
 
 def _resolve_database_url() -> str:
     parser = argparse.ArgumentParser(add_help=False)
@@ -69,16 +74,37 @@ CSV_CONTACTS = os.path.join(DATA_DIR, "contacts_anaba_Lexavoue.csv")
 CSV_ENTREPRISES = os.path.join(DATA_DIR, "companies_anaba_Lexavoue.csv")
 
 _DOMAINES_GENERIQUES = {
-    "gmail.com", "googlemail.com",
-    "yahoo.com", "yahoo.fr", "ymail.com",
-    "hotmail.com", "hotmail.fr", "outlook.com", "outlook.fr", "live.com", "live.fr",
-    "msn.com", "orange.fr", "wanadoo.fr", "wanadoo.com",
-    "free.fr", "sfr.fr", "neuf.fr", "numericable.fr",
-    "laposte.net", "bbox.fr",
-    "icloud.com", "me.com", "mac.com",
-    "aol.com", "aol.fr",
-    "protonmail.com", "proton.me",
-    "tutanota.com", "gmx.com", "gmx.fr",
+    "gmail.com",
+    "googlemail.com",
+    "yahoo.com",
+    "yahoo.fr",
+    "ymail.com",
+    "hotmail.com",
+    "hotmail.fr",
+    "outlook.com",
+    "outlook.fr",
+    "live.com",
+    "live.fr",
+    "msn.com",
+    "orange.fr",
+    "wanadoo.fr",
+    "wanadoo.com",
+    "free.fr",
+    "sfr.fr",
+    "neuf.fr",
+    "numericable.fr",
+    "laposte.net",
+    "bbox.fr",
+    "icloud.com",
+    "me.com",
+    "mac.com",
+    "aol.com",
+    "aol.fr",
+    "protonmail.com",
+    "proton.me",
+    "tutanota.com",
+    "gmx.com",
+    "gmx.fr",
 }
 
 # =============================================================================
@@ -187,9 +213,7 @@ def parse_date(val) -> Optional[date]:
 
 def build_address_key(row) -> str:
     """Clé d'unicité d'adresse. Utilise les colonnes enrichies (clean*) en priorité."""
-    ville = (
-        safe_str(row.get("cleanCity")) or safe_str(row.get("Ville")) or "UNKNOWN"
-    )
+    ville = safe_str(row.get("cleanCity")) or safe_str(row.get("Ville")) or "UNKNOWN"
     cp = safe_str(row.get("cleanZipCode")) or safe_str(row.get("Code Postal"))
     rue = safe_str(row.get("cleanAddress")) or safe_str(row.get("Adresse"))
     return f"{ville}|{cp}|{rue}".upper()
@@ -202,9 +226,7 @@ def _short_hash(s: str) -> str:
 def load_csv(path: str) -> pd.DataFrame:
     with open(path, "rb") as f:
         content = f.read().replace(b"\x00", b"")
-    return pd.read_csv(
-        io.BytesIO(content), sep=";", encoding="utf-8-sig", dtype=str
-    )
+    return pd.read_csv(io.BytesIO(content), sep=";", encoding="utf-8-sig", dtype=str)
 
 
 # =============================================================================
@@ -246,9 +268,7 @@ class AnabaImporter:
 
     def connect(self):
         self.conn = psycopg2.connect(DATABASE_URL)
-        self.cursor = self.conn.cursor(
-            cursor_factory=psycopg2.extras.RealDictCursor
-        )
+        self.cursor = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         logger.info("✓ Connexion PostgreSQL établie")
 
     def disconnect(self):
@@ -267,7 +287,8 @@ class AnabaImporter:
         """Enregistre ou met à jour un lien dans mapping_sources."""
         # Tronquer source_id_externe à 100 chars (contrainte VarChar)
         source_id_externe = source_id_externe[:100]
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             INSERT INTO mapping_sources
                 (entite_crm, entite_crm_id, source_nom, source_id_externe,
                  date_derniere_synchro)
@@ -276,7 +297,9 @@ class AnabaImporter:
             DO UPDATE SET
                 entite_crm_id = EXCLUDED.entite_crm_id,
                 date_derniere_synchro = NOW()
-        """, (entite_crm, entite_crm_id, source_id_externe))
+        """,
+            (entite_crm, entite_crm_id, source_id_externe),
+        )
 
     # -------------------------------------------------------------------------
     # PHASE 1 — PURGE via mapping_sources (idempotent)
@@ -292,8 +315,12 @@ class AnabaImporter:
         """)
         rows = self.cursor.fetchall()
 
-        pm_ids = [r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonneMorale"]
-        pp_ids = [r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonnePhysique"]
+        pm_ids = [
+            r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonneMorale"
+        ]
+        pp_ids = [
+            r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonnePhysique"
+        ]
 
         if not pm_ids and not pp_ids:
             logger.info("  Aucune donnée ANABA à purger (mapping_sources vide)")
@@ -303,11 +330,14 @@ class AnabaImporter:
         logger.info(f"  {len(pm_ids)} PM et {len(pp_ids)} PP à purger")
 
         # Rattachements
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             DELETE FROM rattachements_pp_pm
             WHERE personne_physique_id = ANY(%s)
                OR personne_morale_id   = ANY(%s)
-        """, (pp_ids or [0], pm_ids or [0]))
+        """,
+            (pp_ids or [0], pm_ids or [0]),
+        )
         logger.info(f"  rattachements supprimés: {self.cursor.rowcount}")
 
         # Personnes physiques
@@ -319,24 +349,33 @@ class AnabaImporter:
 
         if pm_ids:
             # Collecter les adresses AVANT toute suppression
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 SELECT adresse_id FROM personnes_morales
                 WHERE id = ANY(%s) AND adresse_id IS NOT NULL
-            """, (pm_ids,))
+            """,
+                (pm_ids,),
+            )
             adresse_ids = [r["adresse_id"] for r in self.cursor.fetchall()]
 
             # Adresses des bureaux enfants (non forcément dans mapping_sources)
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 SELECT adresse_id FROM personnes_morales
                 WHERE maison_mere_id = ANY(%s) AND adresse_id IS NOT NULL
-            """, (pm_ids,))
+            """,
+                (pm_ids,),
+            )
             adresse_ids += [r["adresse_id"] for r in self.cursor.fetchall()]
             adresse_ids = list(set(adresse_ids))
 
             # Bureaux enfants d'abord (contrainte FK maison_mere_id)
-            self.cursor.execute("""
+            self.cursor.execute(
+                """
                 DELETE FROM personnes_morales WHERE maison_mere_id = ANY(%s)
-            """, (pm_ids,))
+            """,
+                (pm_ids,),
+            )
             logger.info(f"  bureaux enfants supprimés: {self.cursor.rowcount}")
 
             # Maisons mères et PM indépendantes
@@ -352,9 +391,7 @@ class AnabaImporter:
                 logger.info(f"  adresses supprimées: {self.cursor.rowcount}")
 
         # Nettoyage mapping_sources
-        self.cursor.execute(
-            "DELETE FROM mapping_sources WHERE source_nom = 'ANABA'"
-        )
+        self.cursor.execute("DELETE FROM mapping_sources WHERE source_nom = 'ANABA'")
         logger.info(f"  entrées mapping_sources supprimées: {self.cursor.rowcount}")
 
         self.conn.commit()
@@ -370,34 +407,33 @@ class AnabaImporter:
         cp = safe_str(row.get("cleanZipCode")) or safe_str(row.get("Code Postal"))
         ville = safe_str(row.get("cleanCity")) or safe_str(row.get("Ville"))
         pays = (
-            safe_str(row.get("cleanCountry"))
-            or safe_str(row.get("Pays"))
-            or "France"
+            safe_str(row.get("cleanCountry")) or safe_str(row.get("Pays")) or "France"
         )
 
         if not any([rue, ville, cp]):
             return None
 
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             INSERT INTO adresses
                 (rue, complement_adresse, code_postal, ville, pays, type_adresse,
                  modifier_le)
             VALUES (%s, %s, %s, %s, %s, %s, NOW())
             RETURNING id
-        """, (
-            rue or None,
-            complement or None,
-            cp or None,
-            ville or None,
-            pays,
-            "SIEGE",
-        ))
+        """,
+            (
+                rue or None,
+                complement or None,
+                cp or None,
+                ville or None,
+                pays,
+                "SIEGE",
+            ),
+        )
         self.stats["adresses_creees"] += 1
         return self.cursor.fetchone()["id"]
 
-    def create_companies(
-        self, df_contacts: pd.DataFrame, df_entreprises: pd.DataFrame
-    ):
+    def create_companies(self, df_contacts: pd.DataFrame, df_entreprises: pd.DataFrame):
         logger.info("=== PHASE 2: Création des entreprises ===")
 
         # Index entreprises par nom normalisé + par id CSV
@@ -429,14 +465,16 @@ class AnabaImporter:
             norm = normalize_company_name(safe_str(row.get("Entreprise")))
             if not norm:
                 continue
-            has_addr = any([
-                safe_str(row.get("cleanAddress")),
-                safe_str(row.get("Adresse")),
-                safe_str(row.get("cleanCity")),
-                safe_str(row.get("Ville")),
-                safe_str(row.get("cleanZipCode")),
-                safe_str(row.get("Code Postal")),
-            ])
+            has_addr = any(
+                [
+                    safe_str(row.get("cleanAddress")),
+                    safe_str(row.get("Adresse")),
+                    safe_str(row.get("cleanCity")),
+                    safe_str(row.get("Ville")),
+                    safe_str(row.get("cleanZipCode")),
+                    safe_str(row.get("Code Postal")),
+                ]
+            )
             if has_addr:
                 addr_key = build_address_key(row)
                 if addr_key not in contact_addrs[norm]:
@@ -469,18 +507,27 @@ class AnabaImporter:
                 if adresse_siege_id is None:
                     adresse_siege_id = self._create_address(ent_row)
 
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO personnes_morales
                         (raison_sociale, nom_domaine, type_lien_dossier,
                          source_origine, categorie_entreprise, site_web,
                          adresse_id, creer_par, modifier_par, modifier_le)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
                     RETURNING id
-                """, (
-                    original_name, mm_domaine, "CLIENT_DIRECT",
-                    "ANABA", categorie, site_web,
-                    adresse_siege_id, "import_anaba", "import_anaba",
-                ))
+                """,
+                    (
+                        original_name,
+                        mm_domaine,
+                        "CLIENT_DIRECT",
+                        "ANABA",
+                        categorie,
+                        site_web,
+                        adresse_siege_id,
+                        "import_anaba",
+                        "import_anaba",
+                    ),
+                )
 
                 main_pm_id = self.cursor.fetchone()["id"]
                 self.stats["pm_maisons_meres"] += 1
@@ -496,18 +543,26 @@ class AnabaImporter:
                         bureau_addr_id = self._create_address(contact_row)
                         bureau_domaine = pm_domains.get(addr_key) or None
 
-                        self.cursor.execute("""
+                        self.cursor.execute(
+                            """
                             INSERT INTO personnes_morales
                                 (raison_sociale, nom_domaine, maison_mere_id,
                                  adresse_id, type_lien_dossier, source_origine,
                                  creer_par, modifier_par, modifier_le)
                             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
                             RETURNING id
-                        """, (
-                            bureau_name, bureau_domaine, main_pm_id,
-                            bureau_addr_id, "CLIENT_DIRECT", "ANABA",
-                            "import_anaba", "import_anaba",
-                        ))
+                        """,
+                            (
+                                bureau_name,
+                                bureau_domaine,
+                                main_pm_id,
+                                bureau_addr_id,
+                                "CLIENT_DIRECT",
+                                "ANABA",
+                                "import_anaba",
+                                "import_anaba",
+                            ),
+                        )
                         bureau_id = self.cursor.fetchone()["id"]
                         bureaux_map[addr_key] = bureau_id
                         self.stats["pm_bureaux"] += 1
@@ -564,22 +619,28 @@ class AnabaImporter:
         for domain, rows in domain_rows.items():
             self.cursor.execute("SAVEPOINT indep_pm")
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO personnes_morales
                         (raison_sociale, nom_domaine, type_lien_dossier,
                          type_structure, source_origine, creer_par, modifier_par,
                          modifier_le)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
                     RETURNING id
-                """, (
-                    domain, domain, "CLIENT_DIRECT",
-                    "DOMAINE", "ANABA", "import_anaba", "import_anaba",
-                ))
+                """,
+                    (
+                        domain,
+                        domain,
+                        "CLIENT_DIRECT",
+                        "DOMAINE",
+                        "ANABA",
+                        "import_anaba",
+                        "import_anaba",
+                    ),
+                )
                 pm_id = self.cursor.fetchone()["id"]
                 self.cursor.execute("RELEASE SAVEPOINT indep_pm")
-                self._insert_mapping_source(
-                    "PersonneMorale", pm_id, f"domain:{domain}"
-                )
+                self._insert_mapping_source("PersonneMorale", pm_id, f"domain:{domain}")
                 self.domain_pm_map[domain] = pm_id
                 self.stats["pm_independantes"] += 1
             except Exception as e:
@@ -593,21 +654,30 @@ class AnabaImporter:
             if key in self.indiv_pm_map:
                 continue
             full_name = (
-                f"{prenom.capitalize()} {nom.upper()}".strip() if prenom else nom.upper()
+                f"{prenom.capitalize()} {nom.upper()}".strip()
+                if prenom
+                else nom.upper()
             )
             pm_name = f"[INDEPENDANT] {full_name}"
             self.cursor.execute("SAVEPOINT indiv_pm")
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO personnes_morales
                         (raison_sociale, type_lien_dossier, type_structure,
                          source_origine, creer_par, modifier_par, modifier_le)
                     VALUES (%s, %s, %s, %s, %s, %s, NOW())
                     RETURNING id
-                """, (
-                    pm_name, "CLIENT_DIRECT", "INDEPENDANT",
-                    "ANABA", "import_anaba", "import_anaba",
-                ))
+                """,
+                    (
+                        pm_name,
+                        "CLIENT_DIRECT",
+                        "INDEPENDANT",
+                        "ANABA",
+                        "import_anaba",
+                        "import_anaba",
+                    ),
+                )
                 pm_id = self.cursor.fetchone()["id"]
                 self.cursor.execute("RELEASE SAVEPOINT indiv_pm")
                 ext_id = f"indiv:{_short_hash(f'{nom.upper()}:{prenom.upper()}')}"
@@ -668,7 +738,8 @@ class AnabaImporter:
 
             self.cursor.execute("SAVEPOINT pp_insert")
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO personnes_physiques
                         (nom, prenom, email, telephone, portable,
                          poste, departement, linkedin_url,
@@ -686,15 +757,28 @@ class AnabaImporter:
                          %s, %s,
                          %s, %s, NOW())
                     RETURNING id
-                """, (
-                    nom, prenom, email, telephone, portable,
-                    poste, departement, linkedin_url,
-                    statut_rgpd, email_invalide,
-                    dernier_email_le, dernier_email_avec,
-                    total_emails, echanges_avec,
-                    "CONTACT", opt_in_email,
-                    "import_anaba", "import_anaba",
-                ))
+                """,
+                    (
+                        nom,
+                        prenom,
+                        email,
+                        telephone,
+                        portable,
+                        poste,
+                        departement,
+                        linkedin_url,
+                        statut_rgpd,
+                        email_invalide,
+                        dernier_email_le,
+                        dernier_email_avec,
+                        total_emails,
+                        echanges_avec,
+                        "CONTACT",
+                        opt_in_email,
+                        "import_anaba",
+                        "import_anaba",
+                    ),
+                )
 
                 pp_id = self.cursor.fetchone()["id"]
                 self.cursor.execute("RELEASE SAVEPOINT pp_insert")
@@ -753,9 +837,8 @@ class AnabaImporter:
 
             if not company_norm:
                 domain = domain_from_email(safe_str(row.get("Email")))
-                pm_id = (
-                    self.domain_pm_map.get(domain)
-                    or self.indiv_pm_map.get((nom, prenom))
+                pm_id = self.domain_pm_map.get(domain) or self.indiv_pm_map.get(
+                    (nom, prenom)
                 )
                 if pm_id is None:
                     self.stats["pp_sans_rattachement"] += 1
@@ -778,18 +861,19 @@ class AnabaImporter:
 
             poste = safe_str(row.get("Poste")) or "Professionnel du droit"
             titre_fonction = poste[:100]
-            date_debut = (
-                parse_date(safe_str(row.get("createdOn"))) or date.today()
-            )
+            date_debut = parse_date(safe_str(row.get("createdOn"))) or date.today()
 
             self.cursor.execute("SAVEPOINT ratt_insert")
             try:
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO rattachements_pp_pm
                         (personne_physique_id, personne_morale_id,
                          titre_fonction, date_debut, modifier_le)
                     VALUES (%s, %s, %s, %s, NOW())
-                """, (pp_id, pm_id, titre_fonction, date_debut))
+                """,
+                    (pp_id, pm_id, titre_fonction, date_debut),
+                )
                 self.cursor.execute("RELEASE SAVEPOINT ratt_insert")
                 self.stats["rattachements_crees"] += 1
 
@@ -818,18 +902,23 @@ class AnabaImporter:
             "doublons_pp": self.stats["doublons_pp_ignores"],
             "nb_erreurs": len(self.stats["erreurs"]),
         }
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             INSERT INTO journal_migrations
                 (nom_logiciel, perimetre, date_migration, termine_le,
                  statut, stats, execute_par)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """, (
-            "ANABA", "ALL",
-            datetime.now(), datetime.now(),
-            "SUCCES" if not self.stats["erreurs"] else "PARTIEL",
-            json.dumps(stats_journal),
-            "import_anaba",
-        ))
+        """,
+            (
+                "ANABA",
+                "ALL",
+                datetime.now(),
+                datetime.now(),
+                "SUCCES" if not self.stats["erreurs"] else "PARTIEL",
+                json.dumps(stats_journal),
+                "import_anaba",
+            ),
+        )
         self.conn.commit()
 
     def generate_report(self):
@@ -841,26 +930,26 @@ class AnabaImporter:
         report = f"""
 ╔═══════════════════════════════════════════════════════╗
 ║  RAPPORT D'IMPORT ANABA → CRM LX                      ║
-║  {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}                             ║
+║  {datetime.now().strftime("%d/%m/%Y %H:%M:%S")}                             ║
 ╚═══════════════════════════════════════════════════════╝
 
 PERSONNES MORALES
-  Maisons mères :        {self.stats['pm_maisons_meres']}
-  Bureaux :              {self.stats['pm_bureaux']}
-  PM indépendantes :     {self.stats['pm_independantes']}
+  Maisons mères :        {self.stats["pm_maisons_meres"]}
+  Bureaux :              {self.stats["pm_bureaux"]}
+  PM indépendantes :     {self.stats["pm_independantes"]}
   Total PM :             {total_pm}
-  Adresses créées :      {self.stats['adresses_creees']}
-  Doublons ignorés :     {self.stats['doublons_pm_ignores']}
+  Adresses créées :      {self.stats["adresses_creees"]}
+  Doublons ignorés :     {self.stats["doublons_pm_ignores"]}
 
 PERSONNES PHYSIQUES
-  PP créées :            {self.stats['pp_creees']}
-  Doublons ignorés :     {self.stats['doublons_pp_ignores']}
-  Rattachements :        {self.stats['rattachements_crees']}
-  PP sans rattachement : {self.stats['pp_sans_rattachement']}
+  PP créées :            {self.stats["pp_creees"]}
+  Doublons ignorés :     {self.stats["doublons_pp_ignores"]}
+  Rattachements :        {self.stats["rattachements_crees"]}
+  PP sans rattachement : {self.stats["pp_sans_rattachement"]}
 
 ANOMALIES
-  Entreprises inconnues: {len(self.stats['entreprises_inconnues'])}
-  Erreurs :              {len(self.stats['erreurs'])}
+  Entreprises inconnues: {len(self.stats["entreprises_inconnues"])}
+  Erreurs :              {len(self.stats["erreurs"])}
 
 Fichier log : output/import_anaba.log
 """

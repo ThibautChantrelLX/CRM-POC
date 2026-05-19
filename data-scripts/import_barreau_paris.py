@@ -105,18 +105,39 @@ BARREAU = "PARIS"
 TYPE_STRUCTURE = "cabinet d'avocats"
 
 _DOMAINES_GENERIQUES = {
-    "gmail.com", "googlemail.com",
-    "yahoo.com", "yahoo.fr", "ymail.com",
-    "hotmail.com", "hotmail.fr", "outlook.com", "outlook.fr",
-    "live.com", "live.fr", "msn.com",
-    "orange.fr", "wanadoo.fr", "wanadoo.com",
-    "free.fr", "sfr.fr", "neuf.fr", "numericable.fr",
-    "laposte.net", "bbox.fr",
-    "icloud.com", "me.com", "mac.com",
-    "aol.com", "aol.fr",
-    "protonmail.com", "proton.me",
-    "tutanota.com", "gmx.com", "gmx.fr",
-    "avocat.fr", "avocats.fr",
+    "gmail.com",
+    "googlemail.com",
+    "yahoo.com",
+    "yahoo.fr",
+    "ymail.com",
+    "hotmail.com",
+    "hotmail.fr",
+    "outlook.com",
+    "outlook.fr",
+    "live.com",
+    "live.fr",
+    "msn.com",
+    "orange.fr",
+    "wanadoo.fr",
+    "wanadoo.com",
+    "free.fr",
+    "sfr.fr",
+    "neuf.fr",
+    "numericable.fr",
+    "laposte.net",
+    "bbox.fr",
+    "icloud.com",
+    "me.com",
+    "mac.com",
+    "aol.com",
+    "aol.fr",
+    "protonmail.com",
+    "proton.me",
+    "tutanota.com",
+    "gmx.com",
+    "gmx.fr",
+    "avocat.fr",
+    "avocats.fr",
 }
 
 # =============================================================================
@@ -336,8 +357,12 @@ class BarreauParisImporter:
         )
         rows = self.cursor.fetchall()
 
-        pm_ids = list({r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonneMorale"})
-        pp_ids = list({r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonnePhysique"})
+        pm_ids = list(
+            {r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonneMorale"}
+        )
+        pp_ids = list(
+            {r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonnePhysique"}
+        )
 
         if pp_ids:
             self.cursor.execute(
@@ -454,10 +479,14 @@ class BarreauParisImporter:
                 siret = safe_str(row.get("siret")) or None
                 siren = safe_str(row.get("siren")) or None
                 siret_siren = siret or siren or None
-                sirene_ok = safe_str(row.get("sirene_trouve")) == "oui" and bool(siret_siren)
+                sirene_ok = safe_str(row.get("sirene_trouve")) == "oui" and bool(
+                    siret_siren
+                )
 
                 source_nom_pm = SOURCE_NOM_PM_SIRENE if sirene_ok else SOURCE_NOM_PM
-                source_origine = "BARREAU_PARIS+SIRENE" if sirene_ok else "BARREAU_PARIS"
+                source_origine = (
+                    "BARREAU_PARIS+SIRENE" if sirene_ok else "BARREAU_PARIS"
+                )
 
                 site_web = safe_str(row.get("site_web")) or None
                 categorie = safe_str(row.get("categorie_entrepri")) or None
@@ -488,15 +517,22 @@ class BarreauParisImporter:
                     RETURNING id
                     """,
                     (
-                        rs, siret_siren, TYPE_STRUCTURE,
-                        categorie, secteur, site_web,
-                        nom_domaine, source_origine,
+                        rs,
+                        siret_siren,
+                        TYPE_STRUCTURE,
+                        categorie,
+                        secteur,
+                        site_web,
+                        nom_domaine,
+                        source_origine,
                         addr_id,
                     ),
                 )
                 pm_id = self.cursor.fetchone()["id"]
                 self.pm_map[rs] = pm_id
-                existing_pm_index[base_key] = pm_id  # mise à jour index pour idempotence intra-run
+                existing_pm_index[base_key] = (
+                    pm_id  # mise à jour index pour idempotence intra-run
+                )
                 self._insert_mapping_source("PersonneMorale", pm_id, source_nom_pm, rs)
                 self.stats["pm_creees"] += 1
 
@@ -529,7 +565,9 @@ class BarreauParisImporter:
 
             self.cursor.execute("SAVEPOINT pp_insert")
             try:
-                existing = self._already_imported("PersonnePhysique", SOURCE_NOM_PP, contact_id)
+                existing = self._already_imported(
+                    "PersonnePhysique", SOURCE_NOM_PP, contact_id
+                )
                 if existing:
                     self.pp_map[contact_id] = existing
                     self.stats["pp_ignorees"] += 1
@@ -543,7 +581,9 @@ class BarreauParisImporter:
 
                 # Emails
                 emails_raw = split_pipe(safe_str(row.get("Email(s)", "")))
-                emails_valides = [normalize_email(e) for e in emails_raw if normalize_email(e)]
+                emails_valides = [
+                    normalize_email(e) for e in emails_raw if normalize_email(e)
+                ]
                 email = " | ".join(emails_valides) if emails_valides else None
 
                 # Téléphones : premier = fixe, second = portable
@@ -577,14 +617,22 @@ class BarreauParisImporter:
                     RETURNING id
                     """,
                     (
-                        nom, prenom, email, telephone, portable,
-                        "Avocat", BARREAU,
-                        addr_id, "CONTACT",
+                        nom,
+                        prenom,
+                        email,
+                        telephone,
+                        portable,
+                        "Avocat",
+                        BARREAU,
+                        addr_id,
+                        "CONTACT",
                     ),
                 )
                 pp_id = self.cursor.fetchone()["id"]
                 self.pp_map[contact_id] = pp_id
-                self._insert_mapping_source("PersonnePhysique", pp_id, SOURCE_NOM_PP, contact_id)
+                self._insert_mapping_source(
+                    "PersonnePhysique", pp_id, SOURCE_NOM_PP, contact_id
+                )
                 self.stats["pp_creees"] += 1
 
                 self.cursor.execute("RELEASE SAVEPOINT pp_insert")
@@ -675,7 +723,9 @@ class BarreauParisImporter:
     # -------------------------------------------------------------------------
 
     def link_by_domain(self):
-        logger.info("=== PHASE 4 : Linking PP sans structure → PM par domaine email ===")
+        logger.info(
+            "=== PHASE 4 : Linking PP sans structure → PM par domaine email ==="
+        )
 
         if not self.pp_map:
             return
@@ -696,7 +746,9 @@ class BarreauParisImporter:
             logger.info("  Aucune PP sans structure à vérifier")
             return
 
-        logger.info(f"  {len(pp_sans_structure)} PP sans structure → recherche par domaine email")
+        logger.info(
+            f"  {len(pp_sans_structure)} PP sans structure → recherche par domaine email"
+        )
 
         # Index domaine → pm_id depuis les PM existantes
         self.cursor.execute(
@@ -760,10 +812,14 @@ class BarreauParisImporter:
 
                 except Exception as e:
                     self.cursor.execute("ROLLBACK TO SAVEPOINT link_domain")
-                    logger.warning(f"  Erreur linking domaine PP {pp_id} → PM {pm_id}: {e}")
+                    logger.warning(
+                        f"  Erreur linking domaine PP {pp_id} → PM {pm_id}: {e}"
+                    )
 
         self.conn.commit()
-        logger.info(f"✓ Linking domaine : {self.stats['linking_domaine']} rattachements créés")
+        logger.info(
+            f"✓ Linking domaine : {self.stats['linking_domaine']} rattachements créés"
+        )
 
     # -------------------------------------------------------------------------
     # RAPPORT
@@ -774,8 +830,12 @@ class BarreauParisImporter:
         logger.info("RAPPORT FINAL")
         logger.info("=" * 60)
         logger.info(f"  PM créées          : {self.stats['pm_creees']}")
-        logger.info(f"  PM réutilisées     : {self.stats['pm_existantes']} (pré-existantes, non dupliquées)")
-        logger.info(f"  PM ignorées        : {self.stats['pm_ignorees']} (déjà importées)")
+        logger.info(
+            f"  PM réutilisées     : {self.stats['pm_existantes']} (pré-existantes, non dupliquées)"
+        )
+        logger.info(
+            f"  PM ignorées        : {self.stats['pm_ignorees']} (déjà importées)"
+        )
         logger.info(f"  PP créées          : {self.stats['pp_creees']}")
         logger.info(f"  PP ignorées        : {self.stats['pp_ignorees']}")
         logger.info(f"  Adresses créées    : {self.stats['adresses_creees']}")
@@ -810,7 +870,11 @@ class BarreauParisImporter:
             if len(unique_domains) == 1:
                 # On exclut les cabinets individuels : le domaine pro d'une PP
                 # appartient à la structure tierce, pas à son cabinet personnel.
-                target_structures = [rs for rs in structures if not rs.lower().startswith("cabinet individuel")]
+                target_structures = [
+                    rs
+                    for rs in structures
+                    if not rs.lower().startswith("cabinet individuel")
+                ]
                 for rs in target_structures:
                     structure_domains[rs].add(next(iter(unique_domains)))
 

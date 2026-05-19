@@ -59,7 +59,9 @@ def _resolve_database_url() -> str:
 DATABASE_URL = _resolve_database_url()
 CSV_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
-    "data", "barotech", "extraction_structures_sirene_enrichi.csv",
+    "data",
+    "barotech",
+    "extraction_structures_sirene_enrichi.csv",
 )
 
 
@@ -96,7 +98,8 @@ def run():
         cur.execute("SAVEPOINT upd")
         try:
             # Lookup PM via mapping_sources
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT pm.id, pm.siret_siren, pm.type_structure,
                        pm.categorie_entreprise, pm.secteur_activite,
                        pm.source_origine, pm.adresse_id
@@ -106,7 +109,9 @@ def run():
                  AND ms.entite_crm_id = pm.id
                  AND ms.source_nom = 'BarOtech'
                  AND ms.source_id_externe = %s
-            """, (rs[:100],))
+            """,
+                (rs[:100],),
+            )
             pm = cur.fetchone()
 
             if not pm:
@@ -127,9 +132,9 @@ def run():
                 updates["siret_siren"] = siret_siren_new
 
             for csv_col, db_col in [
-                ("type_structure",  "type_structure"),
+                ("type_structure", "type_structure"),
                 ("categorie_entrepri", "categorie_entreprise"),
-                ("secteur_activite",   "secteur_activite"),
+                ("secteur_activite", "secteur_activite"),
             ]:
                 v = safe(row.get(csv_col))
                 if v and v != safe(pm[db_col]):
@@ -141,7 +146,7 @@ def run():
 
             # Adresse
             rue = safe(row.get("rue")) or None
-            cp  = safe(row.get("code_postal")) or None
+            cp = safe(row.get("code_postal")) or None
             ville = safe(row.get("ville")) or None
             complement = safe(row.get("complement_adres")) or None
             pays = safe(row.get("pays")) or "France"
@@ -153,8 +158,13 @@ def run():
                     # Mettre à jour l'adresse existante (uniquement les champs non-vides)
                     addr_sets = []
                     addr_vals = []
-                    for col, val in [("rue", rue), ("complement_adresse", complement),
-                                     ("code_postal", cp), ("ville", ville), ("pays", pays)]:
+                    for col, val in [
+                        ("rue", rue),
+                        ("complement_adresse", complement),
+                        ("code_postal", cp),
+                        ("ville", ville),
+                        ("pays", pays),
+                    ]:
                         if val:
                             addr_sets.append(f"{col} = %s")
                             addr_vals.append(val)
@@ -167,11 +177,14 @@ def run():
                         stats["adresses_mises_a_jour"] += 1
                 else:
                     # Créer une adresse
-                    cur.execute("""
+                    cur.execute(
+                        """
                         INSERT INTO adresses (rue, complement_adresse, code_postal, ville, pays, type_adresse, modifier_le)
                         VALUES (%s, %s, %s, %s, %s, 'SIEGE', NOW())
                         RETURNING id
-                    """, (rue, complement, cp, ville, pays))
+                    """,
+                        (rue, complement, cp, ville, pays),
+                    )
                     new_addr_id = cur.fetchone()["id"]
                     updates["adresse_id"] = new_addr_id
                     stats["adresses_creees"] += 1

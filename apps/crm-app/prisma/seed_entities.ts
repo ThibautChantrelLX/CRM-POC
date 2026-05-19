@@ -1,6 +1,11 @@
-import { PrismaClient } from "../app/generated/prisma";
+import { PrismaClient } from "../app/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import * as dotenv from "dotenv";
 
-const prisma = new PrismaClient();
+dotenv.config({ path: ".env.local" });
+
+const connectionString = (process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL)!;
+const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
 const CABINETS = [
   "LX Aix-en-Provence",

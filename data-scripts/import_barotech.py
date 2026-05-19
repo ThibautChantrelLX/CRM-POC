@@ -65,6 +65,7 @@ logger = logging.getLogger(__name__)
 # CONFIGURATION
 # =============================================================================
 
+
 def _resolve_database_url() -> str:
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument("--dev", action="store_true")
@@ -89,24 +90,46 @@ SOURCE_NOM = "BarOtech"
 
 # Domaines email génériques à exclure du nomDomaine
 _DOMAINES_GENERIQUES = {
-    "gmail.com", "googlemail.com",
-    "yahoo.com", "yahoo.fr", "ymail.com",
-    "hotmail.com", "hotmail.fr", "outlook.com", "outlook.fr",
-    "live.com", "live.fr", "msn.com",
-    "orange.fr", "wanadoo.fr", "wanadoo.com",
-    "free.fr", "sfr.fr", "neuf.fr", "numericable.fr",
-    "laposte.net", "bbox.fr",
-    "icloud.com", "me.com", "mac.com",
-    "aol.com", "aol.fr",
-    "protonmail.com", "proton.me",
-    "tutanota.com", "gmx.com", "gmx.fr",
+    "gmail.com",
+    "googlemail.com",
+    "yahoo.com",
+    "yahoo.fr",
+    "ymail.com",
+    "hotmail.com",
+    "hotmail.fr",
+    "outlook.com",
+    "outlook.fr",
+    "live.com",
+    "live.fr",
+    "msn.com",
+    "orange.fr",
+    "wanadoo.fr",
+    "wanadoo.com",
+    "free.fr",
+    "sfr.fr",
+    "neuf.fr",
+    "numericable.fr",
+    "laposte.net",
+    "bbox.fr",
+    "icloud.com",
+    "me.com",
+    "mac.com",
+    "aol.com",
+    "aol.fr",
+    "protonmail.com",
+    "proton.me",
+    "tutanota.com",
+    "gmx.com",
+    "gmx.fr",
     # domaines avocat génériques
-    "avocat.fr", "avocats.fr",
+    "avocat.fr",
+    "avocats.fr",
 }
 
 # =============================================================================
 # UTILITAIRES
 # =============================================================================
+
 
 def safe_str(val) -> str:
     if val is None:
@@ -193,6 +216,7 @@ def load_csv(path: str, delimiter: str = ";") -> list[dict]:
 # IMPORTEUR
 # =============================================================================
 
+
 class BarotechImporter:
     def __init__(self):
         self.conn = None
@@ -231,9 +255,12 @@ class BarotechImporter:
     # MAPPING SOURCE
     # -------------------------------------------------------------------------
 
-    def _insert_mapping_source(self, entite_crm: str, entite_crm_id: int, source_id_externe: str):
+    def _insert_mapping_source(
+        self, entite_crm: str, entite_crm_id: int, source_id_externe: str
+    ):
         source_id_externe = source_id_externe[:100]
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             INSERT INTO mapping_sources
                 (entite_crm, entite_crm_id, source_nom, source_id_externe,
                  date_derniere_synchro)
@@ -242,15 +269,22 @@ class BarotechImporter:
             DO UPDATE SET
                 entite_crm_id = EXCLUDED.entite_crm_id,
                 date_derniere_synchro = NOW()
-        """, (entite_crm, entite_crm_id, SOURCE_NOM, source_id_externe))
+        """,
+            (entite_crm, entite_crm_id, SOURCE_NOM, source_id_externe),
+        )
 
-    def _already_imported(self, entite_crm: str, source_id_externe: str) -> Optional[int]:
+    def _already_imported(
+        self, entite_crm: str, source_id_externe: str
+    ) -> Optional[int]:
         """Retourne l'id CRM si déjà importé, sinon None."""
         source_id_externe = source_id_externe[:100]
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             SELECT entite_crm_id FROM mapping_sources
             WHERE entite_crm = %s AND source_nom = %s AND source_id_externe = %s
-        """, (entite_crm, SOURCE_NOM, source_id_externe))
+        """,
+            (entite_crm, SOURCE_NOM, source_id_externe),
+        )
         row = self.cursor.fetchone()
         return row["entite_crm_id"] if row else None
 
@@ -261,23 +295,29 @@ class BarotechImporter:
     def purge_barotech_data(self):
         logger.info("=== PHASE 0 : Purge des données BarOtech ===")
 
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             SELECT entite_crm, entite_crm_id FROM mapping_sources
             WHERE source_nom = %s
-        """, (SOURCE_NOM,))
+        """,
+            (SOURCE_NOM,),
+        )
         rows = self.cursor.fetchall()
 
-        pm_ids = [r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonneMorale"]
-        pp_ids = [r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonnePhysique"]
+        pm_ids = [
+            r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonneMorale"
+        ]
+        pp_ids = [
+            r["entite_crm_id"] for r in rows if r["entite_crm"] == "PersonnePhysique"
+        ]
 
         if pp_ids:
             self.cursor.execute(
                 "DELETE FROM rattachements_pp_pm WHERE personne_physique_id = ANY(%s)",
-                (pp_ids,)
+                (pp_ids,),
             )
             self.cursor.execute(
-                "DELETE FROM personnes_physiques WHERE id = ANY(%s)",
-                (pp_ids,)
+                "DELETE FROM personnes_physiques WHERE id = ANY(%s)", (pp_ids,)
             )
             logger.info(f"  Supprimé {len(pp_ids)} PP")
 
@@ -285,17 +325,15 @@ class BarotechImporter:
             # D'abord mettre les maison_mere_id à NULL pour éviter les FK circulaires
             self.cursor.execute(
                 "UPDATE personnes_morales SET maison_mere_id = NULL WHERE id = ANY(%s)",
-                (pm_ids,)
+                (pm_ids,),
             )
             self.cursor.execute(
-                "DELETE FROM personnes_morales WHERE id = ANY(%s)",
-                (pm_ids,)
+                "DELETE FROM personnes_morales WHERE id = ANY(%s)", (pm_ids,)
             )
             logger.info(f"  Supprimé {len(pm_ids)} PM")
 
         self.cursor.execute(
-            "DELETE FROM mapping_sources WHERE source_nom = %s",
-            (SOURCE_NOM,)
+            "DELETE FROM mapping_sources WHERE source_nom = %s", (SOURCE_NOM,)
         )
 
         self.conn.commit()
@@ -305,14 +343,19 @@ class BarotechImporter:
     # ADRESSES
     # -------------------------------------------------------------------------
 
-    def _create_address(self, rue=None, complement=None, code_postal=None, ville=None, pays="France") -> Optional[int]:
+    def _create_address(
+        self, rue=None, complement=None, code_postal=None, ville=None, pays="France"
+    ) -> Optional[int]:
         if not any([rue, ville, code_postal]):
             return None
-        self.cursor.execute("""
+        self.cursor.execute(
+            """
             INSERT INTO adresses (rue, complement_adresse, code_postal, ville, pays, type_adresse, modifier_le)
             VALUES (%s, %s, %s, %s, %s, 'SIEGE', NOW())
             RETURNING id
-        """, (rue or None, complement or None, code_postal or None, ville or None, pays))
+        """,
+            (rue or None, complement or None, code_postal or None, ville or None, pays),
+        )
         self.stats["adresses_creees"] += 1
         return self.cursor.fetchone()["id"]
 
@@ -368,7 +411,8 @@ class BarotechImporter:
                 domains = structure_domains.get(rs, set())
                 nom_domaine = " ".join(sorted(domains)) or None
 
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO personnes_morales
                         (raison_sociale, siret_siren, type_structure,
                          categorie_entreprise, secteur_activite, site_web,
@@ -377,12 +421,19 @@ class BarotechImporter:
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, true,
                             'import_barotech', 'import_barotech', NOW())
                     RETURNING id
-                """, (
-                    rs, siret_siren, type_structure,
-                    categorie, secteur, site_web,
-                    nom_domaine, source_origine,
-                    addr_id,
-                ))
+                """,
+                    (
+                        rs,
+                        siret_siren,
+                        type_structure,
+                        categorie,
+                        secteur,
+                        site_web,
+                        nom_domaine,
+                        source_origine,
+                        addr_id,
+                    ),
+                )
                 pm_id = self.cursor.fetchone()["id"]
                 self.pm_map[rs] = pm_id
                 self._insert_mapping_source("PersonneMorale", pm_id, rs)
@@ -436,12 +487,16 @@ class BarotechImporter:
 
                 # Si pas de spécialité, prendre la première activité dominante
                 if not specialite:
-                    activites = split_pipe(safe_str(row.get("Activité(s) dominante(s)", "")))
+                    activites = split_pipe(
+                        safe_str(row.get("Activité(s) dominante(s)", ""))
+                    )
                     specialite = activites[0] if activites else None
 
                 # Emails : tous les emails valides, joints par " | "
                 emails_raw = split_pipe(safe_str(row.get("Email(s)", "")))
-                emails_valides = [normalize_email(e) for e in emails_raw if normalize_email(e)]
+                emails_valides = [
+                    normalize_email(e) for e in emails_raw if normalize_email(e)
+                ]
                 email = " | ".join(emails_valides) if emails_valides else None
 
                 # Téléphones : premier = telephone, deuxième = portable
@@ -462,7 +517,8 @@ class BarotechImporter:
                             pays=parsed.get("pays", "France"),
                         )
 
-                self.cursor.execute("""
+                self.cursor.execute(
+                    """
                     INSERT INTO personnes_physiques
                         (nom, prenom, email, telephone, portable,
                          specialite, profession, date_serment, barreau,
@@ -471,11 +527,21 @@ class BarotechImporter:
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                             true, %s, 'import_barotech', 'import_barotech', NOW())
                     RETURNING id
-                """, (
-                    nom, prenom, email or None, telephone, portable,
-                    specialite, "Avocat", date_serment, barreau,
-                    addr_id, "CONTACT",
-                ))
+                """,
+                    (
+                        nom,
+                        prenom,
+                        email or None,
+                        telephone,
+                        portable,
+                        specialite,
+                        "Avocat",
+                        date_serment,
+                        barreau,
+                        addr_id,
+                        "CONTACT",
+                    ),
+                )
                 pp_id = self.cursor.fetchone()["id"]
                 self.pp_map[contact_id] = pp_id
                 self._insert_mapping_source("PersonnePhysique", pp_id, contact_id)
@@ -524,24 +590,30 @@ class BarotechImporter:
                 self.cursor.execute("SAVEPOINT ratt_insert")
                 try:
                     # Idempotence : éviter les doublons (même PP + PM + date_debut)
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         SELECT id FROM rattachements_pp_pm
                         WHERE personne_physique_id = %s
                           AND personne_morale_id = %s
                           AND date_debut = %s
-                    """, (pp_id, pm_id, date_debut))
+                    """,
+                        (pp_id, pm_id, date_debut),
+                    )
                     if self.cursor.fetchone():
                         self.stats["rattachements_ignores"] += 1
                         self.cursor.execute("RELEASE SAVEPOINT ratt_insert")
                         continue
 
-                    self.cursor.execute("""
+                    self.cursor.execute(
+                        """
                         INSERT INTO rattachements_pp_pm
                             (personne_physique_id, personne_morale_id,
                              titre_fonction, date_debut, date_fin,
                              modifier_le)
                         VALUES (%s, %s, %s, %s, NULL, NOW())
-                    """, (pp_id, pm_id, "Avocat", date_debut))
+                    """,
+                        (pp_id, pm_id, "Avocat", date_debut),
+                    )
                     self.stats["rattachements_crees"] += 1
 
                     self.cursor.execute("RELEASE SAVEPOINT ratt_insert")
@@ -607,7 +679,11 @@ class BarotechImporter:
             if len(unique_domains) == 1:
                 # On exclut les cabinets individuels : le domaine pro d'une PP
                 # appartient à la structure tierce, pas à son cabinet personnel.
-                target_structures = [rs for rs in structures if not rs.lower().startswith("cabinet individuel")]
+                target_structures = [
+                    rs
+                    for rs in structures
+                    if not rs.lower().startswith("cabinet individuel")
+                ]
                 for rs in target_structures:
                     structure_domains[rs].add(next(iter(unique_domains)))
 

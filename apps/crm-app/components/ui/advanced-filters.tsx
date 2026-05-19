@@ -12,6 +12,8 @@ import {
   type FilterCondition,
 } from "@/lib/filters";
 
+type SelectOption = { value: string; label: string };
+
 // ─── Panel ────────────────────────────────────────────────────────────────────
 
 type Props = {

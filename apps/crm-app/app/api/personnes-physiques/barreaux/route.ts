@@ -8,5 +8,5 @@ export async function GET() {
     distinct: ["barreau"],
     orderBy: { barreau: "asc" },
   });
-  return NextResponse.json(rows.map((r) => r.barreau).filter(Boolean));
+  return NextResponse.json(rows.map(({ barreau }) => barreau).filter(Boolean));
 }
