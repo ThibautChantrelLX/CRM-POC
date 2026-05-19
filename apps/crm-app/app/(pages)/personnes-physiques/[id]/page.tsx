@@ -17,6 +17,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { DetailSection } from "@/components/detail/DetailSection";
 import { InfoGrid } from "@/components/detail/InfoGrid";
 import { RattachementsList } from "@/components/detail/RattachementsList";
+import { PpDetailActions } from "@/components/pp/PpDetailActions";
 import { cn } from "@/lib/utils";
 import type { TypeRelationPp, StatutRgpd } from "@/lib/server/modules/personnes-physiques/dto";
 
@@ -119,6 +120,10 @@ export default async function PersonnePhysiquePage({
               Inactif
             </span>
           )}
+          <PpDetailActions
+            ppId={pp.id}
+            ppNom={`${pp.prenom ?? ""} ${pp.nom}`.trim()}
+          />
         </div>
       </div>
 

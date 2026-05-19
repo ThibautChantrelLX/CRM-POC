@@ -15,6 +15,7 @@ import { getPersonneMoraleDetail } from "@/lib/server/modules/personnes-morales/
 import { DetailSection } from "@/components/detail/DetailSection";
 import { InfoGrid } from "@/components/detail/InfoGrid";
 import { ContactsRattachesList } from "@/components/detail/ContactsRattachesList";
+import { PmDetailActions } from "@/components/pm/PmDetailActions";
 import { cn } from "@/lib/utils";
 import type { TypeRelationPm } from "@/lib/server/modules/personnes-morales/dto";
 
@@ -109,6 +110,12 @@ export default async function PersonneMoralePage({
               Inactif
             </span>
           )}
+          <PmDetailActions
+            pmId={pm.id}
+            pmNom={pm.raisonSociale}
+            pmNomDomaine={pm.nomDomaine ?? null}
+            contacts={pm.contacts}
+          />
         </div>
       </div>
 
