@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { Trash2, AlertTriangle, Pencil } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 type Props = {
@@ -32,14 +33,23 @@ export function PpDetailActions({ ppId, ppNom }: Props) {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setShowDelete(true)}
-        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition cursor-pointer ml-auto"
-      >
-        <Trash2 size={14} />
-        Supprimer
-      </button>
+      <div className="flex items-center gap-2 ml-auto">
+        <Link
+          href={`/personnes-physiques/${ppId}/edit`}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 transition"
+        >
+          <Pencil size={14} />
+          Modifier
+        </Link>
+        <button
+          type="button"
+          onClick={() => setShowDelete(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-red-200 bg-red-50 text-red-600 hover:bg-red-100 transition cursor-pointer"
+        >
+          <Trash2 size={14} />
+          Supprimer
+        </button>
+      </div>
 
       {showDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">

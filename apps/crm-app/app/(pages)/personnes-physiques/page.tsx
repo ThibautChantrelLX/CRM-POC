@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { DataListPage } from "@/components/data-list/DataListPage";
 import { useDataListState } from "@/lib/hooks/useDataListState";
 import { usePersonnesPhysiques } from "@/lib/hooks/usePersonnesPhysiques";
@@ -36,6 +37,15 @@ function PersonnesPhysiquesContent() {
       onClearConditions={ds.clearConditions}
       onSearch={ds.setSearch}
       onRowClick={(row) => router.push(`/personnes-physiques/${row.id}`)}
+      actionSlot={
+        <button
+          onClick={() => router.push("/personnes-physiques/nouveau")}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-500 text-white text-sm font-medium rounded-lg hover:bg-primary-600 transition cursor-pointer"
+        >
+          <Plus size={15} />
+          Créer
+        </button>
+      }
     />
   );
 }

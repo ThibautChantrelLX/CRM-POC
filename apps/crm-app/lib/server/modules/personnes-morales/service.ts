@@ -224,8 +224,45 @@ export async function updatePersonneMorale(
   id: number,
   data: UpdatePersonneMoraleInput,
 ): Promise<PersonneMoraleListItem> {
-  const pm = await prisma.personneMorale.update({ where: { id }, data });
-  return pm as unknown as PersonneMoraleListItem;
+  const { adresse, ...rest } = data;
+
+  let adresseIdPatch: { adresseId: number } | undefined;
+  if (adresse !== undefined) {
+    const existing = await prisma.personneMorale.findUnique({
+      where: { id },
+      select: { adresseId: true },
+    });
+    const adresseData = {
+      rue: adresse.rue ?? null,
+      complementAdresse: adresse.complementAdresse ?? null,
+      codePostal: adresse.codePostal ?? null,
+      ville: adresse.ville ?? null,
+      pays: adresse.pays ?? null,
+    };
+    if (existing?.adresseId) {
+      await prisma.adresse.update({ where: { id: existing.adresseId }, data: adresseData });
+    } else if (Object.values(adresse).some(Boolean)) {
+      const created = await prisma.adresse.create({ data: adresseData });
+      adresseIdPatch = { adresseId: created.id };
+    }
+  }
+
+  const cleanRest = Object.fromEntries(
+    Object.entries(rest).filter(([, v]) => v !== undefined),
+  );
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pm = await prisma.personneMorale.update({
+    where: { id },
+    data: { ...cleanRest, ...adresseIdPatch } as any,
+    include: { adresse: { select: { ville: true, codePostal: true, pays: true } } },
+  });
+
+  return {
+    ...pm,
+    creerLe: (pm.creerLe as Date).toISOString(),
+    modifierLe: (pm.modifierLe as Date).toISOString(),
+  } as unknown as PersonneMoraleListItem;
 }
 
 export async function deletePersonneMorale(id: number): Promise<void> {

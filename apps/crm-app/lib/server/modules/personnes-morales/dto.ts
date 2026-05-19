@@ -123,4 +123,6 @@ export type CreatePersonneMoraleInput = {
   };
 };
 
-export type UpdatePersonneMoraleInput = Partial<Omit<CreatePersonneMoraleInput, "adresse">>;
+export type UpdatePersonneMoraleInput = Partial<CreatePersonneMoraleInput> & {
+  sourceOrigine?: string;
+};

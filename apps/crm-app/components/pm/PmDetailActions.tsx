@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { Trash2, AlertTriangle, Pencil } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 type Contact = {
@@ -40,6 +41,13 @@ export function PmDetailActions({ pmId, pmNom, contacts }: Props) {
   return (
     <>
       <div className="flex items-center gap-2 ml-auto">
+        <Link
+          href={`/personnes-morales/${pmId}/edit`}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 transition"
+        >
+          <Pencil size={14} />
+          Modifier
+        </Link>
         <button
           type="button"
           onClick={() => setShowDelete(true)}
