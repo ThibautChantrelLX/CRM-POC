@@ -90,11 +90,11 @@ model Entite {
 
 model Adresse {
   id                Int      @id @default(autoincrement())
-  rue               String?  @db.VarChar(255)
-  complementAdresse String?  @map("complement_adresse") @db.VarChar(255)
+  rue               String?
+  complementAdresse String?  @map("complement_adresse")
   codePostal        String?  @map("code_postal") @db.VarChar(10)
-  ville             String?  @db.VarChar(100)
-  pays              String?  @default("France") @db.VarChar(100)
+  ville             String?
+  pays              String?  @default("France")
   typeAdresse       String?  @default("SIEGE") @map("type_adresse") @db.VarChar(30)
   creerLe           DateTime @default(now()) @map("creer_le")
   modifierLe        DateTime @updatedAt @map("modifier_le")
@@ -116,11 +116,11 @@ model PersonneMorale {
   telephone    String?        @db.VarChar(50)
   // Utilisé uniquement en contexte de migration pour déduire les liens depuis un domaine mail
   nomDomaine   String?        @map("nom_domaine")
-  raisonSociale String        @map("raison_sociale") @db.VarChar(255)
+  raisonSociale String        @map("raison_sociale")
   siretSiren   String?        @map("siret_siren") @db.VarChar(20)
   // Valeur brute issue de T_Param (AdrLngTypeSocieteId → ParStrNom)
   typeStructure String?       @map("type_structure") @db.VarChar(255)
-  typeRelation  TypeRelationPm @map("type_lien_dossier")
+  typeRelation  TypeRelationPm? @map("type_lien_dossier")
   adresseId    Int?           @map("adresse_id")
   sourceOrigine String?       @default("EXPERT") @map("source_origine") @db.VarChar(20)
   actif        Boolean        @default(true)
@@ -153,24 +153,21 @@ model PersonnePhysique {
   id           Int            @id @default(autoincrement())
   nom          String         @db.VarChar(255)
   prenom       String?        @db.VarChar(255)
-  email        String?        @unique @db.VarChar(255)
+  email        String?        @db.VarChar(500)
   telephone    String?        @db.VarChar(50)
   portable     String?        @db.VarChar(50)
-  specialite   String?        @db.VarChar(255)
+  specialite   String?
   // Valeur brute issue de T_Param (PhyLngQualiteId → ParStrNom)
-  profession   String?        @db.VarChar(255)
+  profession   String?
   // Date de prestation de serment (renseignée uniquement pour les avocats)
   dateSerment  DateTime?      @map("date_serment") @db.Date
   barreau      String?        @db.VarChar(255)
   adresseId    Int?           @map("adresse_id")
   // Données Anaba
-  seniorite    String?        @map("seniorité") @db.VarChar(50)
-  poste        String?        @db.VarChar(50)
   dernierEmailLe   DateTime?  @map("dernier_email_le") @db.Date
   dernierEmailAvec String?    @map("dernier_email_avec") @db.VarChar(500)
   totalEmails      Int?       @default(0) @map("total_emails")
   echangesAvec     String?    @map("echanges_avec")
-  departement      String?    @db.VarChar(100)
   linkedinUrl      String?    @map("linkedin_url") @db.VarChar(255)
   actif            Boolean    @default(true)
   typeRelation     TypeRelationPp @map("type_relation_dossier")

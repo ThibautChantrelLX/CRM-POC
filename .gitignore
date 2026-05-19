@@ -6,6 +6,8 @@ data-scripts/**/__pycache__/
 data-scripts/**/*.pyc
 data-scripts/.pytest_cache/
 data-scripts/.ruff_cache/
+data-scripts/data/
+data-scripts/output/
 
 # Next.js
 apps/crm-app/.next/
