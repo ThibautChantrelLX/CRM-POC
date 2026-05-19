@@ -83,7 +83,7 @@ DATABASE_URL = _resolve_database_url()
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(_SCRIPT_DIR, "data", "barotech")
 CSV_PP = os.path.join(DATA_DIR, "extraction_barotech_specialities_activites.csv")
-CSV_PM = os.path.join(DATA_DIR, "extraction_structures_sirene.csv")
+CSV_PM = os.path.join(DATA_DIR, "extraction_structures_sirene_enrichi.csv")
 
 SOURCE_NOM = "BarOtech"
 
@@ -596,17 +596,20 @@ class BarotechImporter:
         logger.info(f"  {len(rows_pp)} PP chargées depuis {os.path.basename(CSV_PP)}")
         logger.info(f"  {len(rows_pm)} PM chargées depuis {os.path.basename(CSV_PM)}")
 
-        # Pré-calcul des domaines par PM depuis les emails des PP
-        # {raison_sociale → set(domaines)}
+        # Pré-calcul des domaines par PM depuis les emails des PP.
+        # On ne déduit le domaine que si la PP a exactement un email pro
+        # (plusieurs emails pro = ambiguïté sur quel domaine appartient à quelle structure).
         structure_domains: dict[str, set] = defaultdict(set)
         for row in rows_pp:
             emails = split_pipe(safe_str(row.get("Email(s)", "")))
             structures = split_pipe(safe_str(row.get("Structure(s)", "")))
-            for email in emails:
-                d = domain_from_email(email)
-                if d:
-                    for rs in structures:
-                        structure_domains[rs].add(d)
+            domains = [d for d in (domain_from_email(e) for e in emails) if d]
+            if len(domains) == 1:
+                # On exclut les cabinets individuels : le domaine pro d'une PP
+                # appartient à la structure tierce, pas à son cabinet personnel.
+                target_structures = [rs for rs in structures if not rs.lower().startswith("cabinet individuel")]
+                for rs in target_structures:
+                    structure_domains[rs].add(domains[0])
 
         logger.info(f"  {len(structure_domains)} PM avec au moins un domaine déduit")
 
