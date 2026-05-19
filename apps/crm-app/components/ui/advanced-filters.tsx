@@ -105,8 +105,8 @@ export function AdvancedFilters({ fields, initialConditions, onApply, onClose }:
             <>
               {/* Backdrop pour fermer le sous-menu */}
               <div className="fixed inset-0 z-30" onClick={() => setAddOpen(false)} />
-              {/* Dropdown — s'ouvre vers le haut, hors du conteneur scrollable */}
-              <div className="absolute bottom-full mb-1.5 left-4 right-4 z-40 bg-white border border-zinc-200 rounded-xl shadow-lg py-1 overflow-hidden max-h-52 overflow-y-auto">
+              {/* Dropdown */}
+              <div className="absolute top-full mt-1.5 left-4 right-4 z-40 bg-white border border-zinc-200 rounded-xl shadow-lg py-1 overflow-y-auto max-h-52">
                 {fields.map((f) => (
                   <button
                     key={f.key}

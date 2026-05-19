@@ -266,5 +266,8 @@ export async function updatePersonneMorale(
 }
 
 export async function deletePersonneMorale(id: number): Promise<void> {
-  await prisma.personneMorale.delete({ where: { id } });
+  await prisma.$transaction([
+    prisma.rattachementPpPm.deleteMany({ where: { personneMoraleId: id } }),
+    prisma.personneMorale.delete({ where: { id } }),
+  ]);
 }
