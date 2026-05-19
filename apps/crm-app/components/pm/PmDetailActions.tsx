@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserPlus, Trash2, AlertTriangle } from "lucide-react";
-import { RattachementsModal } from "@/components/pm/RattachementsModal";
+import { Trash2, AlertTriangle } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 type Contact = {
@@ -15,13 +14,11 @@ type Contact = {
 type Props = {
   pmId: number;
   pmNom: string;
-  pmNomDomaine: string | null;
   contacts: Contact[];
 };
 
-export function PmDetailActions({ pmId, pmNom, pmNomDomaine, contacts }: Props) {
+export function PmDetailActions({ pmId, pmNom, contacts }: Props) {
   const router = useRouter();
-  const [showRattach, setShowRattach] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -40,22 +37,9 @@ export function PmDetailActions({ pmId, pmNom, pmNomDomaine, contacts }: Props) 
     }
   };
 
-  const handleRattachDone = () => {
-    setShowRattach(false);
-    router.refresh();
-  };
-
   return (
     <>
       <div className="flex items-center gap-2 ml-auto">
-        <button
-          type="button"
-          onClick={() => setShowRattach(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 transition cursor-pointer"
-        >
-          <UserPlus size={14} />
-          Rattacher
-        </button>
         <button
           type="button"
           onClick={() => setShowDelete(true)}
@@ -65,15 +49,6 @@ export function PmDetailActions({ pmId, pmNom, pmNomDomaine, contacts }: Props) 
           Supprimer
         </button>
       </div>
-
-      {/* Rattachement modal */}
-      <RattachementsModal
-        open={showRattach}
-        onClose={handleRattachDone}
-        pmId={pmId}
-        pmNom={pmNom}
-        pmNomDomaine={pmNomDomaine}
-      />
 
       {/* Delete confirmation overlay */}
       {showDelete && (

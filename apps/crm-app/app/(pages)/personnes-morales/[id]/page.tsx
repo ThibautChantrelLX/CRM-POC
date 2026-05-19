@@ -113,7 +113,6 @@ export default async function PersonneMoralePage({
           <PmDetailActions
             pmId={pm.id}
             pmNom={pm.raisonSociale}
-            pmNomDomaine={pm.nomDomaine ?? null}
             contacts={pm.contacts}
           />
         </div>
@@ -292,7 +291,12 @@ export default async function PersonneMoralePage({
 
             {/* Contacts rattachés */}
             <DetailSection title={`Contacts (${pm.contacts.length})`} icon={Users}>
-              <ContactsRattachesList contacts={pm.contacts} />
+              <ContactsRattachesList
+                contacts={pm.contacts}
+                pmId={pm.id}
+                pmNom={pm.raisonSociale}
+                pmNomDomaine={pm.nomDomaine ?? null}
+              />
             </DetailSection>
           </div>
         </div>
