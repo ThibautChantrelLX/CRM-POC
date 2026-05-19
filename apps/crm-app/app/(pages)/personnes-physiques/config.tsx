@@ -66,8 +66,8 @@ const RELATION_LABELS: Record<TypeRelationPp, string> = {
   HYBRIDE: "Hybride",
 };
 const RELATION_COLORS: Record<TypeRelationPp, string> = {
-  CONTACT: "bg-blue-100 text-blue-700",
-  CLIENT: "bg-orange-100 text-orange-700",
+  CONTACT: "bg-secondary-100 text-secondary-700",
+  CLIENT: "bg-primary-100 text-primary-700",
   HYBRIDE: "bg-purple-100 text-purple-700",
 };
 const RGPD_LABELS: Record<StatutRgpd, string> = {
@@ -127,9 +127,9 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
         <a
           href={`mailto:${v}`}
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1.5 text-blue-600 hover:underline max-w-50"
+          className="flex items-center gap-1.5 text-secondary-600 hover:underline max-w-50"
         >
-          <Mail size={12} className="shrink-0 text-blue-400" />
+          <Mail size={12} className="shrink-0 text-secondary-400" />
           <span className="truncate">{v}</span>
         </a>
       ) : (

@@ -27,8 +27,8 @@ const RELATION_LABELS: Record<TypeRelationPm, string> = {
   HYBRIDE: "Hybride",
 };
 const RELATION_COLORS: Record<TypeRelationPm, string> = {
-  CABINET_POSTULATION: "bg-blue-100 text-blue-700 border-blue-200",
-  CLIENT_DIRECT: "bg-orange-100 text-orange-700 border-orange-200",
+  CABINET_POSTULATION: "bg-secondary-100 text-secondary-700 border-secondary-200",
+  CLIENT_DIRECT: "bg-primary-100 text-primary-700 border-primary-200",
   HYBRIDE: "bg-purple-100 text-purple-700 border-purple-200",
 };
 
@@ -137,7 +137,7 @@ export default async function PersonneMoralePage({
                     value: pm.email ? (
                       <a
                         href={`mailto:${pm.email}`}
-                        className="text-blue-600 hover:underline flex items-center gap-1"
+                        className="text-secondary-600 hover:underline flex items-center gap-1"
                       >
                         <Mail size={12} />
                         {pm.email}
@@ -160,7 +160,7 @@ export default async function PersonneMoralePage({
                         href={pm.siteWeb.startsWith("http") ? pm.siteWeb : `https://${pm.siteWeb}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-blue-600 hover:underline text-xs"
+                        className="flex items-center gap-1 text-secondary-600 hover:underline text-xs"
                       >
                         <Globe size={12} />
                         {pm.siteWeb}
@@ -209,7 +209,7 @@ export default async function PersonneMoralePage({
                       value: pm.maisonMere ? (
                         <Link
                           href={`/personnes-morales/${pm.maisonMere.id}`}
-                          className="text-blue-600 hover:underline font-medium"
+                          className="text-secondary-600 hover:underline font-medium"
                         >
                           {pm.maisonMere.raisonSociale}
                           {pm.maisonMere.siretSiren && (
@@ -232,7 +232,7 @@ export default async function PersonneMoralePage({
                         <div key={f.id} className="flex items-center gap-2">
                           <Link
                             href={`/personnes-morales/${f.id}`}
-                            className="text-blue-600 hover:underline text-sm font-medium"
+                            className="text-secondary-600 hover:underline text-sm font-medium"
                           >
                             {f.raisonSociale}
                           </Link>

@@ -57,7 +57,7 @@ export function RattachementsList({ rattachements }: Props) {
                 <td className="py-2.5 pr-4 font-medium">
                   <Link
                     href={`/personnes-morales/${r.personneMorale.id}`}
-                    className="text-blue-600 hover:underline"
+                    className="text-secondary-600 hover:underline"
                   >
                     {r.personneMorale.raisonSociale}
                   </Link>

@@ -95,8 +95,8 @@ export function PmDetailActions({ pmId, pmNom, pmNomDomaine, contacts }: Props) 
             </div>
 
             {contacts.length > 0 && (
-              <div className="rounded-xl border border-orange-200 bg-orange-50 p-3">
-                <p className="text-xs font-semibold text-orange-700 mb-2">
+              <div className="rounded-xl border border-primary-200 bg-primary-50 p-3">
+                <p className="text-xs font-semibold text-primary-700 mb-2">
                   {contacts.length} personne{contacts.length > 1 ? "s" : ""} rattachée
                   {contacts.length > 1 ? "s" : ""} sera{contacts.length > 1 ? "ont" : ""} détachée
                   {contacts.length > 1 ? "s" : ""} :

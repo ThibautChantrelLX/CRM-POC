@@ -27,14 +27,14 @@ export type PpResult = {
 
 function PpBadge({ pp, onRemove }: { pp: PpResult; onRemove: () => void }) {
   return (
-    <div className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 text-blue-700 rounded-full pl-3 pr-1.5 py-0.5 text-xs font-medium">
+    <div className="flex items-center gap-1.5 bg-secondary-50 border border-secondary-100 text-secondary-700 rounded-full pl-3 pr-1.5 py-0.5 text-xs font-medium">
       <span>
         {pp.prenom} {pp.nom}
       </span>
       <button
         type="button"
         onClick={onRemove}
-        className="rounded-full hover:bg-blue-200 transition p-0.5 cursor-pointer"
+        className="rounded-full hover:bg-secondary-200 transition p-0.5 cursor-pointer"
       >
         <X size={11} />
       </button>
@@ -308,7 +308,7 @@ export function StepRattachements({
           type="button"
           onClick={handleQuickDomain}
           disabled={isLoadingDomain}
-          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-orange-200 bg-orange-50 text-orange-700 text-sm font-medium hover:bg-orange-100 transition cursor-pointer disabled:opacity-50"
+          className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-primary-200 bg-primary-50 text-primary-700 text-sm font-medium hover:bg-primary-100 transition cursor-pointer disabled:opacity-50"
         >
           {isLoadingDomain ? (
             <Loader2 size={14} className="animate-spin shrink-0" />
@@ -341,7 +341,7 @@ export function StepRattachements({
             type="button"
             onClick={searchPp}
             disabled={isSearching}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 text-white text-sm rounded-lg hover:bg-zinc-700 transition cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-500 text-white text-sm rounded-lg hover:bg-primary-600 transition cursor-pointer disabled:opacity-50"
           >
             {isSearching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
             Rechercher
@@ -362,9 +362,9 @@ export function StepRattachements({
                 key={pp.id}
                 type="button"
                 onClick={() => toggleSelected(pp)}
-                className={`w-full text-left px-3 py-2.5 transition flex items-start gap-3 cursor-pointer ${isSel ? "bg-blue-50 hover:bg-blue-100" : "hover:bg-zinc-50"}`}
+                className={`w-full text-left px-3 py-2.5 transition flex items-start gap-3 cursor-pointer ${isSel ? "bg-secondary-50 hover:bg-secondary-100" : "hover:bg-zinc-50"}`}
               >
-                <div className={`mt-0.5 w-4 h-4 shrink-0 rounded border flex items-center justify-center transition ${isSel ? "bg-blue-600 border-blue-600" : "border-zinc-300"}`}>
+                <div className={`mt-0.5 w-4 h-4 shrink-0 rounded border flex items-center justify-center transition ${isSel ? "bg-secondary-600 border-secondary-600" : "border-zinc-300"}`}>
                   {isSel && (
                     <svg viewBox="0 0 10 8" className="w-2.5 h-2.5 fill-white">
                       <path d="M1 4l2.5 2.5L9 1" stroke="white" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />

@@ -45,7 +45,7 @@ export function ContactsRattachesList({ contacts }: Props) {
                 <td className="py-2.5 pr-4">
                   <Link
                     href={`/personnes-physiques/${pp.id}`}
-                    className="font-medium text-blue-600 hover:underline block"
+                    className="font-medium text-secondary-600 hover:underline block"
                   >
                     {pp.prenom} {pp.nom.toUpperCase()}
                   </Link>

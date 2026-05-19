@@ -15,7 +15,7 @@ type SubmitButtonProps = {
 
 const VARIANTS: Record<NonNullable<SubmitButtonProps["variant"]>, string> = {
   primary:
-    "bg-zinc-900 text-white hover:bg-zinc-700 disabled:bg-zinc-300 disabled:text-zinc-500",
+    "bg-primary-500 text-white hover:bg-primary-600 disabled:bg-primary-200 disabled:text-primary-400",
   secondary:
     "bg-white text-zinc-700 border border-zinc-300 hover:bg-zinc-50 disabled:bg-zinc-100 disabled:text-zinc-400",
   danger:

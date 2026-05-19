@@ -83,10 +83,10 @@ export function SireneSearch({ onSelect }: Props) {
             <button
               key={r.siret}
               type="button"
-              className="w-full text-left px-4 py-2.5 hover:bg-blue-50 transition border-b last:border-b-0 border-zinc-50 group"
+              className="w-full text-left px-4 py-2.5 hover:bg-secondary-50 transition border-b last:border-b-0 border-zinc-50 group"
               onClick={() => handleSelect(r)}
             >
-              <div className="font-medium text-sm text-zinc-800 group-hover:text-blue-700">
+              <div className="font-medium text-sm text-zinc-800 group-hover:text-secondary-700">
                 {r.raisonSociale}
               </div>
               <div className="text-xs text-zinc-400 mt-0.5 font-mono">
