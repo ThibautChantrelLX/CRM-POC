@@ -7,7 +7,6 @@ import {
   Mail,
   Phone,
   Globe,
-  ExternalLink,
   Users,
   Info,
   Layers,

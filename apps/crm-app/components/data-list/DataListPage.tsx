@@ -9,10 +9,10 @@ import { FilterBadges } from "@/components/ui/filter-badges";
 import { cn } from "@/lib/utils";
 import type { FieldDef, FilterCondition } from "@/lib/filters";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DataListPageProps<T> = {
   title: string;
   fields: FieldDef[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columns: ColumnDef<T, any>[];
   // Data
   data: T[];

@@ -13,9 +13,9 @@ import { cn } from "@/lib/utils";
 
 const LIMIT_OPTIONS = [10, 20, 50, 100];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DataTableProps<T> = {
   data: T[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   columns: ColumnDef<T, any>[];
   total: number;
   page: number;
