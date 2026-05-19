@@ -24,6 +24,7 @@ export const PM_FIELDS: FieldDef[] = [
       { value: "CABINET_POSTULATION", label: "Cabinet postulation" },
       { value: "CLIENT_DIRECT", label: "Client direct" },
       { value: "HYBRIDE", label: "Hybride" },
+      { value: "AUTRE", label: "Autre" },
     ],
   },
   {
@@ -51,11 +52,13 @@ const RELATION_LABELS: Record<TypeRelationPm, string> = {
   CABINET_POSTULATION: "Cabinet postulation",
   CLIENT_DIRECT: "Client direct",
   HYBRIDE: "Hybride",
+  AUTRE: "Autre",
 };
 const RELATION_COLORS: Record<TypeRelationPm, string> = {
   CABINET_POSTULATION: "bg-secondary-100 text-secondary-700",
   CLIENT_DIRECT: "bg-primary-100 text-primary-700",
   HYBRIDE: "bg-purple-100 text-purple-700",
+  AUTRE: "bg-zinc-100 text-zinc-600",
 };
 
 // ─── Column definitions ───────────────────────────────────────────────────────

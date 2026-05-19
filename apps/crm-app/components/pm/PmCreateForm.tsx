@@ -28,6 +28,8 @@ type FormState = {
   pays: string;
 };
 
+type FormErrors = Partial<Record<keyof FormState, string>>;
+
 const EMPTY: FormState = {
   raisonSociale: "",
   siretSiren: "",
@@ -53,6 +55,7 @@ export function PmCreateForm() {
   const [form, setForm] = useState<FormState>(EMPTY);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
 
   const patch =
     (key: keyof FormState) =>
@@ -79,8 +82,16 @@ export function PmCreateForm() {
     }));
   };
 
+  const validate = (): boolean => {
+    const errors: FormErrors = {};
+    if (!form.raisonSociale.trim()) errors.raisonSociale = "La raison sociale est requise";
+    if (!form.typeRelation) errors.typeRelation = "Le type de relation est requis";
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async () => {
-    if (!form.raisonSociale.trim()) return;
+    if (!validate()) return;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -136,7 +147,7 @@ export function PmCreateForm() {
       <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Identité</h3>
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Raison sociale" required className="col-span-2">
+          <FormField label="Raison sociale" required className="col-span-2" error={formErrors.raisonSociale}>
             <input className={inputCls} value={form.raisonSociale} onChange={patch("raisonSociale")} placeholder="Cabinet DUPONT & ASSOCIÉS" />
           </FormField>
           <FormField label="SIRET / SIREN">
@@ -171,12 +182,13 @@ export function PmCreateForm() {
       <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Activité & Statut</h3>
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Type de relation">
+          <FormField label="Type de relation" required error={formErrors.typeRelation}>
             <select className={selectCls} value={form.typeRelation} onChange={patch("typeRelation")}>
-              <option value="">— Aucun —</option>
+              <option value="">— Sélectionner —</option>
               <option value="CABINET_POSTULATION">Cabinet postulation</option>
               <option value="CLIENT_DIRECT">Client direct</option>
               <option value="HYBRIDE">Hybride</option>
+              <option value="AUTRE">Autre</option>
             </select>
           </FormField>
           <FormField label="Statut">
@@ -230,7 +242,7 @@ export function PmCreateForm() {
         >
           Annuler
         </button>
-        <SubmitButton isLoading={isSubmitting} onClick={handleSubmit} disabled={!form.raisonSociale.trim()}>
+        <SubmitButton isLoading={isSubmitting} onClick={handleSubmit}>
           Créer la structure
         </SubmitButton>
       </div>

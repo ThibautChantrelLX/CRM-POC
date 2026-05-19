@@ -4,6 +4,10 @@ import {
   updatePersonneMorale,
   deletePersonneMorale,
 } from "@/lib/server/modules/personnes-morales/service";
+import {
+  UpdatePersonneMoraleSchema,
+  formatZodError,
+} from "@/lib/server/modules/personnes-morales/schema";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -23,10 +27,14 @@ export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
   try {
     const body = await request.json();
-    return NextResponse.json(await updatePersonneMorale(Number(id), body));
+    const parsed = UpdatePersonneMoraleSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(formatZodError(parsed.error), { status: 400 });
+    }
+    return NextResponse.json(await updatePersonneMorale(Number(id), parsed.data));
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur interne du serveur" }, { status: 500 });
   }
 }
 

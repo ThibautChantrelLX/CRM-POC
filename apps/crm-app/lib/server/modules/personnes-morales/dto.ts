@@ -1,4 +1,4 @@
-export type TypeRelationPm = "CABINET_POSTULATION" | "CLIENT_DIRECT" | "HYBRIDE";
+export type TypeRelationPm = "CABINET_POSTULATION" | "CLIENT_DIRECT" | "HYBRIDE" | "AUTRE";
 
 // ─── List ──────────────────────────────────────────────────────────────────────
 
@@ -123,6 +123,7 @@ export type CreatePersonneMoraleInput = {
   };
 };
 
-export type UpdatePersonneMoraleInput = Partial<CreatePersonneMoraleInput> & {
+export type UpdatePersonneMoraleInput = Partial<Omit<CreatePersonneMoraleInput, "typeRelation">> & {
+  typeRelation?: TypeRelationPm | null;
   sourceOrigine?: string;
 };

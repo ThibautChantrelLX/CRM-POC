@@ -151,6 +151,7 @@ export function PmEditForm({ pm }: { pm: PersonneMoraleDetail }) {
               <option value="CABINET_POSTULATION">Cabinet postulation</option>
               <option value="CLIENT_DIRECT">Client direct</option>
               <option value="HYBRIDE">Hybride</option>
+              <option value="AUTRE">Autre</option>
             </select>
           </FormField>
           <FormField label="Source d'origine">

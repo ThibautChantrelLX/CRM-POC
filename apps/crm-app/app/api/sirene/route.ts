@@ -15,6 +15,8 @@ export type SireneResult = {
   categorieEntreprise: string | null;
 };
 
+import { nafLabel } from "@/lib/naf";
+
 type AnnuaireEntreprise = {
   siren: string;
   nom_raison_sociale: string;
@@ -22,6 +24,7 @@ type AnnuaireEntreprise = {
   siege: {
     siret: string;
     activite_principale: string | null;
+    libelle_activite_principale: string | null;
     numero_voie: string | null;
     type_voie: string | null;
     libelle_voie: string | null;
@@ -34,6 +37,8 @@ type AnnuaireEntreprise = {
 function mapEntreprise(e: AnnuaireEntreprise): SireneResult {
   const s = e.siege ?? {};
   const parts = [s.numero_voie, s.type_voie, s.libelle_voie].filter(Boolean);
+  const code = s.activite_principale ?? null;
+  const label = s.libelle_activite_principale ?? (code ? nafLabel(code) : null);
   return {
     siret: s.siret ?? "",
     siren: e.siren ?? "",
@@ -43,7 +48,7 @@ function mapEntreprise(e: AnnuaireEntreprise): SireneResult {
       codePostal: s.code_postal ?? null,
       ville: s.libelle_commune ?? s.libelle_commune_etranger ?? null,
     },
-    secteurActivite: s.activite_principale ?? null,
+    secteurActivite: label ?? code,
     categorieEntreprise: e.categorie_entreprise ?? null,
   };
 }

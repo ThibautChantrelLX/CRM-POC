@@ -3,6 +3,10 @@ import {
   fetchPersonnesMorales,
   createPersonneMorale,
 } from "@/lib/server/modules/personnes-morales/service";
+import {
+  CreatePersonneMoraleSchema,
+  formatZodError,
+} from "@/lib/server/modules/personnes-morales/schema";
 import type {
   PersonneMoraleListQuery,
   TypeRelationPm,
@@ -40,9 +44,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    return NextResponse.json(await createPersonneMorale(body), { status: 201 });
+    const parsed = CreatePersonneMoraleSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(formatZodError(parsed.error), { status: 400 });
+    }
+    return NextResponse.json(await createPersonneMorale(parsed.data), { status: 201 });
   } catch (err) {
     console.error(err);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({ error: "Erreur interne du serveur" }, { status: 500 });
   }
 }

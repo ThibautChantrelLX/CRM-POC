@@ -11,6 +11,7 @@ import {
   Info,
   Layers,
 } from "lucide-react";
+import { nafDisplay } from "@/lib/naf";
 import { getPersonneMoraleDetail } from "@/lib/server/modules/personnes-morales/service";
 import { DetailSection } from "@/components/detail/DetailSection";
 import { InfoGrid } from "@/components/detail/InfoGrid";
@@ -25,11 +26,13 @@ const RELATION_LABELS: Record<TypeRelationPm, string> = {
   CABINET_POSTULATION: "Cabinet postulation",
   CLIENT_DIRECT: "Client direct",
   HYBRIDE: "Hybride",
+  AUTRE: "Autre",
 };
 const RELATION_COLORS: Record<TypeRelationPm, string> = {
   CABINET_POSTULATION: "bg-secondary-100 text-secondary-700 border-secondary-200",
   CLIENT_DIRECT: "bg-primary-100 text-primary-700 border-primary-200",
   HYBRIDE: "bg-purple-100 text-purple-700 border-purple-200",
+  AUTRE: "bg-zinc-100 text-zinc-600 border-zinc-200",
 };
 
 function Badge({ label, color }: { label: string; color: string }) {
@@ -176,7 +179,7 @@ export default async function PersonneMoralePage({
               <InfoGrid
                 cols={2}
                 items={[
-                  { label: "Secteur d'activité", value: pm.secteurActivite, span: 2 },
+                  { label: "Secteur d'activité", value: nafDisplay(pm.secteurActivite), span: 2 },
                   { label: "Catégorie entreprise", value: pm.categorieEntreprise },
                   { label: "Source d'origine", value: pm.sourceOrigine },
                   {
