@@ -110,6 +110,17 @@ export type CreatePersonneMoraleInput = {
   typeStructure?: string;
   typeRelation?: TypeRelationPm;
   actif?: boolean;
+  siteWeb?: string;
+  secteurActivite?: string;
+  categorieEntreprise?: string;
+  nomDomaine?: string;
+  adresse?: {
+    rue?: string;
+    complementAdresse?: string;
+    codePostal?: string;
+    ville?: string;
+    pays?: string;
+  };
 };
 
-export type UpdatePersonneMoraleInput = Partial<CreatePersonneMoraleInput>;
+export type UpdatePersonneMoraleInput = Partial<Omit<CreatePersonneMoraleInput, "adresse">>;

@@ -36,6 +36,8 @@ type DataListPageProps<T> = {
   onSearch: (value: string) => void;
   // Row interaction
   onRowClick?: (row: T) => void;
+  // Slot for action buttons next to the title
+  actionSlot?: React.ReactNode;
 };
 
 export function DataListPage<T>({
@@ -60,6 +62,7 @@ export function DataListPage<T>({
   onClearConditions,
   onSearch,
   onRowClick,
+  actionSlot,
 }: DataListPageProps<T>) {
   // Local input value (immediate feedback), synced with URL via effect
   const [searchInput, setSearchInput] = useState(searchValue);
@@ -166,6 +169,7 @@ export function DataListPage<T>({
           {isFetching && !isLoading && (
             <span className="text-xs text-zinc-400 animate-pulse">Mise à jour…</span>
           )}
+          {actionSlot && <div className="ml-auto">{actionSlot}</div>}
         </div>
 
         <DataTable

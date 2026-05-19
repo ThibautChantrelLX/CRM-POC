@@ -187,9 +187,37 @@ export async function getPersonneMorale(id: number): Promise<PersonneMoraleListI
 export async function createPersonneMorale(
   data: CreatePersonneMoraleInput,
 ): Promise<PersonneMoraleListItem> {
+  const { adresse, ...rest } = data;
+
+  let adresseId: number | undefined;
+  if (adresse && Object.values(adresse).some(Boolean)) {
+    const created = await prisma.adresse.create({
+      data: {
+        rue: adresse.rue ?? null,
+        complementAdresse: adresse.complementAdresse ?? null,
+        codePostal: adresse.codePostal ?? null,
+        ville: adresse.ville ?? null,
+        pays: adresse.pays ?? null,
+      },
+    });
+    adresseId = created.id;
+  }
+
+  const cleanRest = Object.fromEntries(
+    Object.entries(rest).filter(([, v]) => v !== undefined),
+  );
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pm = await prisma.personneMorale.create({ data: data as any });
-  return pm as unknown as PersonneMoraleListItem;
+  const pm = await prisma.personneMorale.create({
+    data: { ...cleanRest, ...(adresseId !== undefined ? { adresseId } : {}) } as any,
+    include: { adresse: { select: { ville: true, codePostal: true, pays: true } } },
+  });
+
+  return {
+    ...pm,
+    creerLe: (pm.creerLe as Date).toISOString(),
+    modifierLe: (pm.modifierLe as Date).toISOString(),
+  } as unknown as PersonneMoraleListItem;
 }
 
 export async function updatePersonneMorale(
