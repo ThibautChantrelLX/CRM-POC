@@ -603,13 +603,13 @@ class BarotechImporter:
         for row in rows_pp:
             emails = split_pipe(safe_str(row.get("Email(s)", "")))
             structures = split_pipe(safe_str(row.get("Structure(s)", "")))
-            domains = [d for d in (domain_from_email(e) for e in emails) if d]
-            if len(domains) == 1:
+            unique_domains = {d for d in (domain_from_email(e) for e in emails) if d}
+            if len(unique_domains) == 1:
                 # On exclut les cabinets individuels : le domaine pro d'une PP
                 # appartient à la structure tierce, pas à son cabinet personnel.
                 target_structures = [rs for rs in structures if not rs.lower().startswith("cabinet individuel")]
                 for rs in target_structures:
-                    structure_domains[rs].add(domains[0])
+                    structure_domains[rs].add(next(iter(unique_domains)))
 
         logger.info(f"  {len(structure_domains)} PM avec au moins un domaine déduit")
 
