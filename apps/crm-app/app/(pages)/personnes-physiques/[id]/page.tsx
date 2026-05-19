@@ -301,7 +301,11 @@ export default async function PersonnePhysiquePage({
 
             {/* Rattachements */}
             <DetailSection title={`Rattachements (${pp.rattachements.length})`} icon={Building2}>
-              <RattachementsList rattachements={pp.rattachements} />
+              <RattachementsList
+                rattachements={pp.rattachements}
+                ppId={pp.id}
+                ppNom={`${pp.prenom ?? ""} ${pp.nom}`.trim()}
+              />
             </DetailSection>
           </div>
         </div>
