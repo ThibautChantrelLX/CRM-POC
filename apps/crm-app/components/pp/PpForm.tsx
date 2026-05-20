@@ -235,6 +235,11 @@ export function PpForm(props: Props) {
 
   const handleSubmit = async () => {
     if (!form.nom.trim() || !form.prenom.trim() || !form.email.trim()) return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(form.email.trim())) {
+      setError({ message: "L'adresse email n'est pas valide." });
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {

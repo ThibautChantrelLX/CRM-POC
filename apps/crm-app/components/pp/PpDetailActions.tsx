@@ -22,7 +22,12 @@ export function PpDetailActions({ ppId, ppNom }: Props) {
     setDeleteError(null);
     try {
       const res = await fetch(`/api/personnes-physiques/${ppId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Erreur lors de la suppression");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setDeleteError(body.error ?? "La suppression a échoué. Veuillez réessayer.");
+        setIsDeleting(false);
+        return;
+      }
       router.push("/personnes-physiques");
       router.refresh();
     } catch {
@@ -63,9 +68,14 @@ export function PpDetailActions({ ppId, ppNom }: Props) {
                   Supprimer cette personne physique ?
                 </h2>
                 <p className="text-sm text-zinc-500 mt-1">
-                  <span className="font-medium text-zinc-700">{ppNom}</span> sera définitivement
-                  supprimée. Cette action est irréversible.
+                  <span className="font-medium text-zinc-700">{ppNom}</span> sera définitivement supprimée. Cette action est irréversible.
                 </p>
+                <ul className="mt-2 text-sm text-zinc-500 space-y-0.5 list-disc list-inside">
+                  <li>Toutes les informations personnelles</li>
+                  <li>Le profil (avocat, particulier…)</li>
+                  <li>L'adresse</li>
+                  <li>Tous les rattachements (actifs et passés)</li>
+                </ul>
               </div>
             </div>
 

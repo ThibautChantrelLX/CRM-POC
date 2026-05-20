@@ -525,6 +525,23 @@ export async function updatePersonnePhysique(
   };
 }
 
+export class PpLieeADossierError extends Error {
+  constructor(public readonly count: number) {
+    super("PP référencée dans des dossiers");
+    this.name = "PpLieeADossierError";
+  }
+}
+
 export async function deletePersonnePhysique(id: string): Promise<void> {
-  await prisma.personnePhysique.delete({ where: { id } });
+  const dossiersCount = await prisma.dossierIntervenantContexte.count({
+    where: { personnePhysiqueId: id },
+  });
+  if (dossiersCount > 0) throw new PpLieeADossierError(dossiersCount);
+
+  await prisma.$transaction([
+    prisma.rattachementPpPm.deleteMany({ where: { personnePhysiqueId: id } }),
+    prisma.profilAvocat.deleteMany({ where: { personnePhysiqueId: id } }),
+    prisma.profilParticulier.deleteMany({ where: { personnePhysiqueId: id } }),
+    prisma.personnePhysique.delete({ where: { id } }),
+  ]);
 }
