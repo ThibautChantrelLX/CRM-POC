@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import {
-  ArrowLeft,
   User,
   Building2,
   MapPin,
@@ -14,6 +12,7 @@ import {
 } from "lucide-react";
 import { getPersonnePhysiqueDetail } from "@/lib/server/modules/personnes-physiques/service";
 import { Avatar } from "@/components/ui/avatar";
+import { BackButton } from "@/components/ui/back-button";
 import { DetailSection } from "@/components/detail/DetailSection";
 import { InfoGrid } from "@/components/detail/InfoGrid";
 import { RattachementsList } from "@/components/detail/RattachementsList";
@@ -119,12 +118,7 @@ export default async function PersonnePhysiquePage({
       {/* Header */}
       <div className="bg-white border-b border-zinc-200 px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <Link
-            href="/personnes-physiques"
-            className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-colors"
-          >
-            <ArrowLeft size={16} />
-          </Link>
+          <BackButton fallbackHref="/personnes-physiques" />
           <Avatar nom={pp.nom} prenom={pp.prenom} size="md" />
           <div>
             <h1 className="text-lg font-bold text-zinc-900 leading-tight">

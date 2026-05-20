@@ -1,7 +1,5 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import {
-  ArrowLeft,
   Building2,
   MapPin,
   Mail,
@@ -13,6 +11,7 @@ import {
 } from "lucide-react";
 import { nafDisplay } from "@/lib/naf";
 import { getPersonneMoraleDetail } from "@/lib/server/modules/personnes-morales/service";
+import { BackButton } from "@/components/ui/back-button";
 import { DetailSection } from "@/components/detail/DetailSection";
 import { InfoGrid } from "@/components/detail/InfoGrid";
 import { ContactsRattachesList } from "@/components/detail/ContactsRattachesList";
@@ -93,12 +92,7 @@ export default async function PersonneMoralePage({
       {/* Header */}
       <div className="bg-white border-b border-zinc-200 px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <Link
-            href="/personnes-morales"
-            className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-colors"
-          >
-            <ArrowLeft size={16} />
-          </Link>
+          <BackButton fallbackHref="/personnes-morales" />
           <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center shrink-0">
             <Building2 size={18} className="text-zinc-500" />
           </div>

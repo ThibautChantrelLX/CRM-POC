@@ -7,14 +7,41 @@ import type {
   PersonnePhysiqueListItem,
   TypeRelationPp,
   StatutRgpd,
+  TypeProfilPrincipal,
 } from "@/lib/server/modules/personnes-physiques/dto";
 
 // ─── Field definitions (query builder) ───────────────────────────────────────
+
+const PROFIL_OPTIONS: { value: TypeProfilPrincipal; label: string }[] = [
+  { value: "AVOCAT_INTERNE", label: "Avocat interne" },
+  { value: "ASSISTANT_INTERNE", label: "Assistant(e) interne" },
+  { value: "FONCTION_SUPPORT", label: "Fonction support interne" },
+  { value: "AVOCAT_EXTERNE", label: "Avocat externe" },
+  { value: "NOTAIRE", label: "Notaire" },
+  { value: "CLERC_NOTAIRE", label: "Clerc de notaire" },
+  { value: "COMMISSAIRE_JUSTICE", label: "Commissaire de justice" },
+  { value: "MAGISTRAT", label: "Magistrat" },
+  { value: "GREFFIER", label: "Greffier" },
+  { value: "JURISTE", label: "Juriste" },
+  { value: "INTERVENANT_JUSTICE", label: "Autre intervenant justice" },
+  { value: "FONCTION_SUPPORT_EXTERNE", label: "Fonction support externe" },
+  { value: "PARTICULIER", label: "Particulier" },
+  { value: "CONTACT_PRO", label: "Contact professionnel" },
+  { value: "APPRENANT_EXTERNE", label: "Apprenant externe" },
+  { value: "FORMATEUR_EXTERNE", label: "Formateur externe" },
+];
 
 export const PP_FIELDS: FieldDef[] = [
   { key: "nom", label: "Nom", type: "text", param: "nom" },
   { key: "prenom", label: "Prénom", type: "text", param: "prenom" },
   { key: "email", label: "Email", type: "text", param: "email" },
+  {
+    key: "typeProfilPrincipal",
+    label: "Type de profil",
+    type: "select",
+    param: "typeProfilPrincipal",
+    options: PROFIL_OPTIONS,
+  },
   { key: "profession", label: "Profession", type: "text", param: "profession" },
   { key: "specialite", label: "Spécialité", type: "text", param: "specialite" },
   {
