@@ -232,9 +232,9 @@ class BarotechImporter:
             "erreurs": [],
         }
         # raison_sociale → pm_id
-        self.pm_map: dict[str, int] = {}
+        self.pm_map: dict[str, str] = {}
         # ID Contact → pp_id
-        self.pp_map: dict[str, int] = {}
+        self.pp_map: dict[str, str] = {}
 
     # -------------------------------------------------------------------------
     # CONNEXION
@@ -256,7 +256,7 @@ class BarotechImporter:
     # -------------------------------------------------------------------------
 
     def _insert_mapping_source(
-        self, entite_crm: str, entite_crm_id: int, source_id_externe: str
+        self, entite_crm: str, entite_crm_id: str, source_id_externe: str
     ):
         source_id_externe = source_id_externe[:100]
         self.cursor.execute(
@@ -275,7 +275,7 @@ class BarotechImporter:
 
     def _already_imported(
         self, entite_crm: str, source_id_externe: str
-    ) -> Optional[int]:
+    ) -> Optional[str]:
         """Retourne l'id CRM si déjà importé, sinon None."""
         source_id_externe = source_id_externe[:100]
         self.cursor.execute(
@@ -313,22 +313,30 @@ class BarotechImporter:
 
         if pp_ids:
             self.cursor.execute(
-                "DELETE FROM rattachements_pp_pm WHERE personne_physique_id = ANY(%s)",
+                "DELETE FROM rattachements_pp_pm WHERE personne_physique_id = ANY(%s::uuid[])",
                 (pp_ids,),
             )
             self.cursor.execute(
-                "DELETE FROM personnes_physiques WHERE id = ANY(%s)", (pp_ids,)
+                "DELETE FROM profil_avocat WHERE personne_physique_id = ANY(%s::uuid[])",
+                (pp_ids,),
+            )
+            self.cursor.execute(
+                "DELETE FROM profil_particulier WHERE personne_physique_id = ANY(%s::uuid[])",
+                (pp_ids,),
+            )
+            self.cursor.execute(
+                "DELETE FROM personnes_physiques WHERE id = ANY(%s::uuid[])", (pp_ids,)
             )
             logger.info(f"  Supprimé {len(pp_ids)} PP")
 
         if pm_ids:
             # D'abord mettre les maison_mere_id à NULL pour éviter les FK circulaires
             self.cursor.execute(
-                "UPDATE personnes_morales SET maison_mere_id = NULL WHERE id = ANY(%s)",
+                "UPDATE personnes_morales SET maison_mere_id = NULL WHERE id = ANY(%s::uuid[])",
                 (pm_ids,),
             )
             self.cursor.execute(
-                "DELETE FROM personnes_morales WHERE id = ANY(%s)", (pm_ids,)
+                "DELETE FROM personnes_morales WHERE id = ANY(%s::uuid[])", (pm_ids,)
             )
             logger.info(f"  Supprimé {len(pm_ids)} PM")
 
@@ -521,11 +529,11 @@ class BarotechImporter:
                     """
                     INSERT INTO personnes_physiques
                         (nom, prenom, email, telephone, portable,
-                         specialite, profession, date_serment, barreau,
-                         adresse_id, actif, type_relation_dossier,
+                         adresse_id, actif, type_profil_principal, type_relation_dossier,
                          creer_par, modifier_par, modifier_le)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                            true, %s, 'import_barotech', 'import_barotech', NOW())
+                    VALUES (%s, %s, %s, %s, %s, %s,
+                            true, 'AVOCAT_EXTERNE', %s,
+                            'import_barotech', 'import_barotech', NOW())
                     RETURNING id
                 """,
                     (
@@ -534,15 +542,23 @@ class BarotechImporter:
                         email or None,
                         telephone,
                         portable,
-                        specialite,
-                        "Avocat",
-                        date_serment,
-                        barreau,
                         addr_id,
                         "CONTACT",
                     ),
                 )
                 pp_id = self.cursor.fetchone()["id"]
+
+                # Champs avocat dans la table dédiée
+                self.cursor.execute(
+                    """
+                    INSERT INTO profil_avocat
+                        (personne_physique_id, profession, barreau, date_serment,
+                         specialite, modifier_le)
+                    VALUES (%s, %s, %s, %s, %s, NOW())
+                """,
+                    (pp_id, "Avocat", barreau, date_serment, specialite),
+                )
+
                 self.pp_map[contact_id] = pp_id
                 self._insert_mapping_source("PersonnePhysique", pp_id, contact_id)
                 self.stats["pp_creees"] += 1

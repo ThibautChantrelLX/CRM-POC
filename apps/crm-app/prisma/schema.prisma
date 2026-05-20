@@ -376,7 +376,7 @@ model Facture {
 model MappingSource {
   id                  Int      @id @default(autoincrement())
   entiteCrm           String   @map("entite_crm") @db.VarChar(100)
-  entiteCrmId         Int      @map("entite_crm_id")
+  entiteCrmId         String   @map("entite_crm_id") @db.VarChar(36)
   sourceNom           String   @map("source_nom") @db.VarChar(20)
   sourceIdExterne     String   @map("source_id_externe") @db.VarChar(100)
   dateDerniereSynchro DateTime @default(now()) @map("date_derniere_synchro")

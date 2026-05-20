@@ -268,8 +268,8 @@ class BarreauParisImporter:
             "linking_domaine": 0,
             "erreurs": [],
         }
-        self.pm_map: dict[str, int] = {}  # raison_sociale_full → pm_id
-        self.pp_map: dict[str, int] = {}  # ID Contact → pp_id
+        self.pm_map: dict[str, str] = {}  # raison_sociale_full → pm_id
+        self.pp_map: dict[str, str] = {}  # ID Contact → pp_id
 
     # -------------------------------------------------------------------------
     # CONNEXION
@@ -293,7 +293,7 @@ class BarreauParisImporter:
     def _insert_mapping_source(
         self,
         entite_crm: str,
-        entite_crm_id: int,
+        entite_crm_id: str,
         source_nom: str,
         source_id_externe: str,
     ):
@@ -314,7 +314,7 @@ class BarreauParisImporter:
 
     def _already_imported(
         self, entite_crm: str, source_nom: str, source_id_externe: str
-    ) -> Optional[int]:
+    ) -> Optional[str]:
         source_id_externe = source_id_externe[:100]
         self.cursor.execute(
             """
@@ -326,7 +326,7 @@ class BarreauParisImporter:
         row = self.cursor.fetchone()
         return row["entite_crm_id"] if row else None
 
-    def _already_imported_pm(self, source_id_externe: str) -> Optional[int]:
+    def _already_imported_pm(self, source_id_externe: str) -> Optional[str]:
         """Vérifie mapping_sources pour une PM, quelle que soit la source Paris."""
         source_id_externe = source_id_externe[:100]
         self.cursor.execute(
@@ -366,22 +366,30 @@ class BarreauParisImporter:
 
         if pp_ids:
             self.cursor.execute(
-                "DELETE FROM rattachements_pp_pm WHERE personne_physique_id = ANY(%s)",
+                "DELETE FROM rattachements_pp_pm WHERE personne_physique_id = ANY(%s::uuid[])",
                 (pp_ids,),
             )
             self.cursor.execute(
-                "DELETE FROM personnes_physiques WHERE id = ANY(%s)",
+                "DELETE FROM profil_avocat WHERE personne_physique_id = ANY(%s::uuid[])",
+                (pp_ids,),
+            )
+            self.cursor.execute(
+                "DELETE FROM profil_particulier WHERE personne_physique_id = ANY(%s::uuid[])",
+                (pp_ids,),
+            )
+            self.cursor.execute(
+                "DELETE FROM personnes_physiques WHERE id = ANY(%s::uuid[])",
                 (pp_ids,),
             )
             logger.info(f"  Supprimé {len(pp_ids)} PP")
 
         if pm_ids:
             self.cursor.execute(
-                "UPDATE personnes_morales SET maison_mere_id = NULL WHERE id = ANY(%s)",
+                "UPDATE personnes_morales SET maison_mere_id = NULL WHERE id = ANY(%s::uuid[])",
                 (pm_ids,),
             )
             self.cursor.execute(
-                "DELETE FROM personnes_morales WHERE id = ANY(%s)",
+                "DELETE FROM personnes_morales WHERE id = ANY(%s::uuid[])",
                 (pm_ids,),
             )
             logger.info(f"  Supprimé {len(pm_ids)} PM")
@@ -425,7 +433,7 @@ class BarreauParisImporter:
     # INDEX DES PM EXISTANTES
     # -------------------------------------------------------------------------
 
-    def _load_existing_pm_index(self) -> dict[str, int]:
+    def _load_existing_pm_index(self) -> dict[str, str]:
         """
         Charge toutes les PM présentes en base dans un index de recherche rapide.
         Clé : nom normalisé sans suffixe de forme juridique.
@@ -608,11 +616,10 @@ class BarreauParisImporter:
                     """
                     INSERT INTO personnes_physiques
                         (nom, prenom, email, telephone, portable,
-                         profession, barreau,
-                         adresse_id, actif, type_relation_dossier,
+                         adresse_id, actif, type_profil_principal, type_relation_dossier,
                          creer_par, modifier_par, modifier_le)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s,
-                            true, %s,
+                    VALUES (%s, %s, %s, %s, %s, %s,
+                            true, 'AVOCAT_EXTERNE', %s,
                             'import_barreau_paris', 'import_barreau_paris', NOW())
                     RETURNING id
                     """,
@@ -622,13 +629,22 @@ class BarreauParisImporter:
                         email,
                         telephone,
                         portable,
-                        "Avocat",
-                        BARREAU,
                         addr_id,
                         "CONTACT",
                     ),
                 )
                 pp_id = self.cursor.fetchone()["id"]
+
+                # Champs avocat dans la table dédiée
+                self.cursor.execute(
+                    """
+                    INSERT INTO profil_avocat
+                        (personne_physique_id, profession, barreau, modifier_le)
+                    VALUES (%s, %s, %s, NOW())
+                    """,
+                    (pp_id, "Avocat", BARREAU),
+                )
+
                 self.pp_map[contact_id] = pp_id
                 self._insert_mapping_source(
                     "PersonnePhysique", pp_id, SOURCE_NOM_PP, contact_id
@@ -757,7 +773,7 @@ class BarreauParisImporter:
             WHERE nom_domaine IS NOT NULL AND nom_domaine != ''
             """
         )
-        domain_to_pm: dict[str, int] = {}
+        domain_to_pm: dict[str, str] = {}
         for row in self.cursor.fetchall():
             for d in row["nom_domaine"].split():
                 d = d.strip().lower()
