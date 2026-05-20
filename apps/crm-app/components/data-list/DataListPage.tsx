@@ -36,6 +36,8 @@ type DataListPageProps<T> = {
   onSearch: (value: string) => void;
   // Row interaction
   onRowClick?: (row: T) => void;
+  // Slot for action buttons next to the title
+  actionSlot?: React.ReactNode;
 };
 
 export function DataListPage<T>({
@@ -60,6 +62,7 @@ export function DataListPage<T>({
   onClearConditions,
   onSearch,
   onRowClick,
+  actionSlot,
 }: DataListPageProps<T>) {
   // Local input value (immediate feedback), synced with URL via effect
   const [searchInput, setSearchInput] = useState(searchValue);
@@ -104,7 +107,7 @@ export function DataListPage<T>({
               placeholder="Rechercher par nom, email, téléphone…"
               value={searchInput}
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 bg-zinc-50 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-blue-400 focus:bg-white transition-colors"
+              className="w-full pl-9 pr-4 py-2 rounded-lg border border-zinc-200 bg-zinc-50 text-sm text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-secondary-400 focus:bg-white transition-colors"
             />
           </div>
 
@@ -116,14 +119,14 @@ export function DataListPage<T>({
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors",
                 conditions.length > 0
-                  ? "border-orange-400 bg-orange-50 text-orange-700"
+                  ? "border-primary-400 bg-primary-50 text-primary-700"
                   : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
               )}
             >
               <SlidersHorizontal size={15} />
               Filtres
               {conditions.length > 0 && (
-                <span className="bg-orange-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                <span className="bg-primary-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                   {conditions.length}
                 </span>
               )}
@@ -159,13 +162,14 @@ export function DataListPage<T>({
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-bold text-zinc-900">{title}</h1>
           {!isLoading && (
-            <span className="bg-orange-100 text-orange-700 text-sm font-semibold px-2.5 py-0.5 rounded-full">
+            <span className="bg-primary-100 text-primary-700 text-sm font-semibold px-2.5 py-0.5 rounded-full">
               {total.toLocaleString("fr-FR")}
             </span>
           )}
           {isFetching && !isLoading && (
             <span className="text-xs text-zinc-400 animate-pulse">Mise à jour…</span>
           )}
+          {actionSlot && <div className="ml-auto">{actionSlot}</div>}
         </div>
 
         <DataTable

@@ -17,6 +17,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { DetailSection } from "@/components/detail/DetailSection";
 import { InfoGrid } from "@/components/detail/InfoGrid";
 import { RattachementsList } from "@/components/detail/RattachementsList";
+import { PpDetailActions } from "@/components/pp/PpDetailActions";
 import { cn } from "@/lib/utils";
 import type { TypeRelationPp, StatutRgpd } from "@/lib/server/modules/personnes-physiques/dto";
 
@@ -28,8 +29,8 @@ const RELATION_LABELS: Record<TypeRelationPp, string> = {
   HYBRIDE: "Hybride",
 };
 const RELATION_COLORS: Record<TypeRelationPp, string> = {
-  CONTACT: "bg-blue-100 text-blue-700 border-blue-200",
-  CLIENT: "bg-orange-100 text-orange-700 border-orange-200",
+  CONTACT: "bg-secondary-100 text-secondary-700 border-secondary-200",
+  CLIENT: "bg-primary-100 text-primary-700 border-primary-200",
   HYBRIDE: "bg-purple-100 text-purple-700 border-purple-200",
 };
 const RGPD_LABELS: Record<StatutRgpd, string> = {
@@ -119,6 +120,10 @@ export default async function PersonnePhysiquePage({
               Inactif
             </span>
           )}
+          <PpDetailActions
+            ppId={pp.id}
+            ppNom={`${pp.prenom ?? ""} ${pp.nom}`.trim()}
+          />
         </div>
       </div>
 
@@ -137,7 +142,7 @@ export default async function PersonnePhysiquePage({
                   {
                     label: "Email",
                     value: pp.email ? (
-                      <a href={`mailto:${pp.email}`} className="text-blue-600 hover:underline flex items-center gap-1">
+                      <a href={`mailto:${pp.email}`} className="text-secondary-600 hover:underline flex items-center gap-1">
                         <Mail size={12} />
                         {pp.email}
                       </a>
@@ -245,7 +250,7 @@ export default async function PersonnePhysiquePage({
                         href={pp.linkedinUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-blue-600 hover:underline text-xs"
+                        className="flex items-center gap-1 text-secondary-600 hover:underline text-xs"
                       >
                         <ExternalLink size={12} />
                         Voir le profil
@@ -296,7 +301,11 @@ export default async function PersonnePhysiquePage({
 
             {/* Rattachements */}
             <DetailSection title={`Rattachements (${pp.rattachements.length})`} icon={Building2}>
-              <RattachementsList rattachements={pp.rattachements} />
+              <RattachementsList
+                rattachements={pp.rattachements}
+                ppId={pp.id}
+                ppNom={`${pp.prenom ?? ""} ${pp.nom}`.trim()}
+              />
             </DetailSection>
           </div>
         </div>

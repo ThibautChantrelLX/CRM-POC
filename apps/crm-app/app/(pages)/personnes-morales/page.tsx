@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { useRouter } from "next/navigation";
+import { Plus } from "lucide-react";
 import { DataListPage } from "@/components/data-list/DataListPage";
 import { useDataListState } from "@/lib/hooks/useDataListState";
 import { usePersonnesMorales } from "@/lib/hooks/usePersonnesMorales";
@@ -36,6 +37,15 @@ function PersonnesMoralesContent() {
       onClearConditions={ds.clearConditions}
       onSearch={ds.setSearch}
       onRowClick={(row) => router.push(`/personnes-morales/${row.id}`)}
+      actionSlot={
+        <button
+          onClick={() => router.push("/personnes-morales/nouveau")}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-500 text-white text-sm font-medium rounded-lg hover:bg-primary-600 transition cursor-pointer"
+        >
+          <Plus size={15} />
+          Créer
+        </button>
+      }
     />
   );
 }

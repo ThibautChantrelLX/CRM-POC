@@ -24,6 +24,7 @@ enum TypeRelationPm {
   CABINET_POSTULATION
   CLIENT_DIRECT
   HYBRIDE
+  AUTRE
 }
 
 // Relation d'une personne physique vis-à-vis des dossiers

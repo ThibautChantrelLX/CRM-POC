@@ -14,13 +14,13 @@ type Props = {
 const STYLES: Record<Variant, { card: string; icon: string; title: string }> = {
   default: {
     card: "bg-white border-zinc-200",
-    icon: "text-orange-500",
+    icon: "text-primary-500",
     title: "text-zinc-600",
   },
   anaba: {
-    card: "bg-blue-50/60 border-blue-200",
-    icon: "text-blue-500",
-    title: "text-blue-700",
+    card: "bg-secondary-50/60 border-secondary-200",
+    icon: "text-secondary-500",
+    title: "text-secondary-700",
   },
 };
 
