@@ -10,7 +10,7 @@ export default async function PersonneMoraleEditPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const pm = await getPersonneMoraleDetail(Number(id));
+  const pm = await getPersonneMoraleDetail(id);
   if (!pm) notFound();
 
   return (

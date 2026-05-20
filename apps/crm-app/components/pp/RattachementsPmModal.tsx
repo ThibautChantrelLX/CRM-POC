@@ -6,7 +6,7 @@ import { StepRattachementsPm } from "@/components/pp/StepRattachementsPm";
 type Props = {
   open: boolean;
   onClose: () => void;
-  ppId: number;
+  ppId: string;
   ppNom: string;
 };
 

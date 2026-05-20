@@ -182,7 +182,7 @@ export function CreatePmModal({ open, onClose }: Props) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<PmFormState>(EMPTY_FORM);
-  const [createdPm, setCreatedPm] = useState<{ id: number; raisonSociale: string } | null>(null);
+  const [createdPm, setCreatedPm] = useState<{ id: string; raisonSociale: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

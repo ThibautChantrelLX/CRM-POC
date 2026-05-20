@@ -34,28 +34,29 @@ const CABINETS = [
 ];
 
 async function main() {
-  const groupe = await prisma.entite.upsert({
-    where: { id: 1 },
-    update: {},
-    create: { typeEntite: "GROUPE", raisonSociale: "LX Avocats" },
+  let groupe = await prisma.entite.findFirst({
+    where: { typeEntite: "GROUPE", raisonSociale: "LX Avocats" },
   });
+  if (!groupe) {
+    groupe = await prisma.entite.create({
+      data: { typeEntite: "GROUPE", raisonSociale: "LX Avocats" },
+    });
+  }
 
-  console.log(`Groupe créé : ${groupe.raisonSociale} (id=${groupe.id})`);
+  console.log(`Groupe : ${groupe.raisonSociale} (id=${groupe.id})`);
 
   for (const raisonSociale of CABINETS) {
-    const cabinet = await prisma.entite.upsert({
-      where: {
-        // Upsert par raison sociale — à remplacer par siret une fois les données disponibles
-        id: (await prisma.entite.findFirst({ where: { raisonSociale } }))?.id ?? 0,
-      },
-      update: {},
-      create: {
-        typeEntite: "FILIALE",
-        raisonSociale,
-        entiteParenteId: groupe.id,
-      },
+    const existing = await prisma.entite.findFirst({
+      where: { raisonSociale, typeEntite: "FILIALE" },
     });
-    console.log(`  Cabinet créé : ${cabinet.raisonSociale} (id=${cabinet.id})`);
+    if (existing) {
+      console.log(`  Existant : ${existing.raisonSociale} (id=${existing.id})`);
+    } else {
+      const cabinet = await prisma.entite.create({
+        data: { typeEntite: "FILIALE", raisonSociale, entiteParenteId: groupe.id },
+      });
+      console.log(`  Créé : ${cabinet.raisonSociale} (id=${cabinet.id})`);
+    }
   }
 }
 

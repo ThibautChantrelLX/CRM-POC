@@ -16,13 +16,15 @@ import { FormField, inputCls } from "@/components/ui/form-field";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type PpResult = {
-  id: number;
+  id: string;
   nom: string;
   prenom: string | null;
   email: string | null;
-  profession: string | null;
-  specialite: string | null;
-  barreau: string | null;
+  profilAvocat: {
+    profession: string | null;
+    specialite: string | null;
+    barreau: string | null;
+  } | null;
 };
 
 function PpBadge({ pp, onRemove }: { pp: PpResult; onRemove: () => void }) {
@@ -45,7 +47,7 @@ function PpBadge({ pp, onRemove }: { pp: PpResult; onRemove: () => void }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 type Props = {
-  pmId: number;
+  pmId: string;
   pmNom: string;
   pmNomDomaine: string | null;
   /** Called when the user clicks "Terminer" or "Passer cette étape" */
@@ -75,7 +77,7 @@ export function StepRattachements({
   const [isLoadingDomain, setIsLoadingDomain] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const [selected, setSelected] = useState<Map<number, PpResult>>(new Map());
+  const [selected, setSelected] = useState<Map<string, PpResult>>(new Map());
 
   const [titreFonction, setTitreFonction] = useState("");
   const [dateDebut, setDateDebut] = useState(
@@ -221,11 +223,11 @@ export function StepRattachements({
                   <span className="font-medium text-zinc-800">
                     {pp.prenom} {pp.nom}
                   </span>
-                  {pp.profession && (
-                    <span className="text-zinc-400 ml-2 text-xs">{pp.profession}</span>
+                  {pp.profilAvocat?.profession && (
+                    <span className="text-zinc-400 ml-2 text-xs">{pp.profilAvocat.profession}</span>
                   )}
-                  {pp.barreau && (
-                    <span className="text-zinc-300 ml-2 text-xs">{pp.barreau}</span>
+                  {pp.profilAvocat?.barreau && (
+                    <span className="text-zinc-300 ml-2 text-xs">{pp.profilAvocat.barreau}</span>
                   )}
                 </div>
                 <button
@@ -377,8 +379,8 @@ export function StepRattachements({
                   </div>
                   <div className="flex items-center gap-2 flex-wrap mt-0.5">
                     {pp.email && <span className="text-xs text-zinc-400 truncate">{pp.email}</span>}
-                    {pp.profession && <span className="text-xs text-zinc-400">· {pp.profession}</span>}
-                    {pp.barreau && <span className="text-xs text-zinc-300">· {pp.barreau}</span>}
+                    {pp.profilAvocat?.profession && <span className="text-xs text-zinc-400">· {pp.profilAvocat.profession}</span>}
+                    {pp.profilAvocat?.barreau && <span className="text-xs text-zinc-300">· {pp.profilAvocat.barreau}</span>}
                   </div>
                 </div>
               </button>

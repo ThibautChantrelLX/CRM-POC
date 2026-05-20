@@ -16,7 +16,7 @@ function fmtDate(s: string | null): string {
 
 type Props = {
   contacts: ContactRattacheDetail[];
-  pmId: number;
+  pmId: string;
   pmNom: string;
   pmNomDomaine: string | null;
 };

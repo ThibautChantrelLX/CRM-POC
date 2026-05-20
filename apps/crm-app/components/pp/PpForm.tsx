@@ -4,7 +4,55 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
-import type { TypeRelationPp, StatutRgpd, PersonnePhysiqueDetail } from "@/lib/server/modules/personnes-physiques/dto";
+import type {
+  TypeRelationPp,
+  StatutRgpd,
+  TypeProfilPrincipal,
+  PersonnePhysiqueDetail,
+} from "@/lib/server/modules/personnes-physiques/dto";
+
+// ─── Labels profil ─────────────────────────────────────────────────────────────
+
+const PROFIL_LABELS: Record<TypeProfilPrincipal, string> = {
+  AVOCAT_INTERNE: "Avocat interne",
+  ASSISTANT_INTERNE: "Assistant(e) interne",
+  FONCTION_SUPPORT: "Fonction support",
+  AVOCAT_EXTERNE: "Avocat externe",
+  INTERVENANT_JUSTICE: "Intervenant justice",
+  PARTICULIER: "Particulier",
+  CONTACT_PRO: "Contact professionnel",
+  APPRENANT_EXTERNE: "Apprenant externe",
+  FORMATEUR_EXTERNE: "Formateur externe",
+};
+
+const PROFIL_GROUPES: { label: string; options: TypeProfilPrincipal[] }[] = [
+  {
+    label: "Collaborateurs internes",
+    options: ["AVOCAT_INTERNE", "ASSISTANT_INTERNE", "FONCTION_SUPPORT"],
+  },
+  {
+    label: "Écosystème juridique externe",
+    options: ["AVOCAT_EXTERNE", "INTERVENANT_JUSTICE"],
+  },
+  {
+    label: "Clients & Prospects",
+    options: ["PARTICULIER", "CONTACT_PRO"],
+  },
+  {
+    label: "Formation",
+    options: ["APPRENANT_EXTERNE", "FORMATEUR_EXTERNE"],
+  },
+];
+
+function isAvocatProfil(type: TypeProfilPrincipal): boolean {
+  return type === "AVOCAT_INTERNE" || type === "AVOCAT_EXTERNE";
+}
+
+function isParticulierProfil(type: TypeProfilPrincipal): boolean {
+  return type === "PARTICULIER";
+}
+
+// ─── Types formulaire ─────────────────────────────────────────────────────────
 
 type FormState = {
   nom: string;
@@ -12,15 +60,22 @@ type FormState = {
   email: string;
   telephone: string;
   portable: string;
-  profession: string;
-  specialite: string;
-  barreau: string;
+  typeProfilPrincipal: TypeProfilPrincipal;
   typeRelation: TypeRelationPp;
   statutRgpd: StatutRgpd | "";
   actif: boolean;
   optInEmail: boolean;
   optInSms: boolean;
   optOutGlobal: boolean;
+  // ProfilAvocat
+  barreau: string;
+  specialite: string;
+  profession: string;
+  dateSerment: string;
+  // ProfilParticulier
+  dateNaissance: string;
+  civilite: string;
+  situationFamiliale: string;
 };
 
 const EMPTY: FormState = {
@@ -29,15 +84,20 @@ const EMPTY: FormState = {
   email: "",
   telephone: "",
   portable: "",
-  profession: "",
-  specialite: "",
-  barreau: "",
+  typeProfilPrincipal: "AVOCAT_EXTERNE",
   typeRelation: "CONTACT",
   statutRgpd: "",
   actif: true,
   optInEmail: false,
   optInSms: false,
   optOutGlobal: false,
+  barreau: "",
+  specialite: "",
+  profession: "",
+  dateSerment: "",
+  dateNaissance: "",
+  civilite: "",
+  situationFamiliale: "",
 };
 
 function fromDetail(pp: PersonnePhysiqueDetail): FormState {
@@ -47,21 +107,28 @@ function fromDetail(pp: PersonnePhysiqueDetail): FormState {
     email: pp.email ?? "",
     telephone: pp.telephone ?? "",
     portable: pp.portable ?? "",
-    profession: pp.profession ?? "",
-    specialite: pp.specialite ?? "",
-    barreau: pp.barreau ?? "",
+    typeProfilPrincipal: pp.typeProfilPrincipal,
     typeRelation: pp.typeRelation,
     statutRgpd: pp.statutRgpd ?? "",
     actif: pp.actif,
     optInEmail: pp.optInEmail,
     optInSms: pp.optInSms,
     optOutGlobal: pp.optOutGlobal,
+    barreau: pp.profilAvocat?.barreau ?? "",
+    specialite: pp.profilAvocat?.specialite ?? "",
+    profession: pp.profilAvocat?.profession ?? "",
+    dateSerment: pp.profilAvocat?.dateSerment ?? "",
+    dateNaissance: pp.profilParticulier?.dateNaissance ?? "",
+    civilite: pp.profilParticulier?.civilite ?? "",
+    situationFamiliale: pp.profilParticulier?.situationFamiliale ?? "",
   };
 }
 
+// ─── Composant ────────────────────────────────────────────────────────────────
+
 type Props =
   | { mode: "create" }
-  | { mode: "edit"; initialData: PersonnePhysiqueDetail; ppId: number };
+  | { mode: "edit"; initialData: PersonnePhysiqueDetail; ppId: string };
 
 export function PpForm(props: Props) {
   const router = useRouter();
@@ -69,7 +136,10 @@ export function PpForm(props: Props) {
     props.mode === "edit" ? fromDetail(props.initialData) : EMPTY,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{
+    message: string;
+    conflicts?: Array<{ id: string; nom: string; prenom: string | null; email: string | null; portable: string | null }>;
+  } | null>(null);
 
   const patch =
     (key: keyof FormState) =>
@@ -82,6 +152,9 @@ export function PpForm(props: Props) {
             : e.target.value,
       }));
 
+  const showAvocatSection = isAvocatProfil(form.typeProfilPrincipal);
+  const showParticulierSection = isParticulierProfil(form.typeProfilPrincipal);
+
   const handleSubmit = async () => {
     if (!form.nom.trim()) return;
     setIsSubmitting(true);
@@ -93,15 +166,28 @@ export function PpForm(props: Props) {
         email: form.email || undefined,
         telephone: form.telephone || undefined,
         portable: form.portable || undefined,
-        profession: form.profession || undefined,
-        specialite: form.specialite || undefined,
-        barreau: form.barreau || undefined,
+        typeProfilPrincipal: form.typeProfilPrincipal,
         typeRelation: form.typeRelation,
         statutRgpd: (form.statutRgpd as StatutRgpd) || undefined,
         actif: form.actif,
         optInEmail: form.optInEmail,
         optInSms: form.optInSms,
         optOutGlobal: form.optOutGlobal,
+        ...(showAvocatSection && {
+          profilAvocat: {
+            barreau: form.barreau || undefined,
+            specialite: form.specialite || undefined,
+            profession: form.profession || undefined,
+            dateSerment: form.dateSerment || undefined,
+          },
+        }),
+        ...(showParticulierSection && {
+          profilParticulier: {
+            dateNaissance: form.dateNaissance || undefined,
+            civilite: form.civilite || undefined,
+            situationFamiliale: form.situationFamiliale || undefined,
+          },
+        }),
       };
 
       const url =
@@ -116,16 +202,23 @@ export function PpForm(props: Props) {
         body: JSON.stringify(body),
       });
 
+      if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        setError({ message: data.error ?? "Doublon détecté.", conflicts: data.conflicts });
+        return;
+      }
+
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error(err.error ?? `Erreur ${res.status}`);
+        setError({ message: err.error ?? `Erreur ${res.status}` });
+        return;
       }
 
       const pp = await res.json();
       const targetId = props.mode === "create" ? pp.id : props.ppId;
       router.push(`/personnes-physiques/${targetId}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur inconnue");
+      setError({ message: e instanceof Error ? e.message : "Erreur inconnue" });
     } finally {
       setIsSubmitting(false);
     }
@@ -136,6 +229,28 @@ export function PpForm(props: Props) {
 
   return (
     <div className="space-y-4 max-w-3xl mx-auto p-6">
+      {/* Type de profil */}
+      <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
+        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Type de profil</h3>
+        <FormField label="Profil principal" required>
+          <select
+            className={selectCls}
+            value={form.typeProfilPrincipal}
+            onChange={patch("typeProfilPrincipal")}
+          >
+            {PROFIL_GROUPES.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.options.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {PROFIL_LABELS[opt]}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </FormField>
+      </section>
+
       {/* Identité */}
       <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Identité</h3>
@@ -165,21 +280,55 @@ export function PpForm(props: Props) {
         </div>
       </section>
 
-      {/* Profession & Barreau */}
-      <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Profession & Barreau</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <FormField label="Profession">
-            <input className={inputCls} value={form.profession} onChange={patch("profession")} placeholder="Avocat" />
-          </FormField>
-          <FormField label="Spécialité">
-            <input className={inputCls} value={form.specialite} onChange={patch("specialite")} placeholder="Droit des affaires" />
-          </FormField>
-          <FormField label="Barreau" className="col-span-2">
-            <input className={inputCls} value={form.barreau} onChange={patch("barreau")} placeholder="Paris" />
-          </FormField>
-        </div>
-      </section>
+      {/* Profil Avocat — conditionnel */}
+      {showAvocatSection && (
+        <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Profil avocat</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Profession">
+              <input className={inputCls} value={form.profession} onChange={patch("profession")} placeholder="Avocat au barreau de Paris" />
+            </FormField>
+            <FormField label="Spécialité">
+              <input className={inputCls} value={form.specialite} onChange={patch("specialite")} placeholder="Droit des affaires" />
+            </FormField>
+            <FormField label="Barreau">
+              <input className={inputCls} value={form.barreau} onChange={patch("barreau")} placeholder="Paris" />
+            </FormField>
+            <FormField label="Date de serment">
+              <input type="date" className={inputCls} value={form.dateSerment} onChange={patch("dateSerment")} />
+            </FormField>
+          </div>
+        </section>
+      )}
+
+      {/* Profil Particulier — conditionnel */}
+      {showParticulierSection && (
+        <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Profil particulier</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="Civilité">
+              <select className={selectCls} value={form.civilite} onChange={patch("civilite")}>
+                <option value="">—</option>
+                <option value="M.">M.</option>
+                <option value="Mme">Mme</option>
+              </select>
+            </FormField>
+            <FormField label="Date de naissance">
+              <input type="date" className={inputCls} value={form.dateNaissance} onChange={patch("dateNaissance")} />
+            </FormField>
+            <FormField label="Situation familiale" className="col-span-2">
+              <select className={selectCls} value={form.situationFamiliale} onChange={patch("situationFamiliale")}>
+                <option value="">—</option>
+                <option value="Célibataire">Célibataire</option>
+                <option value="Marié(e)">Marié(e)</option>
+                <option value="Pacsé(e)">Pacsé(e)</option>
+                <option value="Divorcé(e)">Divorcé(e)</option>
+                <option value="Veuf / Veuve">Veuf / Veuve</option>
+              </select>
+            </FormField>
+          </div>
+        </section>
+      )}
 
       {/* Statut & RGPD */}
       <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
@@ -228,9 +377,28 @@ export function PpForm(props: Props) {
       </section>
 
       {error && (
-        <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
-          {error}
-        </p>
+        <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 space-y-2">
+          <p className="font-medium">{error.message}</p>
+          {error.conflicts && error.conflicts.length > 0 && (
+            <div className="space-y-1">
+              {error.conflicts.map((pp) => (
+                <div key={pp.id} className="flex items-center gap-2 text-xs">
+                  <a
+                    href={`/personnes-physiques/${pp.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold underline hover:text-red-800"
+                  >
+                    {pp.prenom} {pp.nom.toUpperCase()}
+                  </a>
+                  <span className="text-red-400">
+                    {[pp.email, pp.portable].filter(Boolean).join(" · ")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
 
       <div className="flex gap-3 justify-end pb-6">

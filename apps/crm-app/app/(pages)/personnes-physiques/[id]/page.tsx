@@ -19,9 +19,21 @@ import { InfoGrid } from "@/components/detail/InfoGrid";
 import { RattachementsList } from "@/components/detail/RattachementsList";
 import { PpDetailActions } from "@/components/pp/PpDetailActions";
 import { cn } from "@/lib/utils";
-import type { TypeRelationPp, StatutRgpd } from "@/lib/server/modules/personnes-physiques/dto";
+import type { TypeRelationPp, StatutRgpd, TypeProfilPrincipal } from "@/lib/server/modules/personnes-physiques/dto";
 
 // ─── Labels / badges ──────────────────────────────────────────────────────────
+
+const PROFIL_LABELS: Record<TypeProfilPrincipal, string> = {
+  AVOCAT_INTERNE: "Avocat interne",
+  ASSISTANT_INTERNE: "Assistant(e) interne",
+  FONCTION_SUPPORT: "Fonction support",
+  AVOCAT_EXTERNE: "Avocat externe",
+  INTERVENANT_JUSTICE: "Intervenant justice",
+  PARTICULIER: "Particulier",
+  CONTACT_PRO: "Contact professionnel",
+  APPRENANT_EXTERNE: "Apprenant externe",
+  FORMATEUR_EXTERNE: "Formateur externe",
+};
 
 const RELATION_LABELS: Record<TypeRelationPp, string> = {
   CONTACT: "Contact",
@@ -92,7 +104,7 @@ export default async function PersonnePhysiquePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const pp = await getPersonnePhysiqueDetail(Number(id));
+  const pp = await getPersonnePhysiqueDetail(id);
   if (!pp) notFound();
 
   return (
@@ -112,7 +124,7 @@ export default async function PersonnePhysiquePage({
               {pp.prenom} {pp.nom.toUpperCase()}
             </h1>
             <p className="text-sm text-zinc-400 leading-tight">
-              {[pp.profession, pp.barreau].filter(Boolean).join(" · ") || "Personne physique"}
+              {[pp.profilAvocat?.profession, pp.profilAvocat?.barreau].filter(Boolean).join(" · ") || PROFIL_LABELS[pp.typeProfilPrincipal]}
             </p>
           </div>
           {!pp.actif && (
@@ -170,15 +182,18 @@ export default async function PersonnePhysiquePage({
               />
             </DetailSection>
 
-            {/* Profession & Statut */}
-            <DetailSection title="Profession & Statut" icon={Shield}>
+            {/* Profil & Statut */}
+            <DetailSection title="Profil & Statut" icon={Shield}>
               <InfoGrid
                 cols={2}
                 items={[
-                  { label: "Profession", value: pp.profession },
-                  { label: "Spécialité", value: pp.specialite, span: 2 },
-                  { label: "Barreau", value: pp.barreau },
-                  { label: "Date de serment", value: fmtDate(pp.dateSerment) },
+                  {
+                    label: "Profil",
+                    value: (
+                      <span className="text-sm text-zinc-700">{PROFIL_LABELS[pp.typeProfilPrincipal]}</span>
+                    ),
+                    span: 2,
+                  },
                   {
                     label: "Type de relation",
                     value: (
@@ -228,6 +243,35 @@ export default async function PersonnePhysiquePage({
                 ]}
               />
             </DetailSection>
+
+            {/* Profil avocat — conditionnel */}
+            {pp.profilAvocat && (
+              <DetailSection title="Profil avocat" icon={User}>
+                <InfoGrid
+                  cols={2}
+                  items={[
+                    { label: "Profession", value: pp.profilAvocat.profession },
+                    { label: "Spécialité", value: pp.profilAvocat.specialite, span: 2 },
+                    { label: "Barreau", value: pp.profilAvocat.barreau },
+                    { label: "Date de serment", value: fmtDate(pp.profilAvocat.dateSerment) },
+                  ]}
+                />
+              </DetailSection>
+            )}
+
+            {/* Profil particulier — conditionnel */}
+            {pp.profilParticulier && (
+              <DetailSection title="Profil particulier" icon={User}>
+                <InfoGrid
+                  cols={2}
+                  items={[
+                    { label: "Civilité", value: pp.profilParticulier.civilite },
+                    { label: "Date de naissance", value: fmtDate(pp.profilParticulier.dateNaissance) },
+                    { label: "Situation familiale", value: pp.profilParticulier.situationFamiliale, span: 2 },
+                  ]}
+                />
+              </DetailSection>
+            )}
 
             {/* Données Anaba */}
             <DetailSection title="Données Anaba" icon={BarChart2} variant="anaba">

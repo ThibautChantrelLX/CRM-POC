@@ -103,7 +103,7 @@ export async function fetchPersonnesMorales(
 // ─── Detail ───────────────────────────────────────────────────────────────────
 
 export async function getPersonneMoraleDetail(
-  id: number,
+  id: string,
 ): Promise<PersonneMoraleDetail | null> {
   const pm = await prisma.personneMorale.findUnique({
     where: { id },
@@ -117,7 +117,10 @@ export async function getPersonneMoraleDetail(
       rattachements: {
         include: {
           personnePhysique: {
-            select: { id: true, nom: true, prenom: true, email: true, profession: true },
+            select: {
+              id: true, nom: true, prenom: true, email: true,
+              profilAvocat: { select: { profession: true } },
+            },
           },
         },
         orderBy: [
@@ -164,14 +167,20 @@ export async function getPersonneMoraleDetail(
       titreFonction: r.titreFonction,
       dateDebut: fmtDate(r.dateDebut as Date),
       dateFin: fmtDate(r.dateFin),
-      personnePhysique: r.personnePhysique,
+      personnePhysique: {
+        id: r.personnePhysique.id,
+        nom: r.personnePhysique.nom,
+        prenom: r.personnePhysique.prenom,
+        email: r.personnePhysique.email,
+        profession: r.personnePhysique.profilAvocat?.profession ?? null,
+      },
     })),
   };
 }
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
-export async function getPersonneMorale(id: number): Promise<PersonneMoraleListItem | null> {
+export async function getPersonneMorale(id: string): Promise<PersonneMoraleListItem | null> {
   const pm = await prisma.personneMorale.findUnique({
     where: { id },
     include: { adresse: { select: { ville: true, codePostal: true, pays: true } } },
@@ -221,7 +230,7 @@ export async function createPersonneMorale(
 }
 
 export async function updatePersonneMorale(
-  id: number,
+  id: string,
   data: UpdatePersonneMoraleInput,
 ): Promise<PersonneMoraleListItem> {
   const { adresse, ...rest } = data;
@@ -265,7 +274,7 @@ export async function updatePersonneMorale(
   } as unknown as PersonneMoraleListItem;
 }
 
-export async function deletePersonneMorale(id: number): Promise<void> {
+export async function deletePersonneMorale(id: string): Promise<void> {
   await prisma.$transaction([
     prisma.rattachementPpPm.deleteMany({ where: { personneMoraleId: id } }),
     prisma.personneMorale.delete({ where: { id } }),
