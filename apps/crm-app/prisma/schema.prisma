@@ -201,6 +201,7 @@ model PersonnePhysique {
   dossiersIntervenants DossierIntervenantContexte[]
   profilAvocat         ProfilAvocat?
   profilParticulier    ProfilParticulier?
+  profilPro            ProfilPro?
 
   @@index([email], map: "idx_pp_email")
   @@index([portable], map: "idx_pp_portable")
@@ -243,6 +244,23 @@ model ProfilParticulier {
   personnePhysique PersonnePhysique @relation(fields: [personnePhysiqueId], references: [id])
 
   @@map("profil_particulier")
+}
+
+// ==========================================
+// 3c. PROFIL PRO (1:1 avec PersonnePhysique — profils non-avocat non-particulier)
+// ==========================================
+
+model ProfilPro {
+  id                 String   @id @default(uuid()) @db.Uuid
+  personnePhysiqueId String   @unique @map("personne_physique_id") @db.Uuid
+  profession         String?
+  specialite         String?
+  creerLe            DateTime @default(now()) @map("creer_le")
+  modifierLe         DateTime @updatedAt @map("modifier_le")
+
+  personnePhysique PersonnePhysique @relation(fields: [personnePhysiqueId], references: [id])
+
+  @@map("profil_pro")
 }
 
 // ==========================================

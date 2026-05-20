@@ -136,9 +136,9 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
           {r.prenom && (
             <div className="text-zinc-600 leading-tight">{r.prenom}</div>
           )}
-          {r.profilAvocat?.profession && (
+          {(r.profilAvocat?.profession ?? r.profilPro?.profession) && (
             <div className="text-xs text-zinc-400 mt-0.5 truncate max-w-55">
-              {r.profilAvocat.profession}
+              {r.profilAvocat?.profession ?? r.profilPro?.profession}
             </div>
           )}
         </div>
@@ -190,7 +190,7 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
     header: "Spécialité",
     enableSorting: true,
     cell: ({ row }) => {
-      const v = row.original.profilAvocat?.specialite ?? null;
+      const v = row.original.profilAvocat?.specialite ?? row.original.profilPro?.specialite ?? null;
       return v ? (
         <span className="text-zinc-600 max-w-50 truncate block">{v}</span>
       ) : (

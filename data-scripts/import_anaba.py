@@ -354,6 +354,10 @@ class AnabaImporter:
                 (pp_ids,),
             )
             self.cursor.execute(
+                "DELETE FROM profil_pro WHERE personne_physique_id = ANY(%s::uuid[])",
+                (pp_ids,),
+            )
+            self.cursor.execute(
                 "DELETE FROM personnes_physiques WHERE id = ANY(%s::uuid[])", (pp_ids,)
             )
             logger.info(f"  personnes_physiques supprimées: {self.cursor.rowcount}")
@@ -789,6 +793,10 @@ class AnabaImporter:
                 )
 
                 pp_id = self.cursor.fetchone()["id"]
+                self.cursor.execute(
+                    "INSERT INTO profil_pro (personne_physique_id) VALUES (%s)",
+                    (pp_id,),
+                )
                 self.cursor.execute("RELEASE SAVEPOINT pp_insert")
                 self.stats["pp_creees"] += 1
 

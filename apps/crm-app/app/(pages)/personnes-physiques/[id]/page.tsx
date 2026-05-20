@@ -19,6 +19,7 @@ import { RattachementsList } from "@/components/detail/RattachementsList";
 import { PpDetailActions } from "@/components/pp/PpDetailActions";
 import { cn } from "@/lib/utils";
 import type { TypeRelationPp, StatutRgpd, TypeProfilPrincipal } from "@/lib/server/modules/personnes-physiques/dto";
+import { isAvocatProfil } from "@/lib/server/modules/personnes-physiques/dto";
 
 // ─── Labels / badges ──────────────────────────────────────────────────────────
 
@@ -246,7 +247,7 @@ export default async function PersonnePhysiquePage({
             </DetailSection>
 
             {/* Profil avocat — conditionnel */}
-            {pp.profilAvocat && (
+            {pp.profilAvocat && isAvocatProfil(pp.typeProfilPrincipal) && (
               <DetailSection title="Profil avocat" icon={User}>
                 <InfoGrid
                   cols={2}
@@ -256,6 +257,19 @@ export default async function PersonnePhysiquePage({
                     { label: "Activité dominante", value: pp.profilAvocat.activiteDominante, span: 2 },
                     { label: "Barreau", value: pp.profilAvocat.barreau },
                     { label: "Date de serment", value: fmtDate(pp.profilAvocat.dateSerment) },
+                  ]}
+                />
+              </DetailSection>
+            )}
+
+            {/* Profil professionnel — pour profils non-avocat non-particulier */}
+            {pp.profilPro && !isAvocatProfil(pp.typeProfilPrincipal) && (
+              <DetailSection title="Profil professionnel" icon={User}>
+                <InfoGrid
+                  cols={2}
+                  items={[
+                    { label: "Métier / Intitulé", value: pp.profilPro.profession, span: 2 },
+                    { label: "Spécialisation", value: pp.profilPro.specialite, span: 2 },
                   ]}
                 />
               </DetailSection>

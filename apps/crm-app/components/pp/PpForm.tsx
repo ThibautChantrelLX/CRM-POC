@@ -10,7 +10,7 @@ import type {
   TypeProfilPrincipal,
   PersonnePhysiqueDetail,
 } from "@/lib/server/modules/personnes-physiques/dto";
-import { isProfilPro } from "@/lib/server/modules/personnes-physiques/dto";
+import { isProfilPro, isAvocatProfil } from "@/lib/server/modules/personnes-physiques/dto";
 
 // ─── Labels profil ─────────────────────────────────────────────────────────────
 
@@ -64,10 +64,6 @@ const PROFIL_GROUPES: { label: string; options: TypeProfilPrincipal[] }[] = [
     options: ["APPRENANT_EXTERNE", "FORMATEUR_EXTERNE"],
   },
 ];
-
-function isAvocatProfil(type: TypeProfilPrincipal): boolean {
-  return type === "AVOCAT_INTERNE" || type === "AVOCAT_EXTERNE";
-}
 
 const SPECIALITES_AVOCAT = [
   "Droit bancaire et boursier",
@@ -177,6 +173,7 @@ const EMPTY: FormState = {
 };
 
 function fromDetail(pp: PersonnePhysiqueDetail): FormState {
+  const avocat = isAvocatProfil(pp.typeProfilPrincipal);
   return {
     nom: pp.nom,
     prenom: pp.prenom ?? "",
@@ -191,9 +188,9 @@ function fromDetail(pp: PersonnePhysiqueDetail): FormState {
     optInSms: pp.optInSms,
     optOutGlobal: pp.optOutGlobal,
     barreau: pp.profilAvocat?.barreau ?? "",
-    specialite: pp.profilAvocat?.specialite ?? "",
+    specialite: avocat ? (pp.profilAvocat?.specialite ?? "") : (pp.profilPro?.specialite ?? ""),
     activiteDominante: pp.profilAvocat?.activiteDominante ?? "",
-    profession: pp.profilAvocat?.profession ?? "",
+    profession: avocat ? (pp.profilAvocat?.profession ?? "") : (pp.profilPro?.profession ?? ""),
     dateSerment: pp.profilAvocat?.dateSerment ?? "",
     dateNaissance: pp.profilParticulier?.dateNaissance ?? "",
     civilite: pp.profilParticulier?.civilite ?? "",
@@ -256,13 +253,19 @@ export function PpForm(props: Props) {
         optInEmail: form.optInEmail,
         optInSms: form.optInSms,
         optOutGlobal: form.optOutGlobal,
-        ...(showProSection && {
+        ...(showAvocatFields && {
           profilAvocat: {
             profession: form.profession || undefined,
             specialite: form.specialite || undefined,
-            activiteDominante: showAvocatFields ? (form.activiteDominante || undefined) : undefined,
-            barreau: showAvocatFields ? (form.barreau || undefined) : undefined,
-            dateSerment: showAvocatFields ? (form.dateSerment || undefined) : undefined,
+            activiteDominante: form.activiteDominante || undefined,
+            barreau: form.barreau || undefined,
+            dateSerment: form.dateSerment || undefined,
+          },
+        }),
+        ...(!showAvocatFields && showProSection && {
+          profilPro: {
+            profession: form.profession || undefined,
+            specialite: form.specialite || undefined,
           },
         }),
         ...(showParticulierSection && {

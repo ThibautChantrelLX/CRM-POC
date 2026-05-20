@@ -84,6 +84,8 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
         { telephone: s }, { portable: s },
         { profilAvocat: { profession: s } },
         { profilAvocat: { specialite: s } },
+        { profilPro: { profession: s } },
+        { profilPro: { specialite: s } },
       ],
     });
   }
@@ -91,8 +93,8 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
   if (q.nom) and.push({ nom: ilike(q.nom) });
   if (q.prenom) and.push({ prenom: ilike(q.prenom) });
   if (q.email) and.push({ email: ilike(q.email) });
-  if (q.profession) and.push({ profilAvocat: { profession: ilike(q.profession) } });
-  if (q.specialite) and.push({ profilAvocat: { specialite: ilike(q.specialite) } });
+  if (q.profession) and.push({ OR: [{ profilAvocat: { profession: ilike(q.profession) } }, { profilPro: { profession: ilike(q.profession) } }] });
+  if (q.specialite) and.push({ OR: [{ profilAvocat: { specialite: ilike(q.specialite) } }, { profilPro: { specialite: ilike(q.specialite) } }] });
 
   if (q.typeRelation?.length) and.push({ typeRelation: { in: q.typeRelation } });
   if (q.statutRgpd?.length) and.push({ statutRgpd: { in: q.statutRgpd } });
@@ -165,6 +167,7 @@ export async function fetchPersonnesPhysiques(
         profilAvocat: {
           select: { barreau: true, specialite: true, activiteDominante: true, profession: true, dateSerment: true },
         },
+        profilPro: { select: { profession: true, specialite: true } },
       },
     }),
   ]);
@@ -198,6 +201,9 @@ export async function fetchPersonnesPhysiques(
           dateSerment: fmtDate(r.profilAvocat.dateSerment),
         }
       : null,
+    profilPro: r.profilPro
+      ? { profession: r.profilPro.profession, specialite: r.profilPro.specialite }
+      : null,
     adresse: r.adresse ?? null,
   }));
 
@@ -215,6 +221,7 @@ export async function getPersonnePhysiqueDetail(
       adresse: true,
       profilAvocat: true,
       profilParticulier: true,
+      profilPro: true,
       rattachements: {
         include: {
           personneMorale: {
@@ -277,6 +284,9 @@ export async function getPersonnePhysiqueDetail(
           situationFamiliale: pp.profilParticulier.situationFamiliale,
         }
       : null,
+    profilPro: pp.profilPro
+      ? { profession: pp.profilPro.profession, specialite: pp.profilPro.specialite }
+      : null,
     adresse: pp.adresse
       ? {
           rue: pp.adresse.rue,
@@ -306,6 +316,7 @@ export async function getPersonnePhysique(id: string): Promise<PersonnePhysiqueL
       profilAvocat: {
         select: { barreau: true, specialite: true, activiteDominante: true, profession: true, dateSerment: true },
       },
+      profilPro: { select: { profession: true, specialite: true } },
     },
   });
   if (!pp) return null;
@@ -338,6 +349,9 @@ export async function getPersonnePhysique(id: string): Promise<PersonnePhysiqueL
           dateSerment: fmtDate(pp.profilAvocat.dateSerment),
         }
       : null,
+    profilPro: pp.profilPro
+      ? { profession: pp.profilPro.profession, specialite: pp.profilPro.specialite }
+      : null,
     adresse: pp.adresse ?? null,
   };
 }
@@ -345,7 +359,7 @@ export async function getPersonnePhysique(id: string): Promise<PersonnePhysiqueL
 export async function createPersonnePhysique(
   input: CreatePersonnePhysiqueInput,
 ): Promise<PersonnePhysiqueListItem> {
-  const { profilAvocat, profilParticulier, ...ppData } = input;
+  const { profilAvocat, profilParticulier, profilPro, ...ppData } = input;
 
   if (input.actif !== false) {
     await checkUniciteActif(input.email, input.portable);
@@ -376,12 +390,21 @@ export async function createPersonnePhysique(
           },
         },
       }),
+      ...(profilPro && {
+        profilPro: {
+          create: {
+            profession: profilPro.profession,
+            specialite: profilPro.specialite,
+          },
+        },
+      }),
     },
     include: {
       adresse: { select: { ville: true, codePostal: true, pays: true } },
       profilAvocat: {
         select: { barreau: true, specialite: true, activiteDominante: true, profession: true, dateSerment: true },
       },
+      profilPro: { select: { profession: true, specialite: true } },
     },
   });
 
@@ -414,6 +437,9 @@ export async function createPersonnePhysique(
           dateSerment: fmtDate(pp.profilAvocat.dateSerment),
         }
       : null,
+    profilPro: pp.profilPro
+      ? { profession: pp.profilPro.profession, specialite: pp.profilPro.specialite }
+      : null,
     adresse: pp.adresse ?? null,
   };
 }
@@ -422,7 +448,7 @@ export async function updatePersonnePhysique(
   id: string,
   input: UpdatePersonnePhysiqueInput,
 ): Promise<PersonnePhysiqueListItem> {
-  const { profilAvocat, profilParticulier, ...ppData } = input;
+  const { profilAvocat, profilParticulier, profilPro, ...ppData } = input;
 
   // Récupérer l'état courant pour calculer les valeurs finales
   const current = await prisma.personnePhysique.findUnique({
@@ -483,12 +509,27 @@ export async function updatePersonnePhysique(
           },
         },
       }),
+      ...(profilPro && {
+        profilPro: {
+          upsert: {
+            create: {
+              profession: profilPro.profession,
+              specialite: profilPro.specialite,
+            },
+            update: {
+              profession: profilPro.profession,
+              specialite: profilPro.specialite,
+            },
+          },
+        },
+      }),
     },
     include: {
       adresse: { select: { ville: true, codePostal: true, pays: true } },
       profilAvocat: {
         select: { barreau: true, specialite: true, activiteDominante: true, profession: true, dateSerment: true },
       },
+      profilPro: { select: { profession: true, specialite: true } },
     },
   });
 
@@ -521,6 +562,9 @@ export async function updatePersonnePhysique(
           dateSerment: fmtDate(pp.profilAvocat.dateSerment),
         }
       : null,
+    profilPro: pp.profilPro
+      ? { profession: pp.profilPro.profession, specialite: pp.profilPro.specialite }
+      : null,
     adresse: pp.adresse ?? null,
   };
 }
@@ -542,6 +586,7 @@ export async function deletePersonnePhysique(id: string): Promise<void> {
     prisma.rattachementPpPm.deleteMany({ where: { personnePhysiqueId: id } }),
     prisma.profilAvocat.deleteMany({ where: { personnePhysiqueId: id } }),
     prisma.profilParticulier.deleteMany({ where: { personnePhysiqueId: id } }),
+    prisma.profilPro.deleteMany({ where: { personnePhysiqueId: id } }),
     prisma.personnePhysique.delete({ where: { id } }),
   ]);
 }

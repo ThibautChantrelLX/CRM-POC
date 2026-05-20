@@ -40,6 +40,10 @@ export function isProfilPro(type: TypeProfilPrincipal): boolean {
   return PROFILS_PRO.includes(type);
 }
 
+export function isAvocatProfil(type: TypeProfilPrincipal): boolean {
+  return type === "AVOCAT_INTERNE" || type === "AVOCAT_EXTERNE";
+}
+
 // ─── Profil Avocat ─────────────────────────────────────────────────────────────
 
 export type ProfilAvocatData = {
@@ -48,6 +52,13 @@ export type ProfilAvocatData = {
   specialite: string | null;
   activiteDominante: string | null;
   profession: string | null;
+};
+
+// ─── Profil Pro (non-avocat, non-particulier) ──────────────────────────────────
+
+export type ProfilProData = {
+  profession: string | null;
+  specialite: string | null;
 };
 
 // ─── Profil Particulier ────────────────────────────────────────────────────────
@@ -87,6 +98,7 @@ export type PersonnePhysiqueListItem = {
     profession: string | null;
     dateSerment: string | null;
   } | null;
+  profilPro: ProfilProData | null;
   adresse?: {
     ville: string | null;
     codePostal: string | null;
@@ -177,6 +189,7 @@ export type PersonnePhysiqueDetail = {
   // Profils
   profilAvocat: ProfilAvocatData | null;
   profilParticulier: ProfilParticulierData | null;
+  profilPro: ProfilProData | null;
   // Relations
   adresse: {
     rue: string | null;
@@ -214,6 +227,10 @@ export type CreatePersonnePhysiqueInput = {
     dateNaissance?: string;
     civilite?: string;
     situationFamiliale?: string;
+  };
+  profilPro?: {
+    profession?: string;
+    specialite?: string;
   };
 };
 
