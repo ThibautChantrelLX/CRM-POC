@@ -5,7 +5,14 @@ export type TypeProfilPrincipal =
   | "ASSISTANT_INTERNE"
   | "FONCTION_SUPPORT"
   | "AVOCAT_EXTERNE"
+  | "NOTAIRE"
+  | "CLERC_NOTAIRE"
+  | "COMMISSAIRE_JUSTICE"
+  | "MAGISTRAT"
+  | "GREFFIER"
+  | "JURISTE"
   | "INTERVENANT_JUSTICE"
+  | "FONCTION_SUPPORT_EXTERNE"
   | "PARTICULIER"
   | "CONTACT_PRO"
   | "APPRENANT_EXTERNE"
@@ -17,7 +24,14 @@ export const PROFILS_PRO: TypeProfilPrincipal[] = [
   "ASSISTANT_INTERNE",
   "FONCTION_SUPPORT",
   "AVOCAT_EXTERNE",
+  "NOTAIRE",
+  "CLERC_NOTAIRE",
+  "COMMISSAIRE_JUSTICE",
+  "MAGISTRAT",
+  "GREFFIER",
+  "JURISTE",
   "INTERVENANT_JUSTICE",
+  "FONCTION_SUPPORT_EXTERNE",
   "CONTACT_PRO",
   "FORMATEUR_EXTERNE",
 ];
@@ -32,6 +46,7 @@ export type ProfilAvocatData = {
   barreau: string | null;
   dateSerment: string | null;
   specialite: string | null;
+  activiteDominante: string | null;
   profession: string | null;
 };
 
@@ -68,6 +83,7 @@ export type PersonnePhysiqueListItem = {
   profilAvocat: {
     barreau: string | null;
     specialite: string | null;
+    activiteDominante: string | null;
     profession: string | null;
     dateSerment: string | null;
   } | null;
@@ -191,6 +207,7 @@ export type CreatePersonnePhysiqueInput = {
     barreau?: string;
     dateSerment?: string;
     specialite?: string;
+    activiteDominante?: string;
     profession?: string;
   };
   profilParticulier?: {

@@ -10,15 +10,23 @@ import type {
   TypeProfilPrincipal,
   PersonnePhysiqueDetail,
 } from "@/lib/server/modules/personnes-physiques/dto";
+import { isProfilPro } from "@/lib/server/modules/personnes-physiques/dto";
 
 // ─── Labels profil ─────────────────────────────────────────────────────────────
 
 const PROFIL_LABELS: Record<TypeProfilPrincipal, string> = {
   AVOCAT_INTERNE: "Avocat interne",
   ASSISTANT_INTERNE: "Assistant(e) interne",
-  FONCTION_SUPPORT: "Fonction support",
+  FONCTION_SUPPORT: "Fonction support interne",
   AVOCAT_EXTERNE: "Avocat externe",
-  INTERVENANT_JUSTICE: "Intervenant justice",
+  NOTAIRE: "Notaire",
+  CLERC_NOTAIRE: "Clerc de notaire",
+  COMMISSAIRE_JUSTICE: "Commissaire de justice",
+  MAGISTRAT: "Magistrat",
+  GREFFIER: "Greffier",
+  JURISTE: "Juriste",
+  INTERVENANT_JUSTICE: "Autre intervenant justice",
+  FONCTION_SUPPORT_EXTERNE: "Fonction support externe",
   PARTICULIER: "Particulier",
   CONTACT_PRO: "Contact professionnel",
   APPRENANT_EXTERNE: "Apprenant externe",
@@ -31,12 +39,25 @@ const PROFIL_GROUPES: { label: string; options: TypeProfilPrincipal[] }[] = [
     options: ["AVOCAT_INTERNE", "ASSISTANT_INTERNE", "FONCTION_SUPPORT"],
   },
   {
-    label: "Écosystème juridique externe",
-    options: ["AVOCAT_EXTERNE", "INTERVENANT_JUSTICE"],
+    label: "Professions juridiques",
+    options: [
+      "AVOCAT_EXTERNE",
+      "NOTAIRE",
+      "CLERC_NOTAIRE",
+      "COMMISSAIRE_JUSTICE",
+      "MAGISTRAT",
+      "GREFFIER",
+      "JURISTE",
+      "INTERVENANT_JUSTICE",
+    ],
+  },
+  {
+    label: "Support & Conseil externe",
+    options: ["FONCTION_SUPPORT_EXTERNE", "CONTACT_PRO"],
   },
   {
     label: "Clients & Prospects",
-    options: ["PARTICULIER", "CONTACT_PRO"],
+    options: ["PARTICULIER"],
   },
   {
     label: "Formation",
@@ -47,6 +68,59 @@ const PROFIL_GROUPES: { label: string; options: TypeProfilPrincipal[] }[] = [
 function isAvocatProfil(type: TypeProfilPrincipal): boolean {
   return type === "AVOCAT_INTERNE" || type === "AVOCAT_EXTERNE";
 }
+
+const SPECIALITES_AVOCAT = [
+  "Droit bancaire et boursier",
+  "Droit commercial, des affaires et de la concurrence",
+  "Droit de la famille, des personnes et de leur patrimoine",
+  "Droit de la fiducie",
+  "Droit de la propriété intellectuelle",
+  "Droit de la santé",
+  "Droit de la sécurité sociale et de la protection sociale",
+  "Droit de l'arbitrage",
+  "Droit de l'environnement",
+  "Droit des associations et des fondations",
+  "Droit des assurances",
+  "Droit des étrangers et de la nationalité",
+  "Droit des garanties, des sûretés et des mesures d'exécution",
+  "Droit des nouvelles technologies, de l'information et de la communication (NTIC)",
+  "Droit des sociétés",
+  "Droit des transports",
+  "Droit du crédit et de la consommation",
+  "Droit du dommage corporel",
+  "Droit du sport",
+  "Droit du travail",
+  "Droit fiscal et droit douanier",
+  "Droit immobilier",
+  "Droit international et de l'union européenne",
+  "Droit pénal",
+  "Droit public",
+  "Droit rural",
+  "Procédure d'Appel",
+];
+
+const ACTIVITES_DOMINANTES_AVOCAT = [
+  "Contentieux, médiation, arbitrage",
+  "Dommages corporels et matériels",
+  "Droit de la circulation et des transports",
+  "Droit de la consommation",
+  "Droit de la faillite et du surendettement",
+  "Droit de la famille",
+  "Droit de la sécurité sociale",
+  "Droit de l'environnement",
+  "Droit de l'homme et libertés publiques",
+  "Droit de l'immigration et d'asile",
+  "Droit de l'UE",
+  "Droit de succession",
+  "Droit des affaires",
+  "Droit des biens",
+  "Droit des technologies de l'information",
+  "Droit du travail",
+  "Droit fiscal",
+  "Droit pénal",
+  "Droit public",
+  "Propriété intellectuelle",
+];
 
 function isParticulierProfil(type: TypeProfilPrincipal): boolean {
   return type === "PARTICULIER";
@@ -70,6 +144,7 @@ type FormState = {
   // ProfilAvocat
   barreau: string;
   specialite: string;
+  activiteDominante: string;
   profession: string;
   dateSerment: string;
   // ProfilParticulier
@@ -93,6 +168,7 @@ const EMPTY: FormState = {
   optOutGlobal: false,
   barreau: "",
   specialite: "",
+  activiteDominante: "",
   profession: "",
   dateSerment: "",
   dateNaissance: "",
@@ -116,6 +192,7 @@ function fromDetail(pp: PersonnePhysiqueDetail): FormState {
     optOutGlobal: pp.optOutGlobal,
     barreau: pp.profilAvocat?.barreau ?? "",
     specialite: pp.profilAvocat?.specialite ?? "",
+    activiteDominante: pp.profilAvocat?.activiteDominante ?? "",
     profession: pp.profilAvocat?.profession ?? "",
     dateSerment: pp.profilAvocat?.dateSerment ?? "",
     dateNaissance: pp.profilParticulier?.dateNaissance ?? "",
@@ -152,11 +229,12 @@ export function PpForm(props: Props) {
             : e.target.value,
       }));
 
-  const showAvocatSection = isAvocatProfil(form.typeProfilPrincipal);
+  const showProSection = isProfilPro(form.typeProfilPrincipal);
+  const showAvocatFields = isAvocatProfil(form.typeProfilPrincipal);
   const showParticulierSection = isParticulierProfil(form.typeProfilPrincipal);
 
   const handleSubmit = async () => {
-    if (!form.nom.trim()) return;
+    if (!form.nom.trim() || !form.prenom.trim() || !form.email.trim()) return;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -173,12 +251,13 @@ export function PpForm(props: Props) {
         optInEmail: form.optInEmail,
         optInSms: form.optInSms,
         optOutGlobal: form.optOutGlobal,
-        ...(showAvocatSection && {
+        ...(showProSection && {
           profilAvocat: {
-            barreau: form.barreau || undefined,
-            specialite: form.specialite || undefined,
             profession: form.profession || undefined,
-            dateSerment: form.dateSerment || undefined,
+            specialite: form.specialite || undefined,
+            activiteDominante: showAvocatFields ? (form.activiteDominante || undefined) : undefined,
+            barreau: showAvocatFields ? (form.barreau || undefined) : undefined,
+            dateSerment: showAvocatFields ? (form.dateSerment || undefined) : undefined,
           },
         }),
         ...(showParticulierSection && {
@@ -258,7 +337,7 @@ export function PpForm(props: Props) {
           <FormField label="Nom" required>
             <input className={inputCls} value={form.nom} onChange={patch("nom")} placeholder="DUPONT" />
           </FormField>
-          <FormField label="Prénom">
+          <FormField label="Prénom" required>
             <input className={inputCls} value={form.prenom} onChange={patch("prenom")} placeholder="Jean" />
           </FormField>
         </div>
@@ -268,7 +347,7 @@ export function PpForm(props: Props) {
       <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Coordonnées</h3>
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Email">
+          <FormField label="Email" required>
             <input type="email" className={inputCls} value={form.email} onChange={patch("email")} placeholder="jean.dupont@cabinet.fr" />
           </FormField>
           <FormField label="Téléphone">
@@ -280,23 +359,65 @@ export function PpForm(props: Props) {
         </div>
       </section>
 
-      {/* Profil Avocat — conditionnel */}
-      {showAvocatSection && (
+      {/* Profil professionnel — visible pour tous les profils pro */}
+      {showProSection && (
         <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
-          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Profil avocat</h3>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Profil professionnel</h3>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="Profession">
-              <input className={inputCls} value={form.profession} onChange={patch("profession")} placeholder="Avocat au barreau de Paris" />
+            <FormField label="Métier / Intitulé de poste">
+              <input
+                className={inputCls}
+                value={form.profession}
+                onChange={patch("profession")}
+                placeholder="Ex : Ingénieur data, Directeur juridique…"
+              />
             </FormField>
-            <FormField label="Spécialité">
-              <input className={inputCls} value={form.specialite} onChange={patch("specialite")} placeholder="Droit des affaires" />
+            <FormField label="Spécialisation">
+              {showAvocatFields ? (
+                <>
+                  <input
+                    list="specialites-avocat"
+                    className={inputCls}
+                    value={form.specialite}
+                    onChange={patch("specialite")}
+                    placeholder="Saisir ou sélectionner…"
+                  />
+                  <datalist id="specialites-avocat">
+                    {SPECIALITES_AVOCAT.map((s) => <option key={s} value={s} />)}
+                  </datalist>
+                </>
+              ) : (
+                <input
+                  className={inputCls}
+                  value={form.specialite}
+                  onChange={patch("specialite")}
+                  placeholder="Ex : Droit des affaires, Data engineering…"
+                />
+              )}
             </FormField>
-            <FormField label="Barreau">
-              <input className={inputCls} value={form.barreau} onChange={patch("barreau")} placeholder="Paris" />
-            </FormField>
-            <FormField label="Date de serment">
-              <input type="date" className={inputCls} value={form.dateSerment} onChange={patch("dateSerment")} />
-            </FormField>
+            {/* Champs spécifiques avocats */}
+            {showAvocatFields && (
+              <>
+                <FormField label="Activité dominante" className="col-span-2">
+                  <input
+                    list="activites-dominantes-avocat"
+                    className={inputCls}
+                    value={form.activiteDominante}
+                    onChange={patch("activiteDominante")}
+                    placeholder="Saisir ou sélectionner…"
+                  />
+                  <datalist id="activites-dominantes-avocat">
+                    {ACTIVITES_DOMINANTES_AVOCAT.map((a) => <option key={a} value={a} />)}
+                  </datalist>
+                </FormField>
+                <FormField label="Barreau">
+                  <input className={inputCls} value={form.barreau} onChange={patch("barreau")} placeholder="Paris" />
+                </FormField>
+                <FormField label="Date de serment">
+                  <input type="date" className={inputCls} value={form.dateSerment} onChange={patch("dateSerment")} />
+                </FormField>
+              </>
+            )}
           </div>
         </section>
       )}
@@ -409,7 +530,7 @@ export function PpForm(props: Props) {
         >
           Annuler
         </button>
-        <SubmitButton isLoading={isSubmitting} onClick={handleSubmit} disabled={!form.nom.trim()}>
+        <SubmitButton isLoading={isSubmitting} onClick={handleSubmit} disabled={!form.nom.trim() || !form.prenom.trim() || !form.email.trim()}>
           {props.mode === "create" ? "Créer la personne physique" : "Enregistrer les modifications"}
         </SubmitButton>
       </div>

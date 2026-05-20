@@ -65,7 +65,14 @@ enum TypeProfilPrincipal {
   ASSISTANT_INTERNE
   FONCTION_SUPPORT
   AVOCAT_EXTERNE
+  NOTAIRE
+  CLERC_NOTAIRE
+  COMMISSAIRE_JUSTICE
+  MAGISTRAT
+  GREFFIER
+  JURISTE
   INTERVENANT_JUSTICE
+  FONCTION_SUPPORT_EXTERNE
   PARTICULIER
   CONTACT_PRO
   APPRENANT_EXTERNE
@@ -210,6 +217,7 @@ model ProfilAvocat {
   barreau            String?   @db.VarChar(255)
   dateSerment        DateTime? @map("date_serment") @db.Date
   specialite         String?
+  activiteDominante  String?   @map("activite_dominante")
   profession         String?
   creerLe            DateTime  @default(now()) @map("creer_le")
   modifierLe         DateTime  @updatedAt @map("modifier_le")

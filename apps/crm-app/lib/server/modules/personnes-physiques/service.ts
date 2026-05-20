@@ -163,7 +163,7 @@ export async function fetchPersonnesPhysiques(
       include: {
         adresse: { select: { ville: true, codePostal: true, pays: true } },
         profilAvocat: {
-          select: { barreau: true, specialite: true, profession: true, dateSerment: true },
+          select: { barreau: true, specialite: true, activiteDominante: true, profession: true, dateSerment: true },
         },
       },
     }),
@@ -193,6 +193,7 @@ export async function fetchPersonnesPhysiques(
       ? {
           barreau: r.profilAvocat.barreau,
           specialite: r.profilAvocat.specialite,
+          activiteDominante: r.profilAvocat.activiteDominante,
           profession: r.profilAvocat.profession,
           dateSerment: fmtDate(r.profilAvocat.dateSerment),
         }
@@ -265,6 +266,7 @@ export async function getPersonnePhysiqueDetail(
           barreau: pp.profilAvocat.barreau,
           dateSerment: fmtDate(pp.profilAvocat.dateSerment),
           specialite: pp.profilAvocat.specialite,
+          activiteDominante: pp.profilAvocat.activiteDominante,
           profession: pp.profilAvocat.profession,
         }
       : null,
@@ -302,7 +304,7 @@ export async function getPersonnePhysique(id: string): Promise<PersonnePhysiqueL
     include: {
       adresse: { select: { ville: true, codePostal: true, pays: true } },
       profilAvocat: {
-        select: { barreau: true, specialite: true, profession: true, dateSerment: true },
+        select: { barreau: true, specialite: true, activiteDominante: true, profession: true, dateSerment: true },
       },
     },
   });
@@ -331,6 +333,7 @@ export async function getPersonnePhysique(id: string): Promise<PersonnePhysiqueL
       ? {
           barreau: pp.profilAvocat.barreau,
           specialite: pp.profilAvocat.specialite,
+          activiteDominante: pp.profilAvocat.activiteDominante,
           profession: pp.profilAvocat.profession,
           dateSerment: fmtDate(pp.profilAvocat.dateSerment),
         }
@@ -357,6 +360,7 @@ export async function createPersonnePhysique(
             barreau: profilAvocat.barreau,
             dateSerment: profilAvocat.dateSerment ? new Date(profilAvocat.dateSerment) : undefined,
             specialite: profilAvocat.specialite,
+            activiteDominante: profilAvocat.activiteDominante,
             profession: profilAvocat.profession,
           },
         },
@@ -376,7 +380,7 @@ export async function createPersonnePhysique(
     include: {
       adresse: { select: { ville: true, codePostal: true, pays: true } },
       profilAvocat: {
-        select: { barreau: true, specialite: true, profession: true, dateSerment: true },
+        select: { barreau: true, specialite: true, activiteDominante: true, profession: true, dateSerment: true },
       },
     },
   });
@@ -405,6 +409,7 @@ export async function createPersonnePhysique(
       ? {
           barreau: pp.profilAvocat.barreau,
           specialite: pp.profilAvocat.specialite,
+          activiteDominante: pp.profilAvocat.activiteDominante,
           profession: pp.profilAvocat.profession,
           dateSerment: fmtDate(pp.profilAvocat.dateSerment),
         }
@@ -445,12 +450,14 @@ export async function updatePersonnePhysique(
               barreau: profilAvocat.barreau,
               dateSerment: profilAvocat.dateSerment ? new Date(profilAvocat.dateSerment) : undefined,
               specialite: profilAvocat.specialite,
+              activiteDominante: profilAvocat.activiteDominante,
               profession: profilAvocat.profession,
             },
             update: {
               barreau: profilAvocat.barreau,
               dateSerment: profilAvocat.dateSerment ? new Date(profilAvocat.dateSerment) : null,
               specialite: profilAvocat.specialite,
+              activiteDominante: profilAvocat.activiteDominante,
               profession: profilAvocat.profession,
             },
           },
@@ -480,7 +487,7 @@ export async function updatePersonnePhysique(
     include: {
       adresse: { select: { ville: true, codePostal: true, pays: true } },
       profilAvocat: {
-        select: { barreau: true, specialite: true, profession: true, dateSerment: true },
+        select: { barreau: true, specialite: true, activiteDominante: true, profession: true, dateSerment: true },
       },
     },
   });
@@ -509,6 +516,7 @@ export async function updatePersonnePhysique(
       ? {
           barreau: pp.profilAvocat.barreau,
           specialite: pp.profilAvocat.specialite,
+          activiteDominante: pp.profilAvocat.activiteDominante,
           profession: pp.profilAvocat.profession,
           dateSerment: fmtDate(pp.profilAvocat.dateSerment),
         }

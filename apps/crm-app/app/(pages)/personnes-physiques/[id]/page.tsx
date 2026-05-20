@@ -26,9 +26,16 @@ import type { TypeRelationPp, StatutRgpd, TypeProfilPrincipal } from "@/lib/serv
 const PROFIL_LABELS: Record<TypeProfilPrincipal, string> = {
   AVOCAT_INTERNE: "Avocat interne",
   ASSISTANT_INTERNE: "Assistant(e) interne",
-  FONCTION_SUPPORT: "Fonction support",
+  FONCTION_SUPPORT: "Fonction support interne",
   AVOCAT_EXTERNE: "Avocat externe",
-  INTERVENANT_JUSTICE: "Intervenant justice",
+  NOTAIRE: "Notaire",
+  CLERC_NOTAIRE: "Clerc de notaire",
+  COMMISSAIRE_JUSTICE: "Commissaire de justice",
+  MAGISTRAT: "Magistrat",
+  GREFFIER: "Greffier",
+  JURISTE: "Juriste",
+  INTERVENANT_JUSTICE: "Autre intervenant justice",
+  FONCTION_SUPPORT_EXTERNE: "Fonction support externe",
   PARTICULIER: "Particulier",
   CONTACT_PRO: "Contact professionnel",
   APPRENANT_EXTERNE: "Apprenant externe",
@@ -251,7 +258,8 @@ export default async function PersonnePhysiquePage({
                   cols={2}
                   items={[
                     { label: "Profession", value: pp.profilAvocat.profession },
-                    { label: "Spécialité", value: pp.profilAvocat.specialite, span: 2 },
+                    { label: "Spécialisation", value: pp.profilAvocat.specialite, span: 2 },
+                    { label: "Activité dominante", value: pp.profilAvocat.activiteDominante, span: 2 },
                     { label: "Barreau", value: pp.profilAvocat.barreau },
                     { label: "Date de serment", value: fmtDate(pp.profilAvocat.dateSerment) },
                   ]}
