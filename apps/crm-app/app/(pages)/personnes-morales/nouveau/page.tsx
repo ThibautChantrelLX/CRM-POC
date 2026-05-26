@@ -18,7 +18,7 @@ export default function PersonneMoraleNouvellePage() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-zinc-900 leading-tight">Nouvelle personne morale</h1>
-            <p className="text-sm text-zinc-400 leading-tight">Création d'une nouvelle structure</p>
+            <p className="text-sm text-zinc-400 leading-tight">Création d&apos;une nouvelle structure</p>
           </div>
         </div>
       </div>

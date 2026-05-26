@@ -73,7 +73,7 @@ export function PpDetailActions({ ppId, ppNom }: Props) {
                 <ul className="mt-2 text-sm text-zinc-500 space-y-0.5 list-disc list-inside">
                   <li>Toutes les informations personnelles</li>
                   <li>Le profil (avocat, particulier…)</li>
-                  <li>L'adresse</li>
+                  <li>L&apos;adresse</li>
                   <li>Tous les rattachements (actifs et passés)</li>
                 </ul>
               </div>

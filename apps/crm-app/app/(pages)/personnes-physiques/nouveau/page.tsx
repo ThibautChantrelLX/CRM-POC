@@ -18,7 +18,7 @@ export default function PersonnePhysiqueNouvellePage() {
           </div>
           <div>
             <h1 className="text-lg font-bold text-zinc-900 leading-tight">Nouvelle personne physique</h1>
-            <p className="text-sm text-zinc-400 leading-tight">Création d'un nouveau contact</p>
+            <p className="text-sm text-zinc-400 leading-tight">Création d&apos;un nouveau contact</p>
           </div>
         </div>
       </div>
