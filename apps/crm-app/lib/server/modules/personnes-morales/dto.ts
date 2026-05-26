@@ -1,9 +1,9 @@
-export type TypeRelationPm = "CABINET_POSTULATION" | "CLIENT_DIRECT" | "HYBRIDE" | "AUTRE";
+export type TypeRelationPm = "CABINET_POSTULATION" | "CLIENT_DIRECT" | "HYBRIDE";
 
 // ─── List ──────────────────────────────────────────────────────────────────────
 
 export type PersonneMoraleListItem = {
-  id: string;
+  id: number;
   raisonSociale: string;
   email: string | null;
   telephone: string | null;
@@ -59,7 +59,7 @@ export type ContactRattacheDetail = {
   dateDebut: string | null;
   dateFin: string | null;
   personnePhysique: {
-    id: string;
+    id: number;
     nom: string;
     prenom: string | null;
     email: string | null;
@@ -68,7 +68,7 @@ export type ContactRattacheDetail = {
 };
 
 export type PersonneMoraleDetail = {
-  id: string;
+  id: number;
   raisonSociale: string;
   email: string | null;
   telephone: string | null;
@@ -95,8 +95,8 @@ export type PersonneMoraleDetail = {
     ville: string | null;
     pays: string | null;
   } | null;
-  maisonMere: { id: string; raisonSociale: string; siretSiren: string | null } | null;
-  filiales: { id: string; raisonSociale: string; siretSiren: string | null; actif: boolean }[];
+  maisonMere: { id: number; raisonSociale: string; siretSiren: string | null } | null;
+  filiales: { id: number; raisonSociale: string; siretSiren: string | null; actif: boolean }[];
   contacts: ContactRattacheDetail[];
 };
 
@@ -110,20 +110,6 @@ export type CreatePersonneMoraleInput = {
   typeStructure?: string;
   typeRelation?: TypeRelationPm;
   actif?: boolean;
-  siteWeb?: string;
-  secteurActivite?: string;
-  categorieEntreprise?: string;
-  nomDomaine?: string;
-  adresse?: {
-    rue?: string;
-    complementAdresse?: string;
-    codePostal?: string;
-    ville?: string;
-    pays?: string;
-  };
 };
 
-export type UpdatePersonneMoraleInput = Partial<Omit<CreatePersonneMoraleInput, "typeRelation">> & {
-  typeRelation?: TypeRelationPm | null;
-  sourceOrigine?: string;
-};
+export type UpdatePersonneMoraleInput = Partial<CreatePersonneMoraleInput>;

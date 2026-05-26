@@ -22,7 +22,7 @@ export function Sidebar() {
     <aside className="flex flex-col w-60 shrink-0 bg-white border-r border-zinc-200 min-h-screen sticky top-0">
       {/* Logo */}
       <div className="px-4 py-4 flex items-center gap-3 border-b border-zinc-100">
-        <div className="w-9 h-9 rounded-xl bg-primary-500 flex items-center justify-center shadow-sm">
+        <div className="w-9 h-9 rounded-xl bg-orange-500 flex items-center justify-center shadow-sm">
           <Scale size={18} className="text-white" />
         </div>
         <div>
@@ -47,13 +47,13 @@ export function Sidebar() {
                   className={cn(
                     "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors",
                     active
-                      ? "bg-primary-50 text-primary-600"
+                      ? "bg-orange-50 text-orange-600"
                       : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800",
                   )}
                 >
                   <item.icon
                     size={15}
-                    className={active ? "text-primary-500" : "text-zinc-400"}
+                    className={active ? "text-orange-500" : "text-zinc-400"}
                   />
                   {item.label}
                 </Link>
@@ -65,7 +65,7 @@ export function Sidebar() {
 
       {/* User */}
       <div className="px-4 py-3 border-t border-zinc-100 flex items-center gap-2.5">
-        <div className="w-7 h-7 rounded-full bg-secondary-600 flex items-center justify-center text-white text-[11px] font-semibold shrink-0">
+        <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white text-[11px] font-semibold shrink-0">
           ML
         </div>
         <span className="text-sm text-zinc-600 truncate">Maître Léa</span>

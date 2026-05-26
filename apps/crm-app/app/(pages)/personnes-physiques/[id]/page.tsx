@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import {
+  ArrowLeft,
   User,
   Building2,
   MapPin,
@@ -12,35 +14,13 @@ import {
 } from "lucide-react";
 import { getPersonnePhysiqueDetail } from "@/lib/server/modules/personnes-physiques/service";
 import { Avatar } from "@/components/ui/avatar";
-import { BackButton } from "@/components/ui/back-button";
 import { DetailSection } from "@/components/detail/DetailSection";
 import { InfoGrid } from "@/components/detail/InfoGrid";
 import { RattachementsList } from "@/components/detail/RattachementsList";
-import { PpDetailActions } from "@/components/pp/PpDetailActions";
 import { cn } from "@/lib/utils";
-import type { TypeRelationPp, StatutRgpd, TypeProfilPrincipal } from "@/lib/server/modules/personnes-physiques/dto";
-import { isAvocatProfil } from "@/lib/server/modules/personnes-physiques/dto";
+import type { TypeRelationPp, StatutRgpd } from "@/lib/server/modules/personnes-physiques/dto";
 
 // ─── Labels / badges ──────────────────────────────────────────────────────────
-
-const PROFIL_LABELS: Record<TypeProfilPrincipal, string> = {
-  AVOCAT_INTERNE: "Avocat interne",
-  ASSISTANT_INTERNE: "Assistant(e) interne",
-  FONCTION_SUPPORT: "Fonction support interne",
-  AVOCAT_EXTERNE: "Avocat externe",
-  NOTAIRE: "Notaire",
-  CLERC_NOTAIRE: "Clerc de notaire",
-  COMMISSAIRE_JUSTICE: "Commissaire de justice",
-  MAGISTRAT: "Magistrat",
-  GREFFIER: "Greffier",
-  JURISTE: "Juriste",
-  INTERVENANT_JUSTICE: "Autre intervenant justice",
-  FONCTION_SUPPORT_EXTERNE: "Fonction support externe",
-  PARTICULIER: "Particulier",
-  CONTACT_PRO: "Contact professionnel",
-  APPRENANT_EXTERNE: "Apprenant externe",
-  FORMATEUR_EXTERNE: "Formateur externe",
-};
 
 const RELATION_LABELS: Record<TypeRelationPp, string> = {
   CONTACT: "Contact",
@@ -48,8 +28,8 @@ const RELATION_LABELS: Record<TypeRelationPp, string> = {
   HYBRIDE: "Hybride",
 };
 const RELATION_COLORS: Record<TypeRelationPp, string> = {
-  CONTACT: "bg-secondary-100 text-secondary-700 border-secondary-200",
-  CLIENT: "bg-primary-100 text-primary-700 border-primary-200",
+  CONTACT: "bg-blue-100 text-blue-700 border-blue-200",
+  CLIENT: "bg-orange-100 text-orange-700 border-orange-200",
   HYBRIDE: "bg-purple-100 text-purple-700 border-purple-200",
 };
 const RGPD_LABELS: Record<StatutRgpd, string> = {
@@ -111,7 +91,7 @@ export default async function PersonnePhysiquePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const pp = await getPersonnePhysiqueDetail(id);
+  const pp = await getPersonnePhysiqueDetail(Number(id));
   if (!pp) notFound();
 
   return (
@@ -119,14 +99,19 @@ export default async function PersonnePhysiquePage({
       {/* Header */}
       <div className="bg-white border-b border-zinc-200 px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <BackButton fallbackHref="/personnes-physiques" />
+          <Link
+            href="/personnes-physiques"
+            className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-colors"
+          >
+            <ArrowLeft size={16} />
+          </Link>
           <Avatar nom={pp.nom} prenom={pp.prenom} size="md" />
           <div>
             <h1 className="text-lg font-bold text-zinc-900 leading-tight">
               {pp.prenom} {pp.nom.toUpperCase()}
             </h1>
             <p className="text-sm text-zinc-400 leading-tight">
-              {[pp.profilAvocat?.profession, pp.profilAvocat?.barreau].filter(Boolean).join(" · ") || PROFIL_LABELS[pp.typeProfilPrincipal]}
+              {[pp.profession, pp.barreau].filter(Boolean).join(" · ") || "Personne physique"}
             </p>
           </div>
           {!pp.actif && (
@@ -134,10 +119,6 @@ export default async function PersonnePhysiquePage({
               Inactif
             </span>
           )}
-          <PpDetailActions
-            ppId={pp.id}
-            ppNom={`${pp.prenom ?? ""} ${pp.nom}`.trim()}
-          />
         </div>
       </div>
 
@@ -156,7 +137,7 @@ export default async function PersonnePhysiquePage({
                   {
                     label: "Email",
                     value: pp.email ? (
-                      <a href={`mailto:${pp.email}`} className="text-secondary-600 hover:underline flex items-center gap-1">
+                      <a href={`mailto:${pp.email}`} className="text-blue-600 hover:underline flex items-center gap-1">
                         <Mail size={12} />
                         {pp.email}
                       </a>
@@ -184,18 +165,15 @@ export default async function PersonnePhysiquePage({
               />
             </DetailSection>
 
-            {/* Profil & Statut */}
-            <DetailSection title="Profil & Statut" icon={Shield}>
+            {/* Profession & Statut */}
+            <DetailSection title="Profession & Statut" icon={Shield}>
               <InfoGrid
                 cols={2}
                 items={[
-                  {
-                    label: "Profil",
-                    value: (
-                      <span className="text-sm text-zinc-700">{PROFIL_LABELS[pp.typeProfilPrincipal]}</span>
-                    ),
-                    span: 2,
-                  },
+                  { label: "Profession", value: pp.profession },
+                  { label: "Spécialité", value: pp.specialite, span: 2 },
+                  { label: "Barreau", value: pp.barreau },
+                  { label: "Date de serment", value: fmtDate(pp.dateSerment) },
                   {
                     label: "Type de relation",
                     value: (
@@ -246,49 +224,6 @@ export default async function PersonnePhysiquePage({
               />
             </DetailSection>
 
-            {/* Profil avocat — conditionnel */}
-            {pp.profilAvocat && isAvocatProfil(pp.typeProfilPrincipal) && (
-              <DetailSection title="Profil avocat" icon={User}>
-                <InfoGrid
-                  cols={2}
-                  items={[
-                    { label: "Profession", value: pp.profilAvocat.profession },
-                    { label: "Spécialisation", value: pp.profilAvocat.specialite, span: 2 },
-                    { label: "Activité dominante", value: pp.profilAvocat.activiteDominante, span: 2 },
-                    { label: "Barreau", value: pp.profilAvocat.barreau },
-                    { label: "Date de serment", value: fmtDate(pp.profilAvocat.dateSerment) },
-                  ]}
-                />
-              </DetailSection>
-            )}
-
-            {/* Profil professionnel — pour profils non-avocat non-particulier */}
-            {pp.profilPro && !isAvocatProfil(pp.typeProfilPrincipal) && (
-              <DetailSection title="Profil professionnel" icon={User}>
-                <InfoGrid
-                  cols={2}
-                  items={[
-                    { label: "Métier / Intitulé", value: pp.profilPro.profession, span: 2 },
-                    { label: "Spécialisation", value: pp.profilPro.specialite, span: 2 },
-                  ]}
-                />
-              </DetailSection>
-            )}
-
-            {/* Profil particulier — conditionnel */}
-            {pp.profilParticulier && (
-              <DetailSection title="Profil particulier" icon={User}>
-                <InfoGrid
-                  cols={2}
-                  items={[
-                    { label: "Civilité", value: pp.profilParticulier.civilite },
-                    { label: "Date de naissance", value: fmtDate(pp.profilParticulier.dateNaissance) },
-                    { label: "Situation familiale", value: pp.profilParticulier.situationFamiliale, span: 2 },
-                  ]}
-                />
-              </DetailSection>
-            )}
-
             {/* Données Anaba */}
             <DetailSection title="Données Anaba" icon={BarChart2} variant="anaba">
               <InfoGrid
@@ -310,7 +245,7 @@ export default async function PersonnePhysiquePage({
                         href={pp.linkedinUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-secondary-600 hover:underline text-xs"
+                        className="flex items-center gap-1 text-blue-600 hover:underline text-xs"
                       >
                         <ExternalLink size={12} />
                         Voir le profil
@@ -361,11 +296,7 @@ export default async function PersonnePhysiquePage({
 
             {/* Rattachements */}
             <DetailSection title={`Rattachements (${pp.rattachements.length})`} icon={Building2}>
-              <RattachementsList
-                rattachements={pp.rattachements}
-                ppId={pp.id}
-                ppNom={`${pp.prenom ?? ""} ${pp.nom}`.trim()}
-              />
+              <RattachementsList rattachements={pp.rattachements} />
             </DetailSection>
           </div>
         </div>

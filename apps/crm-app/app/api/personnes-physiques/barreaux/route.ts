@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
 
 export async function GET() {
-  const rows = await prisma.profilAvocat.findMany({
+  const rows = await prisma.personnePhysique.findMany({
     where: { barreau: { not: null } },
     select: { barreau: true },
     distinct: ["barreau"],
