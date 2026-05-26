@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
 
 const COLORS = [
-  "bg-blue-500",
-  "bg-orange-500",
+  "bg-secondary-500",
+  "bg-primary-500",
   "bg-green-600",
   "bg-purple-500",
   "bg-pink-500",

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   fetchPersonnesPhysiques,
   createPersonnePhysique,
+  DuplicateActifError,
 } from "@/lib/server/modules/personnes-physiques/service";
 import type {
   PersonnePhysiqueListQuery,
@@ -49,6 +50,12 @@ export async function POST(request: Request) {
     const body = await request.json();
     return NextResponse.json(await createPersonnePhysique(body), { status: 201 });
   } catch (err) {
+    if (err instanceof DuplicateActifError) {
+      return NextResponse.json(
+        { error: "Une autre personne active possède déjà cet email ou ce portable.", conflicts: err.conflicts },
+        { status: 409 },
+      );
+    }
     console.error(err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }

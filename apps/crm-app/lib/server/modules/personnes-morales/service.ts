@@ -103,7 +103,7 @@ export async function fetchPersonnesMorales(
 // ─── Detail ───────────────────────────────────────────────────────────────────
 
 export async function getPersonneMoraleDetail(
-  id: number,
+  id: string,
 ): Promise<PersonneMoraleDetail | null> {
   const pm = await prisma.personneMorale.findUnique({
     where: { id },
@@ -117,7 +117,10 @@ export async function getPersonneMoraleDetail(
       rattachements: {
         include: {
           personnePhysique: {
-            select: { id: true, nom: true, prenom: true, email: true, profession: true },
+            select: {
+              id: true, nom: true, prenom: true, email: true,
+              profilAvocat: { select: { profession: true } },
+            },
           },
         },
         orderBy: [
@@ -164,14 +167,20 @@ export async function getPersonneMoraleDetail(
       titreFonction: r.titreFonction,
       dateDebut: fmtDate(r.dateDebut as Date),
       dateFin: fmtDate(r.dateFin),
-      personnePhysique: r.personnePhysique,
+      personnePhysique: {
+        id: r.personnePhysique.id,
+        nom: r.personnePhysique.nom,
+        prenom: r.personnePhysique.prenom,
+        email: r.personnePhysique.email,
+        profession: r.personnePhysique.profilAvocat?.profession ?? null,
+      },
     })),
   };
 }
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
-export async function getPersonneMorale(id: number): Promise<PersonneMoraleListItem | null> {
+export async function getPersonneMorale(id: string): Promise<PersonneMoraleListItem | null> {
   const pm = await prisma.personneMorale.findUnique({
     where: { id },
     include: { adresse: { select: { ville: true, codePostal: true, pays: true } } },
@@ -187,19 +196,85 @@ export async function getPersonneMorale(id: number): Promise<PersonneMoraleListI
 export async function createPersonneMorale(
   data: CreatePersonneMoraleInput,
 ): Promise<PersonneMoraleListItem> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pm = await prisma.personneMorale.create({ data: data as any });
-  return pm as unknown as PersonneMoraleListItem;
+  const { adresse, ...rest } = data;
+
+  let adresseId: number | undefined;
+  if (adresse && Object.values(adresse).some(Boolean)) {
+    const created = await prisma.adresse.create({
+      data: {
+        rue: adresse.rue ?? null,
+        complementAdresse: adresse.complementAdresse ?? null,
+        codePostal: adresse.codePostal ?? null,
+        ville: adresse.ville ?? null,
+        pays: adresse.pays ?? null,
+      },
+    });
+    adresseId = created.id;
+  }
+
+  const cleanRest = Object.fromEntries(
+    Object.entries(rest).filter(([, v]) => v !== undefined),
+  );
+
+  const pm = await prisma.personneMorale.create({
+    data: { ...cleanRest, ...(adresseId !== undefined ? { adresseId } : {}) } as unknown as Prisma.PersonneMoraleUncheckedCreateInput,
+    include: { adresse: { select: { ville: true, codePostal: true, pays: true } } },
+  });
+
+  return {
+    ...pm,
+    creerLe: (pm.creerLe as Date).toISOString(),
+    modifierLe: (pm.modifierLe as Date).toISOString(),
+  } as unknown as PersonneMoraleListItem;
 }
 
 export async function updatePersonneMorale(
-  id: number,
+  id: string,
   data: UpdatePersonneMoraleInput,
 ): Promise<PersonneMoraleListItem> {
-  const pm = await prisma.personneMorale.update({ where: { id }, data });
-  return pm as unknown as PersonneMoraleListItem;
+  const { adresse, ...rest } = data;
+
+  let adresseIdPatch: { adresseId: number } | undefined;
+  if (adresse !== undefined) {
+    const existing = await prisma.personneMorale.findUnique({
+      where: { id },
+      select: { adresseId: true },
+    });
+    const adresseData = {
+      rue: adresse.rue ?? null,
+      complementAdresse: adresse.complementAdresse ?? null,
+      codePostal: adresse.codePostal ?? null,
+      ville: adresse.ville ?? null,
+      pays: adresse.pays ?? null,
+    };
+    if (existing?.adresseId) {
+      await prisma.adresse.update({ where: { id: existing.adresseId }, data: adresseData });
+    } else if (Object.values(adresse).some(Boolean)) {
+      const created = await prisma.adresse.create({ data: adresseData });
+      adresseIdPatch = { adresseId: created.id };
+    }
+  }
+
+  const cleanRest = Object.fromEntries(
+    Object.entries(rest).filter(([, v]) => v !== undefined),
+  );
+
+  const pm = await prisma.personneMorale.update({
+    where: { id },
+    data: { ...cleanRest, ...adresseIdPatch } as unknown as Prisma.PersonneMoraleUncheckedUpdateInput,
+    include: { adresse: { select: { ville: true, codePostal: true, pays: true } } },
+  });
+
+  return {
+    ...pm,
+    creerLe: (pm.creerLe as Date).toISOString(),
+    modifierLe: (pm.modifierLe as Date).toISOString(),
+  } as unknown as PersonneMoraleListItem;
 }
 
-export async function deletePersonneMorale(id: number): Promise<void> {
-  await prisma.personneMorale.delete({ where: { id } });
+export async function deletePersonneMorale(id: string): Promise<void> {
+  await prisma.$transaction([
+    prisma.rattachementPpPm.deleteMany({ where: { personneMoraleId: id } }),
+    prisma.personneMorale.delete({ where: { id } }),
+  ]);
 }

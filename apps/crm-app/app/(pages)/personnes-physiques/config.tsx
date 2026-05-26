@@ -7,14 +7,41 @@ import type {
   PersonnePhysiqueListItem,
   TypeRelationPp,
   StatutRgpd,
+  TypeProfilPrincipal,
 } from "@/lib/server/modules/personnes-physiques/dto";
 
 // ─── Field definitions (query builder) ───────────────────────────────────────
+
+const PROFIL_OPTIONS: { value: TypeProfilPrincipal; label: string }[] = [
+  { value: "AVOCAT_INTERNE", label: "Avocat interne" },
+  { value: "ASSISTANT_INTERNE", label: "Assistant(e) interne" },
+  { value: "FONCTION_SUPPORT", label: "Fonction support interne" },
+  { value: "AVOCAT_EXTERNE", label: "Avocat externe" },
+  { value: "NOTAIRE", label: "Notaire" },
+  { value: "CLERC_NOTAIRE", label: "Clerc de notaire" },
+  { value: "COMMISSAIRE_JUSTICE", label: "Commissaire de justice" },
+  { value: "MAGISTRAT", label: "Magistrat" },
+  { value: "GREFFIER", label: "Greffier" },
+  { value: "JURISTE", label: "Juriste" },
+  { value: "INTERVENANT_JUSTICE", label: "Autre intervenant justice" },
+  { value: "FONCTION_SUPPORT_EXTERNE", label: "Fonction support externe" },
+  { value: "PARTICULIER", label: "Particulier" },
+  { value: "CONTACT_PRO", label: "Contact professionnel" },
+  { value: "APPRENANT_EXTERNE", label: "Apprenant externe" },
+  { value: "FORMATEUR_EXTERNE", label: "Formateur externe" },
+];
 
 export const PP_FIELDS: FieldDef[] = [
   { key: "nom", label: "Nom", type: "text", param: "nom" },
   { key: "prenom", label: "Prénom", type: "text", param: "prenom" },
   { key: "email", label: "Email", type: "text", param: "email" },
+  {
+    key: "typeProfilPrincipal",
+    label: "Type de profil",
+    type: "select",
+    param: "typeProfilPrincipal",
+    options: PROFIL_OPTIONS,
+  },
   { key: "profession", label: "Profession", type: "text", param: "profession" },
   { key: "specialite", label: "Spécialité", type: "text", param: "specialite" },
   {
@@ -66,8 +93,8 @@ const RELATION_LABELS: Record<TypeRelationPp, string> = {
   HYBRIDE: "Hybride",
 };
 const RELATION_COLORS: Record<TypeRelationPp, string> = {
-  CONTACT: "bg-blue-100 text-blue-700",
-  CLIENT: "bg-orange-100 text-orange-700",
+  CONTACT: "bg-secondary-100 text-secondary-700",
+  CLIENT: "bg-primary-100 text-primary-700",
   HYBRIDE: "bg-purple-100 text-purple-700",
 };
 const RGPD_LABELS: Record<StatutRgpd, string> = {
@@ -109,9 +136,9 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
           {r.prenom && (
             <div className="text-zinc-600 leading-tight">{r.prenom}</div>
           )}
-          {r.profession && (
+          {(r.profilAvocat?.profession ?? r.profilPro?.profession) && (
             <div className="text-xs text-zinc-400 mt-0.5 truncate max-w-55">
-              {r.profession}
+              {r.profilAvocat?.profession ?? r.profilPro?.profession}
             </div>
           )}
         </div>
@@ -127,9 +154,9 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
         <a
           href={`mailto:${v}`}
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1.5 text-blue-600 hover:underline max-w-50"
+          className="flex items-center gap-1.5 text-secondary-600 hover:underline max-w-50"
         >
-          <Mail size={12} className="shrink-0 text-blue-400" />
+          <Mail size={12} className="shrink-0 text-secondary-400" />
           <span className="truncate">{v}</span>
         </a>
       ) : (
@@ -158,11 +185,12 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
       );
     },
   }),
-  col.accessor("specialite", {
+  col.display({
+    id: "profilAvocat.specialite",
     header: "Spécialité",
     enableSorting: true,
-    cell: ({ getValue }) => {
-      const v = getValue<string | null>();
+    cell: ({ row }) => {
+      const v = row.original.profilAvocat?.specialite ?? row.original.profilPro?.specialite ?? null;
       return v ? (
         <span className="text-zinc-600 max-w-50 truncate block">{v}</span>
       ) : (

@@ -282,7 +282,7 @@ class AnabaImporter:
     # -------------------------------------------------------------------------
 
     def _insert_mapping_source(
-        self, entite_crm: str, entite_crm_id: int, source_id_externe: str
+        self, entite_crm: str, entite_crm_id: str, source_id_externe: str
     ):
         """Enregistre ou met à jour un lien dans mapping_sources."""
         # Tronquer source_id_externe à 100 chars (contrainte VarChar)
@@ -330,20 +330,35 @@ class AnabaImporter:
         logger.info(f"  {len(pm_ids)} PM et {len(pp_ids)} PP à purger")
 
         # Rattachements
-        self.cursor.execute(
-            """
-            DELETE FROM rattachements_pp_pm
-            WHERE personne_physique_id = ANY(%s)
-               OR personne_morale_id   = ANY(%s)
-        """,
-            (pp_ids or [0], pm_ids or [0]),
-        )
-        logger.info(f"  rattachements supprimés: {self.cursor.rowcount}")
+        if pp_ids:
+            self.cursor.execute(
+                "DELETE FROM rattachements_pp_pm WHERE personne_physique_id = ANY(%s::uuid[])",
+                (pp_ids,),
+            )
+            logger.info(f"  rattachements PP supprimés: {self.cursor.rowcount}")
+        if pm_ids:
+            self.cursor.execute(
+                "DELETE FROM rattachements_pp_pm WHERE personne_morale_id = ANY(%s::uuid[])",
+                (pm_ids,),
+            )
+            logger.info(f"  rattachements PM supprimés: {self.cursor.rowcount}")
 
         # Personnes physiques
         if pp_ids:
             self.cursor.execute(
-                "DELETE FROM personnes_physiques WHERE id = ANY(%s)", (pp_ids,)
+                "DELETE FROM profil_avocat WHERE personne_physique_id = ANY(%s::uuid[])",
+                (pp_ids,),
+            )
+            self.cursor.execute(
+                "DELETE FROM profil_particulier WHERE personne_physique_id = ANY(%s::uuid[])",
+                (pp_ids,),
+            )
+            self.cursor.execute(
+                "DELETE FROM profil_pro WHERE personne_physique_id = ANY(%s::uuid[])",
+                (pp_ids,),
+            )
+            self.cursor.execute(
+                "DELETE FROM personnes_physiques WHERE id = ANY(%s::uuid[])", (pp_ids,)
             )
             logger.info(f"  personnes_physiques supprimées: {self.cursor.rowcount}")
 
@@ -711,20 +726,19 @@ class AnabaImporter:
             email = normalize_email(safe_str(row.get("Email"))) or None
             telephone = safe_str(row.get("Téléphone")) or None
             portable = safe_str(row.get("Portable")) or None
-            # Pas de limite de longueur sur poste (schema TEXT)
-            poste = safe_str(row.get("Poste")) or None
-            departement = safe_str(row.get("Département")) or None
             # linkedin_url reste VarChar(255) dans le schema
             linkedin_url = safe_str(row.get("Profil Linkedin")) or None
             if linkedin_url and len(linkedin_url) > 255:
                 linkedin_url = linkedin_url[:255]
 
             statut_rgpd_raw = safe_str(row.get("Statut RGPD"))
-            if statut_rgpd_raw in ("Opt-in", "Opt-out"):
-                statut_rgpd = statut_rgpd_raw
+            if statut_rgpd_raw == "Opt-in":
+                statut_rgpd = "OPT_IN"
+            elif statut_rgpd_raw == "Opt-out":
+                statut_rgpd = "OPT_OUT"
             else:
-                statut_rgpd = "Non renseigné"
-            opt_in_email = statut_rgpd != "Opt-out"
+                statut_rgpd = "NON_RENSEIGNE"
+            opt_in_email = statut_rgpd != "OPT_OUT"
 
             # emailStatus: 'Oui' = email invalide
             email_invalide = safe_str(row.get("emailStatus")).lower() == "oui"
@@ -742,19 +756,19 @@ class AnabaImporter:
                     """
                     INSERT INTO personnes_physiques
                         (nom, prenom, email, telephone, portable,
-                         poste, departement, linkedin_url,
+                         linkedin_url,
                          statut_rgpd, email_invalide,
                          dernier_email_le, dernier_email_avec,
                          total_emails, echanges_avec,
-                         type_relation_dossier, opt_in_email,
+                         type_profil_principal, type_relation_dossier, opt_in_email,
                          creer_par, modifier_par, modifier_le)
                     VALUES
                         (%s, %s, %s, %s, %s,
-                         %s, %s, %s,
+                         %s,
                          %s, %s,
                          %s, %s,
                          %s, %s,
-                         %s, %s,
+                         'CONTACT_PRO', %s, %s,
                          %s, %s, NOW())
                     RETURNING id
                 """,
@@ -764,8 +778,6 @@ class AnabaImporter:
                         email,
                         telephone,
                         portable,
-                        poste,
-                        departement,
                         linkedin_url,
                         statut_rgpd,
                         email_invalide,
@@ -781,6 +793,10 @@ class AnabaImporter:
                 )
 
                 pp_id = self.cursor.fetchone()["id"]
+                self.cursor.execute(
+                    "INSERT INTO profil_pro (personne_physique_id) VALUES (%s)",
+                    (pp_id,),
+                )
                 self.cursor.execute("RELEASE SAVEPOINT pp_insert")
                 self.stats["pp_creees"] += 1
 

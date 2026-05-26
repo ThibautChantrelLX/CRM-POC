@@ -24,6 +24,7 @@ export const PM_FIELDS: FieldDef[] = [
       { value: "CABINET_POSTULATION", label: "Cabinet postulation" },
       { value: "CLIENT_DIRECT", label: "Client direct" },
       { value: "HYBRIDE", label: "Hybride" },
+      { value: "AUTRE", label: "Autre" },
     ],
   },
   {
@@ -51,11 +52,13 @@ const RELATION_LABELS: Record<TypeRelationPm, string> = {
   CABINET_POSTULATION: "Cabinet postulation",
   CLIENT_DIRECT: "Client direct",
   HYBRIDE: "Hybride",
+  AUTRE: "Autre",
 };
 const RELATION_COLORS: Record<TypeRelationPm, string> = {
-  CABINET_POSTULATION: "bg-blue-100 text-blue-700",
-  CLIENT_DIRECT: "bg-orange-100 text-orange-700",
+  CABINET_POSTULATION: "bg-secondary-100 text-secondary-700",
+  CLIENT_DIRECT: "bg-primary-100 text-primary-700",
   HYBRIDE: "bg-purple-100 text-purple-700",
+  AUTRE: "bg-zinc-100 text-zinc-600",
 };
 
 // ─── Column definitions ───────────────────────────────────────────────────────
@@ -84,40 +87,6 @@ export const PM_COLUMNS: ColumnDef<PersonneMoraleListItem, any>[] = [
             </div>
           )}
         </div>
-      );
-    },
-  }),
-  col.accessor("email", {
-    header: "Email",
-    enableSorting: true,
-    cell: ({ getValue }) => {
-      const v = getValue<string | null>();
-      return v ? (
-        <a
-          href={`mailto:${v}`}
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1.5 text-blue-600 hover:underline max-w-[200px]"
-        >
-          <Mail size={12} className="shrink-0 text-blue-400" />
-          <span className="truncate">{v}</span>
-        </a>
-      ) : (
-        <span className="text-zinc-300">—</span>
-      );
-    },
-  }),
-  col.accessor("telephone", {
-    header: "Téléphone",
-    enableSorting: false,
-    cell: ({ getValue }) => {
-      const v = getValue<string | null>();
-      return v ? (
-        <span className="flex items-center gap-1.5 text-zinc-600 whitespace-nowrap">
-          <Phone size={12} className="text-zinc-400 shrink-0" />
-          {v}
-        </span>
-      ) : (
-        <span className="text-zinc-300">—</span>
       );
     },
   }),
@@ -192,9 +161,9 @@ export const PM_COLUMNS: ColumnDef<PersonneMoraleListItem, any>[] = [
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1 text-blue-600 hover:underline text-xs"
+          className="flex items-center gap-1 text-secondary-600 hover:underline text-xs"
         >
-          <Globe size={11} className="shrink-0 text-blue-400" />
+          <Globe size={11} className="shrink-0 text-secondary-400" />
           <span className="truncate max-w-[120px]">{v}</span>
         </a>
       ) : (

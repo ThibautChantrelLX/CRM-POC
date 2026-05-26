@@ -113,7 +113,7 @@ export function DataTable<T>({
                   key={row.id}
                   onClick={() => onRowClick?.(row.original)}
                   className={cn(
-                    "hover:bg-orange-50/40 transition-colors",
+                    "hover:bg-primary-50/40 transition-colors",
                     onRowClick && "cursor-pointer",
                   )}
                 >
@@ -141,7 +141,7 @@ export function DataTable<T>({
                 onLimitChange?.(Number(e.target.value));
                 onPageChange(1);
               }}
-              className="appearance-none pl-2.5 pr-6 py-1 rounded-md border border-zinc-200 bg-white text-sm text-zinc-700 focus:outline-none focus:border-orange-400 cursor-pointer"
+              className="appearance-none pl-2.5 pr-6 py-1 rounded-md border border-zinc-200 bg-white text-sm text-zinc-700 focus:outline-none focus:border-primary-400 cursor-pointer"
             >
               {LIMIT_OPTIONS.map((n) => (
                 <option key={n} value={n}>{n}</option>

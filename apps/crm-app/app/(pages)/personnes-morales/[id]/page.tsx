@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import {
-  ArrowLeft,
   Building2,
   MapPin,
   Mail,
@@ -11,10 +10,13 @@ import {
   Info,
   Layers,
 } from "lucide-react";
+import { nafDisplay } from "@/lib/naf";
 import { getPersonneMoraleDetail } from "@/lib/server/modules/personnes-morales/service";
+import { BackButton } from "@/components/ui/back-button";
 import { DetailSection } from "@/components/detail/DetailSection";
 import { InfoGrid } from "@/components/detail/InfoGrid";
 import { ContactsRattachesList } from "@/components/detail/ContactsRattachesList";
+import { PmDetailActions } from "@/components/pm/PmDetailActions";
 import { cn } from "@/lib/utils";
 import type { TypeRelationPm } from "@/lib/server/modules/personnes-morales/dto";
 
@@ -24,11 +26,13 @@ const RELATION_LABELS: Record<TypeRelationPm, string> = {
   CABINET_POSTULATION: "Cabinet postulation",
   CLIENT_DIRECT: "Client direct",
   HYBRIDE: "Hybride",
+  AUTRE: "Autre",
 };
 const RELATION_COLORS: Record<TypeRelationPm, string> = {
-  CABINET_POSTULATION: "bg-blue-100 text-blue-700 border-blue-200",
-  CLIENT_DIRECT: "bg-orange-100 text-orange-700 border-orange-200",
+  CABINET_POSTULATION: "bg-secondary-100 text-secondary-700 border-secondary-200",
+  CLIENT_DIRECT: "bg-primary-100 text-primary-700 border-primary-200",
   HYBRIDE: "bg-purple-100 text-purple-700 border-purple-200",
+  AUTRE: "bg-zinc-100 text-zinc-600 border-zinc-200",
 };
 
 function Badge({ label, color }: { label: string; color: string }) {
@@ -81,7 +85,7 @@ export default async function PersonneMoralePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const pm = await getPersonneMoraleDetail(Number(id));
+  const pm = await getPersonneMoraleDetail(id);
   if (!pm) notFound();
 
   return (
@@ -89,12 +93,7 @@ export default async function PersonneMoralePage({
       {/* Header */}
       <div className="bg-white border-b border-zinc-200 px-6 py-4 sticky top-0 z-10">
         <div className="flex items-center gap-3">
-          <Link
-            href="/personnes-morales"
-            className="p-1.5 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-600 transition-colors"
-          >
-            <ArrowLeft size={16} />
-          </Link>
+          <BackButton fallbackHref="/personnes-morales" />
           <div className="w-9 h-9 rounded-xl bg-zinc-100 flex items-center justify-center shrink-0">
             <Building2 size={18} className="text-zinc-500" />
           </div>
@@ -109,6 +108,11 @@ export default async function PersonneMoralePage({
               Inactif
             </span>
           )}
+          <PmDetailActions
+            pmId={pm.id}
+            pmNom={pm.raisonSociale}
+            contacts={pm.contacts}
+          />
         </div>
       </div>
 
@@ -130,7 +134,7 @@ export default async function PersonneMoralePage({
                     value: pm.email ? (
                       <a
                         href={`mailto:${pm.email}`}
-                        className="text-blue-600 hover:underline flex items-center gap-1"
+                        className="text-secondary-600 hover:underline flex items-center gap-1"
                       >
                         <Mail size={12} />
                         {pm.email}
@@ -153,7 +157,7 @@ export default async function PersonneMoralePage({
                         href={pm.siteWeb.startsWith("http") ? pm.siteWeb : `https://${pm.siteWeb}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-blue-600 hover:underline text-xs"
+                        className="flex items-center gap-1 text-secondary-600 hover:underline text-xs"
                       >
                         <Globe size={12} />
                         {pm.siteWeb}
@@ -170,7 +174,7 @@ export default async function PersonneMoralePage({
               <InfoGrid
                 cols={2}
                 items={[
-                  { label: "Secteur d'activité", value: pm.secteurActivite, span: 2 },
+                  { label: "Secteur d'activité", value: nafDisplay(pm.secteurActivite), span: 2 },
                   { label: "Catégorie entreprise", value: pm.categorieEntreprise },
                   { label: "Source d'origine", value: pm.sourceOrigine },
                   {
@@ -202,7 +206,7 @@ export default async function PersonneMoralePage({
                       value: pm.maisonMere ? (
                         <Link
                           href={`/personnes-morales/${pm.maisonMere.id}`}
-                          className="text-blue-600 hover:underline font-medium"
+                          className="text-secondary-600 hover:underline font-medium"
                         >
                           {pm.maisonMere.raisonSociale}
                           {pm.maisonMere.siretSiren && (
@@ -225,7 +229,7 @@ export default async function PersonneMoralePage({
                         <div key={f.id} className="flex items-center gap-2">
                           <Link
                             href={`/personnes-morales/${f.id}`}
-                            className="text-blue-600 hover:underline text-sm font-medium"
+                            className="text-secondary-600 hover:underline text-sm font-medium"
                           >
                             {f.raisonSociale}
                           </Link>
@@ -285,7 +289,12 @@ export default async function PersonneMoralePage({
 
             {/* Contacts rattachés */}
             <DetailSection title={`Contacts (${pm.contacts.length})`} icon={Users}>
-              <ContactsRattachesList contacts={pm.contacts} />
+              <ContactsRattachesList
+                contacts={pm.contacts}
+                pmId={pm.id}
+                pmNom={pm.raisonSociale}
+                pmNomDomaine={pm.nomDomaine ?? null}
+              />
             </DetailSection>
           </div>
         </div>

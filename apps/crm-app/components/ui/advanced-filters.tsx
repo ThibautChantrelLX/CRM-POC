@@ -89,7 +89,7 @@ export function AdvancedFilters({ fields, initialConditions, onApply, onClose }:
           <button
             type="button"
             onClick={() => setAddOpen((o) => !o)}
-            className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border-2 border-dashed border-orange-300 text-sm text-orange-600 hover:bg-orange-50 transition-colors"
+            className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border-2 border-dashed border-primary-300 text-sm text-primary-600 hover:bg-primary-50 transition-colors"
           >
             <span className="flex items-center gap-1.5">
               <Plus size={14} />
@@ -105,14 +105,14 @@ export function AdvancedFilters({ fields, initialConditions, onApply, onClose }:
             <>
               {/* Backdrop pour fermer le sous-menu */}
               <div className="fixed inset-0 z-30" onClick={() => setAddOpen(false)} />
-              {/* Dropdown — s'ouvre vers le haut, hors du conteneur scrollable */}
-              <div className="absolute bottom-full mb-1.5 left-4 right-4 z-40 bg-white border border-zinc-200 rounded-xl shadow-lg py-1 overflow-hidden max-h-52 overflow-y-auto">
+              {/* Dropdown */}
+              <div className="absolute top-full mt-1.5 left-4 right-4 z-40 bg-white border border-zinc-200 rounded-xl shadow-lg py-1 overflow-y-auto max-h-52">
                 {fields.map((f) => (
                   <button
                     key={f.key}
                     type="button"
                     onClick={() => add(f)}
-                    className="w-full text-left px-4 py-2 text-sm text-zinc-700 hover:bg-orange-50 hover:text-orange-700 transition-colors"
+                    className="w-full text-left px-4 py-2 text-sm text-zinc-700 hover:bg-primary-50 hover:text-primary-700 transition-colors"
                   >
                     {f.label}
                   </button>
@@ -137,7 +137,7 @@ export function AdvancedFilters({ fields, initialConditions, onApply, onClose }:
               onApply(conditions);
               onClose();
             }}
-            className="flex-1 px-4 py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+            className="flex-1 px-4 py-2 rounded-lg bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
           >
             Appliquer
           </button>
@@ -201,7 +201,7 @@ function TextRow({
         placeholder="Saisir…"
         value={condition.value as string}
         onChange={(e) => onChange({ value: e.target.value })}
-        className="flex-1 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-orange-400 placeholder:text-zinc-300"
+        className="flex-1 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400 placeholder:text-zinc-300"
       />
     </div>
   );
@@ -233,8 +233,8 @@ function SelectRow({
           className={cn(
             "px-3 py-1 rounded-full text-xs font-medium border transition-colors",
             selected.includes(opt.value)
-              ? "bg-orange-500 border-orange-500 text-white"
-              : "border-zinc-200 text-zinc-600 hover:border-orange-300 hover:text-orange-600",
+              ? "bg-primary-500 border-primary-500 text-white"
+              : "border-zinc-200 text-zinc-600 hover:border-primary-300 hover:text-primary-600",
           )}
         >
           {opt.label}
@@ -285,14 +285,14 @@ function SelectSearchRow({
         placeholder="Rechercher…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        className="w-full px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-orange-400 placeholder:text-zinc-300"
+        className="w-full px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400 placeholder:text-zinc-300"
       />
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {selected.map((v) => (
             <span
               key={v}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500 text-white text-xs font-medium"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-500 text-white text-xs font-medium"
             >
               {v}
               <button type="button" onClick={() => toggle(v)} className="hover:opacity-75">
@@ -311,7 +311,7 @@ function SelectSearchRow({
             className={cn(
               "w-full text-left px-2.5 py-1.5 rounded-md text-sm transition-colors",
               selected.includes(opt.value)
-                ? "bg-orange-50 text-orange-700 font-medium"
+                ? "bg-primary-50 text-primary-700 font-medium"
                 : "text-zinc-600 hover:bg-zinc-50",
             )}
           >
@@ -340,7 +340,7 @@ function DateRow({
         onChange={(e) =>
           onChange({ operator: e.target.value as FilterCondition["operator"], value: "" })
         }
-        className="w-full px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm bg-white focus:outline-none focus:border-orange-400"
+        className="w-full px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm bg-white focus:outline-none focus:border-primary-400"
       >
         <option value="gte">Après le</option>
         <option value="lte">Avant le</option>

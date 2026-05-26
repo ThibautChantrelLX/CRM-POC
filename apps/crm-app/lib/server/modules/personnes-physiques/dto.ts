@@ -1,18 +1,84 @@
 export type TypeRelationPp = "CONTACT" | "CLIENT" | "HYBRIDE";
 export type StatutRgpd = "OPT_IN" | "OPT_OUT" | "NON_RENSEIGNE";
+export type TypeProfilPrincipal =
+  | "AVOCAT_INTERNE"
+  | "ASSISTANT_INTERNE"
+  | "FONCTION_SUPPORT"
+  | "AVOCAT_EXTERNE"
+  | "NOTAIRE"
+  | "CLERC_NOTAIRE"
+  | "COMMISSAIRE_JUSTICE"
+  | "MAGISTRAT"
+  | "GREFFIER"
+  | "JURISTE"
+  | "INTERVENANT_JUSTICE"
+  | "FONCTION_SUPPORT_EXTERNE"
+  | "PARTICULIER"
+  | "CONTACT_PRO"
+  | "APPRENANT_EXTERNE"
+  | "FORMATEUR_EXTERNE";
+
+// Profils "pro" qui peuvent être rattachés à une entreprise
+export const PROFILS_PRO: TypeProfilPrincipal[] = [
+  "AVOCAT_INTERNE",
+  "ASSISTANT_INTERNE",
+  "FONCTION_SUPPORT",
+  "AVOCAT_EXTERNE",
+  "NOTAIRE",
+  "CLERC_NOTAIRE",
+  "COMMISSAIRE_JUSTICE",
+  "MAGISTRAT",
+  "GREFFIER",
+  "JURISTE",
+  "INTERVENANT_JUSTICE",
+  "FONCTION_SUPPORT_EXTERNE",
+  "CONTACT_PRO",
+  "FORMATEUR_EXTERNE",
+];
+
+export function isProfilPro(type: TypeProfilPrincipal): boolean {
+  return PROFILS_PRO.includes(type);
+}
+
+export function isAvocatProfil(type: TypeProfilPrincipal): boolean {
+  return type === "AVOCAT_INTERNE" || type === "AVOCAT_EXTERNE";
+}
+
+// ─── Profil Avocat ─────────────────────────────────────────────────────────────
+
+export type ProfilAvocatData = {
+  barreau: string | null;
+  dateSerment: string | null;
+  specialite: string | null;
+  activiteDominante: string | null;
+  profession: string | null;
+};
+
+// ─── Profil Pro (non-avocat, non-particulier) ──────────────────────────────────
+
+export type ProfilProData = {
+  profession: string | null;
+  specialite: string | null;
+};
+
+// ─── Profil Particulier ────────────────────────────────────────────────────────
+
+export type ProfilParticulierData = {
+  dateNaissance: string | null;
+  civilite: string | null;
+  situationFamiliale: string | null;
+};
 
 // ─── List ──────────────────────────────────────────────────────────────────────
 
 export type PersonnePhysiqueListItem = {
-  id: number;
+  id: string;
+  typeProfilPrincipal: TypeProfilPrincipal;
   nom: string;
   prenom: string | null;
   email: string | null;
   telephone: string | null;
   portable: string | null;
-  specialite: string | null;
-  profession: string | null;
-  barreau: string | null;
   typeRelation: TypeRelationPp;
   statutRgpd: StatutRgpd | null;
   actif: boolean;
@@ -22,10 +88,17 @@ export type PersonnePhysiqueListItem = {
   emailInvalide: boolean;
   totalEmails: number | null;
   dernierEmailLe: string | null;
-  dateSerment: string | null;
   linkedinUrl: string | null;
   creerLe: string;
   modifierLe: string;
+  profilAvocat: {
+    barreau: string | null;
+    specialite: string | null;
+    activiteDominante: string | null;
+    profession: string | null;
+    dateSerment: string | null;
+  } | null;
+  profilPro: ProfilProData | null;
   adresse?: {
     ville: string | null;
     codePostal: string | null;
@@ -49,6 +122,7 @@ export type PersonnePhysiqueListQuery = {
   typeRelation?: TypeRelationPp[];
   statutRgpd?: StatutRgpd[];
   barreau?: string[];
+  typeProfilPrincipal?: TypeProfilPrincipal[];
   // Filtres booléens
   actif?: boolean;
   optOutGlobal?: boolean;
@@ -78,7 +152,7 @@ export type RattachementDetail = {
   dateDebut: string | null;
   dateFin: string | null;
   personneMorale: {
-    id: number;
+    id: string;
     raisonSociale: string;
     siretSiren: string | null;
     email: string | null;
@@ -87,16 +161,13 @@ export type RattachementDetail = {
 };
 
 export type PersonnePhysiqueDetail = {
-  id: number;
+  id: string;
+  typeProfilPrincipal: TypeProfilPrincipal;
   nom: string;
   prenom: string | null;
   email: string | null;
   telephone: string | null;
   portable: string | null;
-  specialite: string | null;
-  profession: string | null;
-  barreau: string | null;
-  dateSerment: string | null;
   typeRelation: TypeRelationPp;
   statutRgpd: StatutRgpd | null;
   actif: boolean;
@@ -115,6 +186,10 @@ export type PersonnePhysiqueDetail = {
   modifierLe: string;
   creerPar: string | null;
   modifierPar: string | null;
+  // Profils
+  profilAvocat: ProfilAvocatData | null;
+  profilParticulier: ProfilParticulierData | null;
+  profilPro: ProfilProData | null;
   // Relations
   adresse: {
     rue: string | null;
@@ -134,15 +209,29 @@ export type CreatePersonnePhysiqueInput = {
   email?: string;
   telephone?: string;
   portable?: string;
-  specialite?: string;
-  profession?: string;
-  barreau?: string;
+  typeProfilPrincipal: TypeProfilPrincipal;
   typeRelation: TypeRelationPp;
   statutRgpd?: StatutRgpd;
   actif?: boolean;
   optInEmail?: boolean;
   optInSms?: boolean;
   optOutGlobal?: boolean;
+  profilAvocat?: {
+    barreau?: string;
+    dateSerment?: string;
+    specialite?: string;
+    activiteDominante?: string;
+    profession?: string;
+  };
+  profilParticulier?: {
+    dateNaissance?: string;
+    civilite?: string;
+    situationFamiliale?: string;
+  };
+  profilPro?: {
+    profession?: string;
+    specialite?: string;
+  };
 };
 
 export type UpdatePersonnePhysiqueInput = Partial<CreatePersonnePhysiqueInput>;

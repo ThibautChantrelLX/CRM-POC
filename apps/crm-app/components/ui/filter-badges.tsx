@@ -22,14 +22,14 @@ export function FilterBadges({ conditions, fields, onRemove, onClearAll }: Props
         return (
           <span
             key={cond.id}
-            className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full bg-orange-100 text-orange-700 text-xs font-medium border border-orange-200"
+            className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full bg-primary-100 text-primary-700 text-xs font-medium border border-primary-200"
           >
             {label}
             <button
               type="button"
               aria-label="Supprimer ce filtre"
               onClick={() => onRemove(cond.id)}
-              className="hover:bg-orange-200 rounded-full p-0.5 transition-colors"
+              className="hover:bg-primary-200 rounded-full p-0.5 transition-colors"
             >
               <X size={10} />
             </button>
