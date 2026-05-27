@@ -61,7 +61,7 @@ function fromDetail(pp: PersonnePhysiqueDetail): FormState {
 
 type Props =
   | { mode: "create" }
-  | { mode: "edit"; initialData: PersonnePhysiqueDetail; ppId: number };
+  | { mode: "edit"; initialData: PersonnePhysiqueDetail; ppId: string };
 
 export function PpForm(props: Props) {
   const router = useRouter();

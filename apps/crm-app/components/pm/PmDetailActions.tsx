@@ -8,12 +8,12 @@ import { SubmitButton } from "@/components/ui/submit-button";
 
 type Contact = {
   id: number;
-  personnePhysique: { id: number; nom: string; prenom: string | null };
+  personnePhysique: { id: string; nom: string; prenom: string | null };
   titreFonction: string | null;
 };
 
 type Props = {
-  pmId: number;
+  pmId: string;
   pmNom: string;
   contacts: Contact[];
 };

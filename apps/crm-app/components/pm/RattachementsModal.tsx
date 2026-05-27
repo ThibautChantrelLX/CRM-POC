@@ -6,7 +6,7 @@ import { StepRattachements } from "@/components/pm/StepRattachements";
 type Props = {
   open: boolean;
   onClose: () => void;
-  pmId: number;
+  pmId: string;
   pmNom: string;
   pmNomDomaine: string | null;
 };

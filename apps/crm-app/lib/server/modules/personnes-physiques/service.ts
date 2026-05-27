@@ -221,7 +221,10 @@ export async function getPersonnePhysique(id: string): Promise<PersonnePhysiqueL
   if (!pp) return null;
   return {
     ...pp,
-    dateSerment: fmtDate(pp.dateSerment),
+    profession: null,
+    specialite: null,
+    barreau: null,
+    dateSerment: null,
     dernierEmailLe: fmtDate(pp.dernierEmailLe),
     creerLe: (pp.creerLe as Date).toISOString(),
     modifierLe: (pp.modifierLe as Date).toISOString(),
@@ -231,7 +234,9 @@ export async function getPersonnePhysique(id: string): Promise<PersonnePhysiqueL
 export async function createPersonnePhysique(
   data: CreatePersonnePhysiqueInput,
 ): Promise<PersonnePhysiqueListItem> {
-  const pp = await prisma.personnePhysique.create({ data });
+  const pp = await prisma.personnePhysique.create({
+    data: { ...data, typeProfilPrincipal: data.typeProfilPrincipal ?? "CONTACT_PRO" },
+  });
   return pp as unknown as PersonnePhysiqueListItem;
 }
 

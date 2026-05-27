@@ -15,8 +15,8 @@ export async function POST(request: Request) {
 
     const rattachement = await prisma.rattachementPpPm.create({
       data: {
-        personnePhysiqueId: Number(personnePhysiqueId),
-        personneMoraleId: Number(personneMoraleId),
+        personnePhysiqueId: String(personnePhysiqueId),
+        personneMoraleId: String(personneMoraleId),
         titreFonction: titreFonction || null,
         dateDebut: dateDebut ? new Date(dateDebut) : new Date(),
       },

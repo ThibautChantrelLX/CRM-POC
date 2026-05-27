@@ -128,15 +128,19 @@ export type PersonnePhysiqueDetail = {
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
+export type TypeProfilPrincipal =
+  | "AVOCAT_INTERNE" | "ASSISTANT_INTERNE" | "FONCTION_SUPPORT" | "AVOCAT_EXTERNE"
+  | "INTERVENANT_JUSTICE" | "PARTICULIER" | "CONTACT_PRO" | "APPRENANT_EXTERNE"
+  | "FORMATEUR_EXTERNE" | "NOTAIRE" | "CLERC_NOTAIRE" | "COMMISSAIRE_JUSTICE"
+  | "MAGISTRAT" | "GREFFIER" | "JURISTE" | "FONCTION_SUPPORT_EXTERNE";
+
 export type CreatePersonnePhysiqueInput = {
   nom: string;
   prenom?: string;
   email?: string;
   telephone?: string;
   portable?: string;
-  specialite?: string;
-  profession?: string;
-  barreau?: string;
+  typeProfilPrincipal?: TypeProfilPrincipal;
   typeRelation: TypeRelationPp;
   statutRgpd?: StatutRgpd;
   actif?: boolean;

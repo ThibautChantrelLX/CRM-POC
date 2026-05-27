@@ -6,14 +6,14 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls } from "@/components/ui/form-field";
 
 type PmResult = {
-  id: number;
+  id: string;
   raisonSociale: string;
   siretSiren: string | null;
   typeStructure: string | null;
 };
 
 type Props = {
-  ppId: number;
+  ppId: string;
   ppNom: string;
   onDone: () => void;
 };

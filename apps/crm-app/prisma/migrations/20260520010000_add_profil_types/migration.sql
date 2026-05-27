@@ -1,0 +1,1 @@
+-- Applied in 20260520000000_refactor_pp_profiles_uuid_statut
