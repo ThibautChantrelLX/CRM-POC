@@ -10,7 +10,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function GET(_request: Request, { params }: Params) {
   const { id } = await params;
   try {
-    const pp = await getPersonnePhysique(Number(id));
+    const pp = await getPersonnePhysique(id);
     if (!pp) return NextResponse.json({ error: "Not found" }, { status: 404 });
     return NextResponse.json(pp);
   } catch (err) {
@@ -23,7 +23,7 @@ export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
   try {
     const body = await request.json();
-    const pp = await updatePersonnePhysique(Number(id), body);
+    const pp = await updatePersonnePhysique(id, body);
     return NextResponse.json(pp);
   } catch (err) {
     console.error(err);
@@ -34,7 +34,7 @@ export async function PATCH(request: Request, { params }: Params) {
 export async function DELETE(_request: Request, { params }: Params) {
   const { id } = await params;
   try {
-    await deletePersonnePhysique(Number(id));
+    await deletePersonnePhysique(id);
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     console.error(err);
