@@ -135,7 +135,7 @@ export function UserForm({ mode, userId, defaultValues }: UserFormProps) {
       )}
 
       <div className="flex items-center gap-3">
-        <SubmitButton isLoading={loading} disabled={!name || !email || !entiteId}>
+        <SubmitButton type="submit" isLoading={loading} disabled={!name || !email || !entiteId}>
           {mode === "create" ? "Créer l'utilisateur" : "Enregistrer les modifications"}
         </SubmitButton>
         <button
