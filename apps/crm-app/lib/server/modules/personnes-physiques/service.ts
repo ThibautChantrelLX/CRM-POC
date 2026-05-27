@@ -13,9 +13,9 @@ import type {
 
 const ALLOWED_SORT: Record<string, true> = {
   id: true, nom: true, prenom: true, email: true, telephone: true,
-  portable: true, specialite: true, profession: true, typeRelation: true,
+  portable: true, typeRelation: true,
   statutRgpd: true, actif: true, totalEmails: true, dernierEmailLe: true,
-  dateSerment: true, creerLe: true, modifierLe: true,
+  creerLe: true, modifierLe: true,
 };
 
 function ilike(value: string): Prisma.StringFilter {
@@ -38,7 +38,9 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
       OR: [
         { nom: s }, { prenom: s }, { email: s },
         { telephone: s }, { portable: s },
-        { profession: s }, { specialite: s },
+        { profilAvocat: { profession: s } },
+        { profilAvocat: { specialite: s } },
+        { profilPro: { profession: s } },
       ],
     });
   }
@@ -46,12 +48,17 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
   if (q.nom) and.push({ nom: ilike(q.nom) });
   if (q.prenom) and.push({ prenom: ilike(q.prenom) });
   if (q.email) and.push({ email: ilike(q.email) });
-  if (q.profession) and.push({ profession: ilike(q.profession) });
-  if (q.specialite) and.push({ specialite: ilike(q.specialite) });
+  if (q.profession) and.push({
+    OR: [
+      { profilAvocat: { profession: ilike(q.profession) } },
+      { profilPro: { profession: ilike(q.profession) } },
+    ],
+  });
+  if (q.specialite) and.push({ profilAvocat: { specialite: ilike(q.specialite) } });
 
   if (q.typeRelation?.length) and.push({ typeRelation: { in: q.typeRelation } });
   if (q.statutRgpd?.length) and.push({ statutRgpd: { in: q.statutRgpd } });
-  if (q.barreau?.length) and.push({ barreau: { in: q.barreau } });
+  if (q.barreau?.length) and.push({ profilAvocat: { barreau: { in: q.barreau } } });
 
   if (q.actif !== undefined) and.push({ actif: q.actif });
   if (q.optOutGlobal !== undefined) and.push({ optOutGlobal: q.optOutGlobal });
@@ -75,9 +82,11 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
   }
   if (q.dateSermentApres || q.dateSermentAvant) {
     and.push({
-      dateSerment: {
-        ...(q.dateSermentApres && { gte: new Date(q.dateSermentApres) }),
-        ...(q.dateSermentAvant && { lte: new Date(q.dateSermentAvant) }),
+      profilAvocat: {
+        dateSerment: {
+          ...(q.dateSermentApres && { gte: new Date(q.dateSermentApres) }),
+          ...(q.dateSermentAvant && { lte: new Date(q.dateSermentAvant) }),
+        },
       },
     });
   }
@@ -103,13 +112,18 @@ export async function fetchPersonnesPhysiques(
       take: limit,
       include: {
         adresse: { select: { ville: true, codePostal: true, pays: true } },
+        profilAvocat: { select: { profession: true, specialite: true, barreau: true, dateSerment: true } },
+        profilPro: { select: { profession: true } },
       },
     }),
   ]);
 
   const data: PersonnePhysiqueListItem[] = rows.map((r) => ({
     ...r,
-    dateSerment: fmtDate(r.dateSerment),
+    profession: r.profilAvocat?.profession ?? r.profilPro?.profession ?? null,
+    specialite: r.profilAvocat?.specialite ?? null,
+    barreau: r.profilAvocat?.barreau ?? null,
+    dateSerment: fmtDate(r.profilAvocat?.dateSerment),
     dernierEmailLe: fmtDate(r.dernierEmailLe),
     creerLe: (r.creerLe as Date).toISOString(),
     modifierLe: (r.modifierLe as Date).toISOString(),
@@ -127,6 +141,8 @@ export async function getPersonnePhysiqueDetail(
     where: { id },
     include: {
       adresse: true,
+      profilAvocat: { select: { profession: true, specialite: true, barreau: true, dateSerment: true } },
+      profilPro: { select: { profession: true } },
       rattachements: {
         include: {
           personneMorale: {
@@ -156,10 +172,10 @@ export async function getPersonnePhysiqueDetail(
     email: pp.email,
     telephone: pp.telephone,
     portable: pp.portable,
-    specialite: pp.specialite,
-    profession: pp.profession,
-    barreau: pp.barreau,
-    dateSerment: fmtDate(pp.dateSerment),
+    specialite: pp.profilAvocat?.specialite ?? null,
+    profession: pp.profilAvocat?.profession ?? pp.profilPro?.profession ?? null,
+    barreau: pp.profilAvocat?.barreau ?? null,
+    dateSerment: fmtDate(pp.profilAvocat?.dateSerment),
     typeRelation: pp.typeRelation as PersonnePhysiqueDetail["typeRelation"],
     statutRgpd: pp.statutRgpd as PersonnePhysiqueDetail["statutRgpd"],
     actif: pp.actif,
