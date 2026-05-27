@@ -231,10 +231,10 @@ class BarotechImporter:
             "rattachements_ignores": 0,
             "erreurs": [],
         }
-        # raison_sociale → pm_id
-        self.pm_map: dict[str, int] = {}
-        # ID Contact → pp_id
-        self.pp_map: dict[str, int] = {}
+        # raison_sociale → pm_id (uuid str)
+        self.pm_map: dict[str, str] = {}
+        # ID Contact → pp_id (uuid str)
+        self.pp_map: dict[str, str] = {}
 
     # -------------------------------------------------------------------------
     # CONNEXION
@@ -313,22 +313,25 @@ class BarotechImporter:
 
         if pp_ids:
             self.cursor.execute(
-                "DELETE FROM rattachements_pp_pm WHERE personne_physique_id = ANY(%s)",
+                "DELETE FROM rattachements_pp_pm WHERE personne_physique_id = ANY(%s::uuid[])",
                 (pp_ids,),
             )
             self.cursor.execute(
-                "DELETE FROM personnes_physiques WHERE id = ANY(%s)", (pp_ids,)
+                "DELETE FROM profil_avocat WHERE personne_physique_id = ANY(%s::uuid[])",
+                (pp_ids,),
+            )
+            self.cursor.execute(
+                "DELETE FROM personnes_physiques WHERE id = ANY(%s::uuid[])", (pp_ids,)
             )
             logger.info(f"  Supprimé {len(pp_ids)} PP")
 
         if pm_ids:
-            # D'abord mettre les maison_mere_id à NULL pour éviter les FK circulaires
             self.cursor.execute(
-                "UPDATE personnes_morales SET maison_mere_id = NULL WHERE id = ANY(%s)",
+                "UPDATE personnes_morales SET maison_mere_id = NULL WHERE id = ANY(%s::uuid[])",
                 (pm_ids,),
             )
             self.cursor.execute(
-                "DELETE FROM personnes_morales WHERE id = ANY(%s)", (pm_ids,)
+                "DELETE FROM personnes_morales WHERE id = ANY(%s::uuid[])", (pm_ids,)
             )
             logger.info(f"  Supprimé {len(pm_ids)} PM")
 
@@ -420,7 +423,7 @@ class BarotechImporter:
                          adresse_id, actif, creer_par, modifier_par, modifier_le)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, true,
                             'import_barotech', 'import_barotech', NOW())
-                    RETURNING id
+                    RETURNING id::text
                 """,
                     (
                         rs,
@@ -521,28 +524,34 @@ class BarotechImporter:
                     """
                     INSERT INTO personnes_physiques
                         (nom, prenom, email, telephone, portable,
-                         specialite, profession, date_serment, barreau,
-                         adresse_id, actif, type_relation_dossier,
+                         type_profil_principal, type_relation_dossier,
+                         adresse_id, actif,
                          creer_par, modifier_par, modifier_le)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                            true, %s, 'import_barotech', 'import_barotech', NOW())
-                    RETURNING id
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s,
+                            true, 'import_barotech', 'import_barotech', NOW())
+                    RETURNING id::text
                 """,
                     (
-                        nom,
-                        prenom,
-                        email or None,
-                        telephone,
-                        portable,
-                        specialite,
-                        "Avocat",
-                        date_serment,
-                        barreau,
+                        nom, prenom, email or None, telephone, portable,
+                        "AVOCAT_EXTERNE", "CONTACT",
                         addr_id,
-                        "CONTACT",
                     ),
                 )
                 pp_id = self.cursor.fetchone()["id"]
+
+                # Profil avocat
+                self.cursor.execute(
+                    """
+                    INSERT INTO profil_avocat
+                        (personne_physique_id, barreau, date_serment,
+                         specialite, profession, activite_dominante, modifier_le)
+                    VALUES (%s::uuid, %s, %s, %s, %s, %s, NOW())
+                    """,
+                    (pp_id, barreau, date_serment, specialite, "Avocat",
+                     split_pipe(safe_str(row.get("Activité(s) dominante(s)", "")))[0]
+                     if split_pipe(safe_str(row.get("Activité(s) dominante(s)", ""))) else None),
+                )
+
                 self.pp_map[contact_id] = pp_id
                 self._insert_mapping_source("PersonnePhysique", pp_id, contact_id)
                 self.stats["pp_creees"] += 1
@@ -593,10 +602,10 @@ class BarotechImporter:
                     self.cursor.execute(
                         """
                         SELECT id FROM rattachements_pp_pm
-                        WHERE personne_physique_id = %s
-                          AND personne_morale_id = %s
+                        WHERE personne_physique_id = %s::uuid
+                          AND personne_morale_id = %s::uuid
                           AND date_debut = %s
-                    """,
+                        """,
                         (pp_id, pm_id, date_debut),
                     )
                     if self.cursor.fetchone():
@@ -608,10 +617,9 @@ class BarotechImporter:
                         """
                         INSERT INTO rattachements_pp_pm
                             (personne_physique_id, personne_morale_id,
-                             titre_fonction, date_debut, date_fin,
-                             modifier_le)
-                        VALUES (%s, %s, %s, %s, NULL, NOW())
-                    """,
+                             titre_fonction, date_debut, date_fin, modifier_le)
+                        VALUES (%s::uuid, %s::uuid, %s, %s, NULL, NOW())
+                        """,
                         (pp_id, pm_id, "Avocat", date_debut),
                     )
                     self.stats["rattachements_crees"] += 1
