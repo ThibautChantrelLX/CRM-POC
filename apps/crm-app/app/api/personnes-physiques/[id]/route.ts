@@ -4,6 +4,7 @@ import {
   updatePersonnePhysique,
   deletePersonnePhysique,
 } from "@/lib/server/modules/personnes-physiques/service";
+import { getActorName } from "@/lib/server/get-actor";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -22,8 +23,8 @@ export async function GET(_request: Request, { params }: Params) {
 export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
   try {
-    const body = await request.json();
-    const pp = await updatePersonnePhysique(id, body);
+    const [body, actorName] = await Promise.all([request.json(), getActorName()]);
+    const pp = await updatePersonnePhysique(id, body, actorName);
     return NextResponse.json(pp);
   } catch (err) {
     console.error(err);

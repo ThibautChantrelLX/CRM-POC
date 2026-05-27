@@ -8,6 +8,7 @@ import type {
   TypeRelationPp,
   StatutRgpd,
 } from "@/lib/server/modules/personnes-physiques/dto";
+import { getActorName } from "@/lib/server/get-actor";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -46,8 +47,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    return NextResponse.json(await createPersonnePhysique(body), { status: 201 });
+    const [body, actorName] = await Promise.all([request.json(), getActorName()]);
+    return NextResponse.json(await createPersonnePhysique(body, actorName), { status: 201 });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
