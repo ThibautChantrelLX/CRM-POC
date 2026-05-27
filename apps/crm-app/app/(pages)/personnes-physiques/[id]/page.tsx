@@ -92,7 +92,7 @@ export default async function PersonnePhysiquePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const pp = await getPersonnePhysiqueDetail(Number(id));
+  const pp = await getPersonnePhysiqueDetail(id);
   if (!pp) notFound();
 
   return (

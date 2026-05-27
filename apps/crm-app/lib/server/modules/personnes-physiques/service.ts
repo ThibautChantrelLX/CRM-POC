@@ -121,7 +121,7 @@ export async function fetchPersonnesPhysiques(
 // ─── Detail (liste + rattachements) ───────────────────────────────────────────
 
 export async function getPersonnePhysiqueDetail(
-  id: number,
+  id: string,
 ): Promise<PersonnePhysiqueDetail | null> {
   const pp = await prisma.personnePhysique.findUnique({
     where: { id },
@@ -197,7 +197,7 @@ export async function getPersonnePhysiqueDetail(
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
-export async function getPersonnePhysique(id: number): Promise<PersonnePhysiqueListItem | null> {
+export async function getPersonnePhysique(id: string): Promise<PersonnePhysiqueListItem | null> {
   const pp = await prisma.personnePhysique.findUnique({
     where: { id },
     include: { adresse: { select: { ville: true, codePostal: true, pays: true } } },
@@ -220,13 +220,13 @@ export async function createPersonnePhysique(
 }
 
 export async function updatePersonnePhysique(
-  id: number,
+  id: string,
   data: UpdatePersonnePhysiqueInput,
 ): Promise<PersonnePhysiqueListItem> {
   const pp = await prisma.personnePhysique.update({ where: { id }, data });
   return pp as unknown as PersonnePhysiqueListItem;
 }
 
-export async function deletePersonnePhysique(id: number): Promise<void> {
+export async function deletePersonnePhysique(id: string): Promise<void> {
   await prisma.personnePhysique.delete({ where: { id } });
 }

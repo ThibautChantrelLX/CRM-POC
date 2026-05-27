@@ -3,7 +3,7 @@ export type TypeRelationPm = "CABINET_POSTULATION" | "CLIENT_DIRECT" | "HYBRIDE"
 // ─── List ──────────────────────────────────────────────────────────────────────
 
 export type PersonneMoraleListItem = {
-  id: number;
+  id: string;
   raisonSociale: string;
   email: string | null;
   telephone: string | null;
@@ -59,7 +59,7 @@ export type ContactRattacheDetail = {
   dateDebut: string | null;
   dateFin: string | null;
   personnePhysique: {
-    id: number;
+    id: string;
     nom: string;
     prenom: string | null;
     email: string | null;
@@ -68,7 +68,7 @@ export type ContactRattacheDetail = {
 };
 
 export type PersonneMoraleDetail = {
-  id: number;
+  id: string;
   raisonSociale: string;
   email: string | null;
   telephone: string | null;
@@ -95,8 +95,8 @@ export type PersonneMoraleDetail = {
     ville: string | null;
     pays: string | null;
   } | null;
-  maisonMere: { id: number; raisonSociale: string; siretSiren: string | null } | null;
-  filiales: { id: number; raisonSociale: string; siretSiren: string | null; actif: boolean }[];
+  maisonMere: { id: string; raisonSociale: string; siretSiren: string | null } | null;
+  filiales: { id: string; raisonSociale: string; siretSiren: string | null; actif: boolean }[];
   contacts: ContactRattacheDetail[];
 };
 

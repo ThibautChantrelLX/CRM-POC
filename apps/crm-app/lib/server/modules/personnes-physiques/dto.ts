@@ -4,7 +4,7 @@ export type StatutRgpd = "OPT_IN" | "OPT_OUT" | "NON_RENSEIGNE";
 // ─── List ──────────────────────────────────────────────────────────────────────
 
 export type PersonnePhysiqueListItem = {
-  id: number;
+  id: string;
   nom: string;
   prenom: string | null;
   email: string | null;
@@ -78,7 +78,7 @@ export type RattachementDetail = {
   dateDebut: string | null;
   dateFin: string | null;
   personneMorale: {
-    id: number;
+    id: string;
     raisonSociale: string;
     siretSiren: string | null;
     email: string | null;
@@ -87,7 +87,7 @@ export type RattachementDetail = {
 };
 
 export type PersonnePhysiqueDetail = {
-  id: number;
+  id: string;
   nom: string;
   prenom: string | null;
   email: string | null;
