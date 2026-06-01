@@ -8,6 +8,7 @@ import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
 import { SireneSearch } from "@/components/pm/SireneSearch";
 import type { TypeRelationPm } from "@/lib/server/modules/personnes-morales/dto";
 import type { SireneResult } from "@/app/api/sirene/route";
+import { TYPE_RELATION_PM_OPTIONS } from "@/lib/server/modules/personnes-morales/constants";
 
 type FormState = {
   raisonSociale: string;
@@ -185,10 +186,9 @@ export function PmCreateForm() {
           <FormField label="Type de relation" required error={formErrors.typeRelation}>
             <select className={selectCls} value={form.typeRelation} onChange={patch("typeRelation")}>
               <option value="">— Sélectionner —</option>
-              <option value="CABINET_POSTULATION">Cabinet postulation</option>
-              <option value="CLIENT_DIRECT">Client direct</option>
-              <option value="HYBRIDE">Hybride</option>
-              <option value="AUTRE">Autre</option>
+              {TYPE_RELATION_PM_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           </FormField>
           <FormField label="Statut">

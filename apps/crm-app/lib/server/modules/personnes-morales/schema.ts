@@ -5,6 +5,7 @@ const TypeRelationPmSchema = z.enum([
   "CLIENT_DIRECT",
   "HYBRIDE",
   "AUTRE",
+  "PROSPECT",
 ]);
 
 const AdresseSchema = z.object({

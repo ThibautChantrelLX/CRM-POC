@@ -1,4 +1,4 @@
-export type TypeRelationPp = "CONTACT" | "CLIENT" | "HYBRIDE";
+export type TypeRelationPp = "CONTACT" | "CLIENT" | "HYBRIDE" | "PROSPECT";
 export type StatutRgpd = "OPT_IN" | "OPT_OUT" | "NON_RENSEIGNE";
 
 // ─── List ──────────────────────────────────────────────────────────────────────

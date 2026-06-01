@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
+import { TYPE_RELATION_PP_OPTIONS } from "@/lib/server/modules/personnes-physiques/constants";
 import type {
   TypeRelationPp,
   StatutRgpd,
@@ -325,9 +326,9 @@ export function PpForm(props: Props) {
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Type de relation" required>
             <select className={selectCls} value={form.typeRelation} onChange={patch("typeRelation")}>
-              <option value="CONTACT">Contact</option>
-              <option value="CLIENT">Client</option>
-              <option value="HYBRIDE">Hybride</option>
+              {TYPE_RELATION_PP_OPTIONS.map(({ value, label }) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
             </select>
           </FormField>
           <FormField label="Statut RGPD">

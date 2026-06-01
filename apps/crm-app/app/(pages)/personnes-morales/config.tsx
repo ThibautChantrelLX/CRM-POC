@@ -6,6 +6,7 @@ import type {
   PersonneMoraleListItem,
   TypeRelationPm,
 } from "@/lib/server/modules/personnes-morales/dto";
+import { TYPE_RELATION_PM_OPTIONS } from "@/lib/server/modules/personnes-morales/constants";
 
 // ─── Field definitions (query builder) ───────────────────────────────────────
 
@@ -20,12 +21,7 @@ export const PM_FIELDS: FieldDef[] = [
     label: "Type de relation",
     type: "select",
     param: "typeRelation",
-    options: [
-      { value: "CABINET_POSTULATION", label: "Cabinet postulation" },
-      { value: "CLIENT_DIRECT", label: "Client direct" },
-      { value: "HYBRIDE", label: "Hybride" },
-      { value: "AUTRE", label: "Autre" },
-    ],
+    options: TYPE_RELATION_PM_OPTIONS.map(({ value, label }) => ({ value, label })),
   },
   {
     key: "actif",
@@ -48,18 +44,12 @@ export const PM_FIELDS: FieldDef[] = [
 
 // ─── Badge styles ─────────────────────────────────────────────────────────────
 
-const RELATION_LABELS: Record<TypeRelationPm, string> = {
-  CABINET_POSTULATION: "Cabinet postulation",
-  CLIENT_DIRECT: "Client direct",
-  HYBRIDE: "Hybride",
-  AUTRE: "Autre",
-};
-const RELATION_COLORS: Record<TypeRelationPm, string> = {
-  CABINET_POSTULATION: "bg-secondary-100 text-secondary-700",
-  CLIENT_DIRECT: "bg-primary-100 text-primary-700",
-  HYBRIDE: "bg-purple-100 text-purple-700",
-  AUTRE: "bg-zinc-100 text-zinc-600",
-};
+const RELATION_LABELS = Object.fromEntries(
+  TYPE_RELATION_PM_OPTIONS.map(({ value, label }) => [value, label])
+) as Record<TypeRelationPm, string>;
+const RELATION_COLORS = Object.fromEntries(
+  TYPE_RELATION_PM_OPTIONS.map(({ value, color }) => [value, color])
+) as Record<TypeRelationPm, string>;
 
 // ─── Column definitions ───────────────────────────────────────────────────────
 

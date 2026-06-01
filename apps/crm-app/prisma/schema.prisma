@@ -24,12 +24,14 @@ enum TypeRelationPm {
   CLIENT_DIRECT
   HYBRIDE
   AUTRE
+  PROSPECT
 }
 
 enum TypeRelationPp {
   CONTACT
   CLIENT
   HYBRIDE
+  PROSPECT
 }
 
 enum StatutDossier {
