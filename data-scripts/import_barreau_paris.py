@@ -621,8 +621,13 @@ class BarreauParisImporter:
                     RETURNING id::text
                     """,
                     (
-                        nom, prenom, email, telephone, portable,
-                        "AVOCAT_EXTERNE", "CONTACT",
+                        nom,
+                        prenom,
+                        email,
+                        telephone,
+                        portable,
+                        "AVOCAT_EXTERNE",
+                        "CONTACT",
                         addr_id,
                     ),
                 )

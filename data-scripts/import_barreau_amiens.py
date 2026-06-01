@@ -91,23 +91,57 @@ BARREAU = "AMIENS"
 TYPE_PROFIL = "AVOCAT_EXTERNE"
 
 _DOMAINES_GENERIQUES = {
-    "gmail.com", "googlemail.com", "yahoo.com", "yahoo.fr", "ymail.com",
-    "hotmail.com", "hotmail.fr", "outlook.com", "outlook.fr",
-    "live.com", "live.fr", "msn.com",
-    "orange.fr", "wanadoo.fr", "wanadoo.com", "free.fr", "sfr.fr",
-    "neuf.fr", "numericable.fr", "laposte.net", "bbox.fr",
-    "icloud.com", "me.com", "mac.com",
-    "aol.com", "aol.fr",
-    "protonmail.com", "proton.me", "tutanota.com",
-    "gmx.com", "gmx.fr",
-    "avocat.fr", "avocats.fr",
+    "gmail.com",
+    "googlemail.com",
+    "yahoo.com",
+    "yahoo.fr",
+    "ymail.com",
+    "hotmail.com",
+    "hotmail.fr",
+    "outlook.com",
+    "outlook.fr",
+    "live.com",
+    "live.fr",
+    "msn.com",
+    "orange.fr",
+    "wanadoo.fr",
+    "wanadoo.com",
+    "free.fr",
+    "sfr.fr",
+    "neuf.fr",
+    "numericable.fr",
+    "laposte.net",
+    "bbox.fr",
+    "icloud.com",
+    "me.com",
+    "mac.com",
+    "aol.com",
+    "aol.fr",
+    "protonmail.com",
+    "proton.me",
+    "tutanota.com",
+    "gmx.com",
+    "gmx.fr",
+    "avocat.fr",
+    "avocats.fr",
 }
 
 _MOIS_FR = {
-    "janvier": 1, "février": 2, "fevrier": 2, "mars": 3, "avril": 4,
-    "mai": 5, "juin": 6, "juillet": 7, "août": 8, "aout": 8,
-    "septembre": 9, "octobre": 10, "novembre": 11,
-    "décembre": 12, "decembre": 12,
+    "janvier": 1,
+    "février": 2,
+    "fevrier": 2,
+    "mars": 3,
+    "avril": 4,
+    "mai": 5,
+    "juin": 6,
+    "juillet": 7,
+    "août": 8,
+    "aout": 8,
+    "septembre": 9,
+    "octobre": 10,
+    "novembre": 11,
+    "décembre": 12,
+    "decembre": 12,
 }
 
 # =============================================================================
@@ -196,7 +230,7 @@ def parse_adresse(raw: str) -> dict:
         m = _RE_CP.match(rest)
         if m:
             cp = m.group(1)
-            ville = rest[m.end():].strip() or None
+            ville = rest[m.end() :].strip() or None
             return {"rue": rue, "code_postal": cp, "ville": ville, "pays": "France"}
         return {"rue": rue, "pays": "France"}
     # Fallback si pas de tiret
@@ -205,8 +239,13 @@ def parse_adresse(raw: str) -> dict:
         return {"rue": raw, "pays": "France"}
     cp = m.group(1)
     rue = raw[: m.start()].strip().rstrip(",").strip()
-    ville = raw[m.end():].strip()
-    return {"rue": rue or None, "code_postal": cp, "ville": ville or None, "pays": "France"}
+    ville = raw[m.end() :].strip()
+    return {
+        "rue": rue or None,
+        "code_postal": cp,
+        "ville": ville or None,
+        "pays": "France",
+    }
 
 
 def normalize_name(name: str) -> str:
@@ -262,7 +301,9 @@ class BarreauAmiensImporter:
     # MAPPING SOURCE
     # -------------------------------------------------------------------------
 
-    def _insert_mapping_source(self, entite_crm: str, entite_crm_id: str, source_id_externe: str):
+    def _insert_mapping_source(
+        self, entite_crm: str, entite_crm_id: str, source_id_externe: str
+    ):
         source_id_externe = source_id_externe[:100]
         self.cursor.execute(
             """
@@ -347,7 +388,9 @@ class BarreauAmiensImporter:
     # ADRESSES
     # -------------------------------------------------------------------------
 
-    def _create_address(self, rue=None, code_postal=None, ville=None, pays="France") -> Optional[int]:
+    def _create_address(
+        self, rue=None, code_postal=None, ville=None, pays="France"
+    ) -> Optional[int]:
         if not any([rue, ville, code_postal]):
             return None
         self.cursor.execute(
@@ -390,15 +433,23 @@ class BarreauAmiensImporter:
                 existing_id = self._find_existing_pp(nom, prenom)
                 if existing_id:
                     self.pp_map[nom_complet] = existing_id
-                    self._insert_mapping_source("PersonnePhysique", existing_id, nom_complet)
+                    self._insert_mapping_source(
+                        "PersonnePhysique", existing_id, nom_complet
+                    )
                     self.stats["pp_doublons"] += 1
-                    logger.info(f"  PP existante réutilisée : {nom_complet!r} → id={existing_id}")
+                    logger.info(
+                        f"  PP existante réutilisée : {nom_complet!r} → id={existing_id}"
+                    )
                     self.cursor.execute("RELEASE SAVEPOINT pp_insert")
                     continue
 
                 # Email
                 email_raw = safe_str(row.get("Email(s)", ""))
-                emails_valides = [normalize_email(e) for e in split_semi(email_raw) if normalize_email(e)]
+                emails_valides = [
+                    normalize_email(e)
+                    for e in split_semi(email_raw)
+                    if normalize_email(e)
+                ]
                 email = " | ".join(emails_valides) if emails_valides else None
 
                 # Téléphones
@@ -434,8 +485,13 @@ class BarreauAmiensImporter:
                     RETURNING id
                     """,
                     (
-                        nom, prenom, email, telephone, portable,
-                        TYPE_PROFIL, "CONTACT",
+                        nom,
+                        prenom,
+                        email,
+                        telephone,
+                        portable,
+                        TYPE_PROFIL,
+                        "CONTACT",
                         addr_id,
                     ),
                 )
@@ -552,7 +608,9 @@ class BarreauAmiensImporter:
                     logger.warning(f"  Erreur linking PP {pp_id} → PM {pm_id}: {e}")
 
         self.conn.commit()
-        logger.info(f"✓ Linking domaine : {self.stats['linking_domaine']} rattachements créés")
+        logger.info(
+            f"✓ Linking domaine : {self.stats['linking_domaine']} rattachements créés"
+        )
 
     # -------------------------------------------------------------------------
     # RAPPORT
@@ -563,8 +621,12 @@ class BarreauAmiensImporter:
         logger.info("RAPPORT FINAL — BARREAU D'AMIENS")
         logger.info("=" * 60)
         logger.info(f"  PP créées          : {self.stats['pp_creees']}")
-        logger.info(f"  PP ignorées        : {self.stats['pp_ignorees']} (déjà importées)")
-        logger.info(f"  PP réutilisées     : {self.stats['pp_doublons']} (existantes, non dupliquées)")
+        logger.info(
+            f"  PP ignorées        : {self.stats['pp_ignorees']} (déjà importées)"
+        )
+        logger.info(
+            f"  PP réutilisées     : {self.stats['pp_doublons']} (existantes, non dupliquées)"
+        )
         logger.info(f"  Adresses créées    : {self.stats['adresses_creees']}")
         logger.info(f"  Linking domaine    : {self.stats['linking_domaine']}")
         if self.stats["erreurs"]:

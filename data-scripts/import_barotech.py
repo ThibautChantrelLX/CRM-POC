@@ -532,8 +532,13 @@ class BarotechImporter:
                     RETURNING id::text
                 """,
                     (
-                        nom, prenom, email or None, telephone, portable,
-                        "AVOCAT_EXTERNE", "CONTACT",
+                        nom,
+                        prenom,
+                        email or None,
+                        telephone,
+                        portable,
+                        "AVOCAT_EXTERNE",
+                        "CONTACT",
                         addr_id,
                     ),
                 )
@@ -547,9 +552,16 @@ class BarotechImporter:
                          specialite, profession, activite_dominante, modifier_le)
                     VALUES (%s::uuid, %s, %s, %s, %s, %s, NOW())
                     """,
-                    (pp_id, barreau, date_serment, specialite, "Avocat",
-                     split_pipe(safe_str(row.get("Activité(s) dominante(s)", "")))[0]
-                     if split_pipe(safe_str(row.get("Activité(s) dominante(s)", ""))) else None),
+                    (
+                        pp_id,
+                        barreau,
+                        date_serment,
+                        specialite,
+                        "Avocat",
+                        split_pipe(safe_str(row.get("Activité(s) dominante(s)", "")))[0]
+                        if split_pipe(safe_str(row.get("Activité(s) dominante(s)", "")))
+                        else None,
+                    ),
                 )
 
                 self.pp_map[contact_id] = pp_id

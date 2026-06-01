@@ -56,7 +56,7 @@ export function AdminSidebar() {
           className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium text-zinc-500 hover:bg-zinc-50 hover:text-zinc-800 transition-colors"
         >
           <ArrowLeft size={14} className="text-zinc-400" />
-          Retour à l'app
+          Retour à l&apos;app
         </Link>
       </div>
     </aside>
