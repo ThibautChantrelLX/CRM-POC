@@ -199,6 +199,7 @@ export async function getPersonneMorale(id: string): Promise<PersonneMoraleListI
 
 export async function createPersonneMorale(
   data: CreatePersonneMoraleInput,
+  actorName?: string,
 ): Promise<PersonneMoraleListItem> {
   const { adresse, ...rest } = data;
 
@@ -222,7 +223,12 @@ export async function createPersonneMorale(
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pm = await prisma.personneMorale.create({
-    data: { ...cleanRest, ...(adresseId !== undefined ? { adresseId } : {}) } as any,
+    data: {
+      ...cleanRest,
+      ...(adresseId !== undefined ? { adresseId } : {}),
+      creerPar: actorName ?? null,
+      modifierPar: actorName ?? null,
+    } as any,
     include: { adresse: { select: { ville: true, codePostal: true, pays: true } } },
   });
 
@@ -236,6 +242,7 @@ export async function createPersonneMorale(
 export async function updatePersonneMorale(
   id: string,
   data: UpdatePersonneMoraleInput,
+  actorName?: string,
 ): Promise<PersonneMoraleListItem> {
   const { adresse, ...rest } = data;
 
@@ -267,7 +274,7 @@ export async function updatePersonneMorale(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pm = await prisma.personneMorale.update({
     where: { id },
-    data: { ...cleanRest, ...adresseIdPatch } as any,
+    data: { ...cleanRest, ...adresseIdPatch, modifierPar: actorName ?? null } as any,
     include: { adresse: { select: { ville: true, codePostal: true, pays: true } } },
   });
 

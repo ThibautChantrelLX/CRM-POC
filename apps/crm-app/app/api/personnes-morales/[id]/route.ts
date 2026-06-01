@@ -4,6 +4,7 @@ import {
   updatePersonneMorale,
   deletePersonneMorale,
 } from "@/lib/server/modules/personnes-morales/service";
+import { getActorName } from "@/lib/server/get-actor";
 import {
   UpdatePersonneMoraleSchema,
   formatZodError,
@@ -26,12 +27,12 @@ export async function GET(_request: Request, { params }: Params) {
 export async function PATCH(request: Request, { params }: Params) {
   const { id } = await params;
   try {
-    const body = await request.json();
+    const [body, actorName] = await Promise.all([request.json(), getActorName()]);
     const parsed = UpdatePersonneMoraleSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(formatZodError(parsed.error), { status: 400 });
     }
-    return NextResponse.json(await updatePersonneMorale(id, parsed.data));
+    return NextResponse.json(await updatePersonneMorale(id, parsed.data, actorName));
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "Erreur interne du serveur" }, { status: 500 });

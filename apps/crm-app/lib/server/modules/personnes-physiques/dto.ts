@@ -1,4 +1,4 @@
-export type TypeRelationPp = "CONTACT" | "CLIENT" | "HYBRIDE";
+export type TypeRelationPp = "CONTACT" | "CLIENT" | "HYBRIDE" | "PROSPECT";
 export type StatutRgpd = "OPT_IN" | "OPT_OUT" | "NON_RENSEIGNE";
 
 // ─── List ──────────────────────────────────────────────────────────────────────
@@ -93,10 +93,17 @@ export type PersonnePhysiqueDetail = {
   email: string | null;
   telephone: string | null;
   portable: string | null;
+  typeProfilPrincipal: TypeProfilPrincipal | null;
+  // Profil avocat
   specialite: string | null;
   profession: string | null;
   barreau: string | null;
   dateSerment: string | null;
+  activiteDominante: string | null;
+  // Profil particulier
+  civilite: string | null;
+  dateNaissance: string | null;
+  situationFamiliale: string | null;
   typeRelation: TypeRelationPp;
   statutRgpd: StatutRgpd | null;
   actif: boolean;
@@ -128,21 +135,37 @@ export type PersonnePhysiqueDetail = {
 
 // ─── CRUD ─────────────────────────────────────────────────────────────────────
 
+export type ProfilType = "PARTICULIER" | "AVOCAT" | "PRO";
+
+export type TypeProfilPrincipal =
+  | "AVOCAT_INTERNE" | "ASSISTANT_INTERNE" | "FONCTION_SUPPORT" | "AVOCAT_EXTERNE"
+  | "INTERVENANT_JUSTICE" | "PARTICULIER" | "CONTACT_PRO" | "APPRENANT_EXTERNE"
+  | "FORMATEUR_EXTERNE" | "NOTAIRE" | "CLERC_NOTAIRE" | "COMMISSAIRE_JUSTICE"
+  | "MAGISTRAT" | "GREFFIER" | "JURISTE" | "FONCTION_SUPPORT_EXTERNE";
+
 export type CreatePersonnePhysiqueInput = {
   nom: string;
   prenom?: string;
   email?: string;
   telephone?: string;
   portable?: string;
-  specialite?: string;
-  profession?: string;
-  barreau?: string;
   typeRelation: TypeRelationPp;
   statutRgpd?: StatutRgpd;
   actif?: boolean;
   optInEmail?: boolean;
   optInSms?: boolean;
   optOutGlobal?: boolean;
+  profilType: ProfilType;
+  // Profil avocat
+  barreau?: string;
+  dateSerment?: string;
+  specialite?: string;
+  profession?: string;
+  activiteDominante?: string;
+  // Profil particulier
+  civilite?: string;
+  dateNaissance?: string;
+  situationFamiliale?: string;
 };
 
 export type UpdatePersonnePhysiqueInput = Partial<CreatePersonnePhysiqueInput>;

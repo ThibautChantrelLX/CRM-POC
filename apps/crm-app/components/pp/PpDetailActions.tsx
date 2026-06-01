@@ -7,7 +7,7 @@ import { Trash2, AlertTriangle, Pencil } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 
 type Props = {
-  ppId: number;
+  ppId: string;
   ppNom: string;
 };
 

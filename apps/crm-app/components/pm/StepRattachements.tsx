@@ -16,7 +16,7 @@ import { FormField, inputCls } from "@/components/ui/form-field";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type PpResult = {
-  id: number;
+  id: string;
   nom: string;
   prenom: string | null;
   email: string | null;
@@ -45,7 +45,7 @@ function PpBadge({ pp, onRemove }: { pp: PpResult; onRemove: () => void }) {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 type Props = {
-  pmId: number;
+  pmId: string;
   pmNom: string;
   pmNomDomaine: string | null;
   /** Called when the user clicks "Terminer" or "Passer cette étape" */
@@ -75,7 +75,7 @@ export function StepRattachements({
   const [isLoadingDomain, setIsLoadingDomain] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  const [selected, setSelected] = useState<Map<number, PpResult>>(new Map());
+  const [selected, setSelected] = useState<Map<string, PpResult>>(new Map());
 
   const [titreFonction, setTitreFonction] = useState("");
   const [dateDebut, setDateDebut] = useState(

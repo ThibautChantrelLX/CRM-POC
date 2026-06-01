@@ -1,4 +1,4 @@
-export type TypeRelationPm = "CABINET_POSTULATION" | "CLIENT_DIRECT" | "HYBRIDE" | "AUTRE";
+export type TypeRelationPm = "CABINET_POSTULATION" | "CLIENT_DIRECT" | "HYBRIDE" | "AUTRE" | "PROSPECT";
 
 // ─── List ──────────────────────────────────────────────────────────────────────
 

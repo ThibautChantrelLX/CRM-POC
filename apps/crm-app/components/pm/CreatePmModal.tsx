@@ -10,6 +10,7 @@ import { SireneSearch } from "@/components/pm/SireneSearch";
 import { StepRattachements } from "@/components/pm/StepRattachements";
 import type { TypeRelationPm } from "@/lib/server/modules/personnes-morales/dto";
 import type { SireneResult } from "@/app/api/sirene/route";
+import { TYPE_RELATION_PM_OPTIONS } from "@/lib/server/modules/personnes-morales/constants";
 
 // ─── Form state ───────────────────────────────────────────────────────────────
 
@@ -124,9 +125,9 @@ function StepPmForm({
         <FormField label="Type de relation">
           <select className={selectCls} value={form.typeRelation} onChange={field("typeRelation")}>
             <option value="">— Aucun —</option>
-            <option value="CABINET_POSTULATION">Cabinet postulation</option>
-            <option value="CLIENT_DIRECT">Client direct</option>
-            <option value="HYBRIDE">Hybride</option>
+            {TYPE_RELATION_PM_OPTIONS.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
         </FormField>
         <FormField label="Statut">
@@ -182,7 +183,7 @@ export function CreatePmModal({ open, onClose }: Props) {
   const queryClient = useQueryClient();
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<PmFormState>(EMPTY_FORM);
-  const [createdPm, setCreatedPm] = useState<{ id: number; raisonSociale: string } | null>(null);
+  const [createdPm, setCreatedPm] = useState<{ id: string; raisonSociale: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

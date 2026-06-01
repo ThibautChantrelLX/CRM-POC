@@ -11,5 +11,5 @@ export default defineConfig({
   migrations: {
     path: "prisma/migrations",
   },
-  datasource: { url },
+  datasource: { url, shadowDatabaseUrl: "postgresql://lx:password@localhost:5441/crm_shadow" },
 });

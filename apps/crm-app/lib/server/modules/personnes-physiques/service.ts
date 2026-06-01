@@ -141,8 +141,9 @@ export async function getPersonnePhysiqueDetail(
     where: { id },
     include: {
       adresse: true,
-      profilAvocat: { select: { profession: true, specialite: true, barreau: true, dateSerment: true } },
-      profilPro: { select: { profession: true } },
+      profilAvocat: { select: { profession: true, specialite: true, barreau: true, dateSerment: true, activiteDominante: true } },
+      profilPro: { select: { profession: true, specialite: true } },
+      profilParticulier: { select: { civilite: true, dateNaissance: true, situationFamiliale: true } },
       rattachements: {
         include: {
           personneMorale: {
@@ -172,10 +173,15 @@ export async function getPersonnePhysiqueDetail(
     email: pp.email,
     telephone: pp.telephone,
     portable: pp.portable,
-    specialite: pp.profilAvocat?.specialite ?? null,
+    typeProfilPrincipal: pp.typeProfilPrincipal ?? null,
+    specialite: pp.profilAvocat?.specialite ?? pp.profilPro?.specialite ?? null,
     profession: pp.profilAvocat?.profession ?? pp.profilPro?.profession ?? null,
     barreau: pp.profilAvocat?.barreau ?? null,
     dateSerment: fmtDate(pp.profilAvocat?.dateSerment),
+    activiteDominante: pp.profilAvocat?.activiteDominante ?? null,
+    civilite: pp.profilParticulier?.civilite ?? null,
+    dateNaissance: fmtDate(pp.profilParticulier?.dateNaissance),
+    situationFamiliale: pp.profilParticulier?.situationFamiliale ?? null,
     typeRelation: pp.typeRelation as PersonnePhysiqueDetail["typeRelation"],
     statutRgpd: pp.statutRgpd as PersonnePhysiqueDetail["statutRgpd"],
     actif: pp.actif,
@@ -221,7 +227,10 @@ export async function getPersonnePhysique(id: string): Promise<PersonnePhysiqueL
   if (!pp) return null;
   return {
     ...pp,
-    dateSerment: fmtDate(pp.dateSerment),
+    profession: null,
+    specialite: null,
+    barreau: null,
+    dateSerment: null,
     dernierEmailLe: fmtDate(pp.dernierEmailLe),
     creerLe: (pp.creerLe as Date).toISOString(),
     modifierLe: (pp.modifierLe as Date).toISOString(),
@@ -230,19 +239,118 @@ export async function getPersonnePhysique(id: string): Promise<PersonnePhysiqueL
 
 export async function createPersonnePhysique(
   data: CreatePersonnePhysiqueInput,
+  actorName?: string,
 ): Promise<PersonnePhysiqueListItem> {
-  const pp = await prisma.personnePhysique.create({ data });
+  const {
+    profilType,
+    barreau, dateSerment, specialite, profession, activiteDominante,
+    civilite, dateNaissance, situationFamiliale,
+    ...ppData
+  } = data;
+
+  const typeProfilPrincipal =
+    profilType === "AVOCAT" ? "AVOCAT_INTERNE" :
+    profilType === "PRO" ? "CONTACT_PRO" : "PARTICULIER";
+
+  const pp = await prisma.personnePhysique.create({
+    data: {
+      ...ppData,
+      typeProfilPrincipal,
+      creerPar: actorName ?? null,
+      modifierPar: actorName ?? null,
+      ...(profilType === "AVOCAT" && {
+        profilAvocat: {
+          create: {
+            barreau: barreau ?? null,
+            dateSerment: dateSerment ? new Date(dateSerment) : null,
+            specialite: specialite ?? null,
+            profession: profession ?? null,
+            activiteDominante: activiteDominante ?? null,
+          },
+        },
+      }),
+      ...(profilType === "PRO" && {
+        profilPro: {
+          create: {
+            profession: profession ?? null,
+            specialite: specialite ?? null,
+          },
+        },
+      }),
+      ...(profilType === "PARTICULIER" && {
+        profilParticulier: {
+          create: {
+            civilite: civilite ?? null,
+            dateNaissance: dateNaissance ? new Date(dateNaissance) : null,
+            situationFamiliale: situationFamiliale ?? null,
+          },
+        },
+      }),
+    },
+  });
   return pp as unknown as PersonnePhysiqueListItem;
 }
 
 export async function updatePersonnePhysique(
   id: string,
   data: UpdatePersonnePhysiqueInput,
+  actorName?: string,
 ): Promise<PersonnePhysiqueListItem> {
-  const pp = await prisma.personnePhysique.update({ where: { id }, data });
+  const {
+    profilType,
+    barreau, dateSerment, specialite, profession, activiteDominante,
+    civilite, dateNaissance, situationFamiliale,
+    ...ppData
+  } = data;
+
+  const pp = await prisma.personnePhysique.update({
+    where: { id },
+    data: { ...ppData, modifierPar: actorName ?? null },
+  });
+
+  if (profilType === "AVOCAT") {
+    const profilData = {
+      barreau: barreau ?? null,
+      dateSerment: dateSerment ? new Date(dateSerment) : null,
+      specialite: specialite ?? null,
+      profession: profession ?? null,
+      activiteDominante: activiteDominante ?? null,
+    };
+    await prisma.profilAvocat.upsert({
+      where: { personnePhysiqueId: id },
+      create: { personnePhysiqueId: id, ...profilData },
+      update: profilData,
+    });
+  } else if (profilType === "PRO") {
+    const profilData = { profession: profession ?? null, specialite: specialite ?? null };
+    await prisma.profilPro.upsert({
+      where: { personnePhysiqueId: id },
+      create: { personnePhysiqueId: id, ...profilData },
+      update: profilData,
+    });
+  } else if (profilType === "PARTICULIER") {
+    const profilData = {
+      civilite: civilite ?? null,
+      dateNaissance: dateNaissance ? new Date(dateNaissance) : null,
+      situationFamiliale: situationFamiliale ?? null,
+    };
+    await prisma.profilParticulier.upsert({
+      where: { personnePhysiqueId: id },
+      create: { personnePhysiqueId: id, ...profilData },
+      update: profilData,
+    });
+  }
+
   return pp as unknown as PersonnePhysiqueListItem;
 }
 
 export async function deletePersonnePhysique(id: string): Promise<void> {
-  await prisma.personnePhysique.delete({ where: { id } });
+  await prisma.$transaction([
+    prisma.profilAvocat.deleteMany({ where: { personnePhysiqueId: id } }),
+    prisma.profilPro.deleteMany({ where: { personnePhysiqueId: id } }),
+    prisma.profilParticulier.deleteMany({ where: { personnePhysiqueId: id } }),
+    prisma.rattachementPpPm.deleteMany({ where: { personnePhysiqueId: id } }),
+    prisma.dossierIntervenantContexte.deleteMany({ where: { personnePhysiqueId: id } }),
+    prisma.personnePhysique.delete({ where: { id } }),
+  ]);
 }

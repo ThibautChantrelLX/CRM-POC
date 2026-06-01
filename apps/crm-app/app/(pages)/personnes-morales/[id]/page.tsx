@@ -19,21 +19,16 @@ import { ContactsRattachesList } from "@/components/detail/ContactsRattachesList
 import { PmDetailActions } from "@/components/pm/PmDetailActions";
 import { cn } from "@/lib/utils";
 import type { TypeRelationPm } from "@/lib/server/modules/personnes-morales/dto";
+import { TYPE_RELATION_PM_OPTIONS } from "@/lib/server/modules/personnes-morales/constants";
 
 // ─── Labels / badges ──────────────────────────────────────────────────────────
 
-const RELATION_LABELS: Record<TypeRelationPm, string> = {
-  CABINET_POSTULATION: "Cabinet postulation",
-  CLIENT_DIRECT: "Client direct",
-  HYBRIDE: "Hybride",
-  AUTRE: "Autre",
-};
-const RELATION_COLORS: Record<TypeRelationPm, string> = {
-  CABINET_POSTULATION: "bg-secondary-100 text-secondary-700 border-secondary-200",
-  CLIENT_DIRECT: "bg-primary-100 text-primary-700 border-primary-200",
-  HYBRIDE: "bg-purple-100 text-purple-700 border-purple-200",
-  AUTRE: "bg-zinc-100 text-zinc-600 border-zinc-200",
-};
+const RELATION_LABELS = Object.fromEntries(
+  TYPE_RELATION_PM_OPTIONS.map(({ value, label }) => [value, label])
+) as Record<TypeRelationPm, string>;
+const RELATION_COLORS = Object.fromEntries(
+  TYPE_RELATION_PM_OPTIONS.map(({ value, colorBorder }) => [value, colorBorder])
+) as Record<TypeRelationPm, string>;
 
 function Badge({ label, color }: { label: string; color: string }) {
   return (

@@ -8,6 +8,7 @@ import type {
   TypeRelationPp,
   StatutRgpd,
 } from "@/lib/server/modules/personnes-physiques/dto";
+import { TYPE_RELATION_PP_OPTIONS } from "@/lib/server/modules/personnes-physiques/constants";
 
 // ─── Field definitions (query builder) ───────────────────────────────────────
 
@@ -30,9 +31,7 @@ export const PP_FIELDS: FieldDef[] = [
     type: "select",
     param: "typeRelation",
     options: [
-      { value: "CONTACT", label: "Contact" },
-      { value: "CLIENT", label: "Client" },
-      { value: "HYBRIDE", label: "Hybride" },
+      ...TYPE_RELATION_PP_OPTIONS,
     ],
   },
   {
@@ -60,16 +59,12 @@ export const PP_FIELDS: FieldDef[] = [
 
 // ─── Badge styles ─────────────────────────────────────────────────────────────
 
-const RELATION_LABELS: Record<TypeRelationPp, string> = {
-  CONTACT: "Contact",
-  CLIENT: "Client",
-  HYBRIDE: "Hybride",
-};
-const RELATION_COLORS: Record<TypeRelationPp, string> = {
-  CONTACT: "bg-secondary-100 text-secondary-700",
-  CLIENT: "bg-primary-100 text-primary-700",
-  HYBRIDE: "bg-purple-100 text-purple-700",
-};
+const RELATION_LABELS = Object.fromEntries(
+  TYPE_RELATION_PP_OPTIONS.map(({ value, label }) => [value, label])
+) as Record<TypeRelationPp, string>;
+const RELATION_COLORS = Object.fromEntries(
+  TYPE_RELATION_PP_OPTIONS.map(({ value, color }) => [value, color])
+) as Record<TypeRelationPp, string>;
 const RGPD_LABELS: Record<StatutRgpd, string> = {
   OPT_IN: "Opt-in",
   OPT_OUT: "Opt-out",

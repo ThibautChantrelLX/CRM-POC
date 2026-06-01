@@ -33,30 +33,30 @@ const CABINETS = [
   "LX Versailles",
 ];
 
-async function main() {
-  const groupe = await prisma.entite.upsert({
-    where: { id: 1 },
-    update: {},
-    create: { typeEntite: "GROUPE", raisonSociale: "LX Avocats" },
-  });
+async function upsertEntite(raisonSociale: string, extra: { typeEntite: "GROUPE" | "FILIALE"; entiteParenteId?: string }) {
+  const existing = await prisma.entite.findFirst({ where: { raisonSociale } });
+  if (existing) return existing;
+  return prisma.entite.create({ data: { raisonSociale, ...extra } });
+}
 
-  console.log(`Groupe créé : ${groupe.raisonSociale} (id=${groupe.id})`);
+async function main() {
+  const groupe = await upsertEntite("LX GROUPE", { typeEntite: "GROUPE" });
+  console.log(`Groupe : ${groupe.raisonSociale} (id=${groupe.id})`);
 
   for (const raisonSociale of CABINETS) {
-    const cabinet = await prisma.entite.upsert({
-      where: {
-        // Upsert par raison sociale — à remplacer par siret une fois les données disponibles
-        id: (await prisma.entite.findFirst({ where: { raisonSociale } }))?.id ?? 0,
-      },
-      update: {},
-      create: {
-        typeEntite: "FILIALE",
-        raisonSociale,
-        entiteParenteId: groupe.id,
-      },
+    const cabinet = await upsertEntite(raisonSociale, {
+      typeEntite: "FILIALE",
+      entiteParenteId: groupe.id,
     });
-    console.log(`  Cabinet créé : ${cabinet.raisonSociale} (id=${cabinet.id})`);
+    console.log(`  Cabinet : ${cabinet.raisonSociale} (id=${cabinet.id})`);
   }
+
+  // Super admin user (email/password auth via Better Auth)
+  // The account password must be hashed — run the app and use /api/auth/sign-up/email
+  // to create users, or use the admin panel once available.
+  // This seed only ensures the entite hierarchy exists.
+  console.log("\nEntités créées. Pour créer un utilisateur SUPER_ADMIN, utilisez l'API /api/auth/sign-up/email.");
+  console.log(`Entité parente pour le SUPER_ADMIN : LX GROUPE (id=${groupe.id})`);
 }
 
 main()

@@ -20,7 +20,7 @@ CREATE TYPE "ContexteIntervenant" AS ENUM ('POSTULATION', 'PLEIN_EXERCICE', 'DIV
 CREATE TYPE "StatutMigration" AS ENUM ('EN_COURS', 'SUCCES', 'ECHEC', 'PARTIEL');
 
 -- CreateEnum
-CREATE TYPE "StatutRgpd" AS ENUM ('Opt-in', 'Opt-out', 'Non renseigné');
+CREATE TYPE "StatutRgpd" AS ENUM ('OPT_IN', 'OPT_OUT', 'NON_RENSEIGNE');
 
 -- CreateTable
 CREATE TABLE "entites" (

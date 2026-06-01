@@ -20,19 +20,16 @@ import { RattachementsList } from "@/components/detail/RattachementsList";
 import { PpDetailActions } from "@/components/pp/PpDetailActions";
 import { cn } from "@/lib/utils";
 import type { TypeRelationPp, StatutRgpd } from "@/lib/server/modules/personnes-physiques/dto";
+import { TYPE_RELATION_PP_OPTIONS } from "@/lib/server/modules/personnes-physiques/constants";
 
 // ─── Labels / badges ──────────────────────────────────────────────────────────
 
-const RELATION_LABELS: Record<TypeRelationPp, string> = {
-  CONTACT: "Contact",
-  CLIENT: "Client",
-  HYBRIDE: "Hybride",
-};
-const RELATION_COLORS: Record<TypeRelationPp, string> = {
-  CONTACT: "bg-secondary-100 text-secondary-700 border-secondary-200",
-  CLIENT: "bg-primary-100 text-primary-700 border-primary-200",
-  HYBRIDE: "bg-purple-100 text-purple-700 border-purple-200",
-};
+const RELATION_LABELS = Object.fromEntries(
+  TYPE_RELATION_PP_OPTIONS.map(({ value, label }) => [value, label])
+) as Record<TypeRelationPp, string>;
+const RELATION_COLORS = Object.fromEntries(
+  TYPE_RELATION_PP_OPTIONS.map(({ value, colorBorder }) => [value, colorBorder])
+) as Record<TypeRelationPp, string>;
 const RGPD_LABELS: Record<StatutRgpd, string> = {
   OPT_IN: "Opt-in",
   OPT_OUT: "Opt-out",

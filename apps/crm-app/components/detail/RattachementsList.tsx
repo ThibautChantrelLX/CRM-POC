@@ -14,7 +14,7 @@ export type RattachementRow = {
   dateDebut: string | null;
   dateFin: string | null;
   personneMorale: {
-    id: number;
+    id: string;
     raisonSociale: string;
     siretSiren: string | null;
     email: string | null;
@@ -236,7 +236,7 @@ function RattachementsTable({
 
 type Props = {
   rattachements: RattachementRow[];
-  ppId: number;
+  ppId: string;
   ppNom: string;
 };
 
