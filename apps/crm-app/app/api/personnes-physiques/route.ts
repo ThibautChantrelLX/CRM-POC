@@ -49,6 +49,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const [body, actorName] = await Promise.all([request.json(), getActorName()]);
+    if (typeof body?.email !== "string" || !body.email.trim()) {
+      return NextResponse.json({ error: "L'email est requis" }, { status: 400 });
+    }
     return NextResponse.json(await createPersonnePhysique(body, actorName), { status: 201 });
   } catch (err) {
     console.error(err);

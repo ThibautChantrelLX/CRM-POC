@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
+import { PpDuplicatesDropdown } from "@/components/pp/PpDuplicatesDropdown";
 import { TYPE_RELATION_PP_OPTIONS, profilTypeFromPrincipal } from "@/lib/server/modules/personnes-physiques/constants";
 import type {
   TypeRelationPp,
@@ -97,6 +98,8 @@ function fromDetail(pp: PersonnePhysiqueDetail): FormState {
   };
 }
 
+const DRAFT_STORAGE_KEY = "pp-create-draft";
+
 const PROFIL_TABS: { value: ProfilType; label: string }[] = [
   { value: "PARTICULIER", label: "Particulier" },
   { value: "AVOCAT", label: "Avocat" },
@@ -109,11 +112,32 @@ type Props =
 
 export function PpForm(props: Props) {
   const router = useRouter();
+  const isCreate = props.mode === "create";
   const [form, setForm] = useState<FormState>(
     props.mode === "edit" ? fromDetail(props.initialData) : EMPTY,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [identityFocused, setIdentityFocused] = useState(false);
+
+  // Restaure le brouillon laissé avant de consulter une fiche depuis la liste de doublons
+  useEffect(() => {
+    if (!isCreate) return;
+    try {
+      const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+      if (raw) {
+        setForm(JSON.parse(raw) as FormState);
+        sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+      }
+    } catch {}
+  }, [isCreate]);
+
+  const saveDraft = () => {
+    if (!isCreate) return;
+    try {
+      sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(form));
+    } catch {}
+  };
 
   const patch =
     (key: keyof FormState) =>
@@ -128,6 +152,7 @@ export function PpForm(props: Props) {
 
   const handleSubmit = async () => {
     if (!form.nom.trim()) return;
+    if (isCreate && !form.email.trim()) return;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -181,6 +206,9 @@ export function PpForm(props: Props) {
 
       const pp = await res.json();
       const targetId = props.mode === "create" ? pp.id : props.ppId;
+      if (isCreate) {
+        try { sessionStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
+      }
       router.push(`/personnes-physiques/${targetId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue");
@@ -219,13 +247,24 @@ export function PpForm(props: Props) {
       {/* Identité */}
       <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Identité</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div
+          className="relative grid grid-cols-2 gap-4"
+          onFocus={() => setIdentityFocused(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              setIdentityFocused(false);
+            }
+          }}
+        >
           <FormField label="Nom" required>
             <input className={inputCls} value={form.nom} onChange={patch("nom")} placeholder="DUPONT" />
           </FormField>
           <FormField label="Prénom">
             <input className={inputCls} value={form.prenom} onChange={patch("prenom")} placeholder="Jean" />
           </FormField>
+          {isCreate && identityFocused && (
+            <PpDuplicatesDropdown nom={form.nom} prenom={form.prenom} onSelect={saveDraft} />
+          )}
         </div>
       </section>
 
@@ -233,7 +272,7 @@ export function PpForm(props: Props) {
       <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Coordonnées</h3>
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Email">
+          <FormField label="Email" required={isCreate}>
             <input type="email" className={inputCls} value={form.email} onChange={patch("email")} placeholder="jean.dupont@cabinet.fr" />
           </FormField>
           <FormField label="Téléphone">
@@ -373,7 +412,11 @@ export function PpForm(props: Props) {
         >
           Annuler
         </button>
-        <SubmitButton isLoading={isSubmitting} onClick={handleSubmit} disabled={!form.nom.trim()}>
+        <SubmitButton
+          isLoading={isSubmitting}
+          onClick={handleSubmit}
+          disabled={!form.nom.trim() || (isCreate && !form.email.trim())}
+        >
           {props.mode === "create" ? "Créer la personne physique" : "Enregistrer les modifications"}
         </SubmitButton>
       </div>
