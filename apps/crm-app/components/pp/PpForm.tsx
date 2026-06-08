@@ -1,15 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, AlertTriangle } from "lucide-react";
+import { Check, AlertTriangle, Globe } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { Modal } from "@/components/ui/modal";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
 import { PpDuplicatesDropdown } from "@/components/pp/PpDuplicatesDropdown";
+import { PpAttachPmSection } from "@/components/pp/PpAttachPmSection";
 import { usePpEmailCheck } from "@/lib/hooks/usePpEmailCheck";
 import { usePpPhoneCheck, type PpPhoneCheckResult } from "@/lib/hooks/usePpPhoneCheck";
 import { cn } from "@/lib/utils";
+import {
+  PP_ATTACH_PM_STORAGE_KEY,
+  type PmAttachInfo,
+} from "@/lib/client/personnes-morales";
 import { TYPE_RELATION_PP_OPTIONS, profilTypeFromPrincipal } from "@/lib/server/modules/personnes-physiques/constants";
 import type {
   TypeRelationPp,
@@ -105,6 +111,25 @@ function fromDetail(pp: PersonnePhysiqueDetail): FormState {
 
 const DRAFT_STORAGE_KEY = "pp-create-draft";
 
+type DraftState = { form: FormState; attachedPm: PmAttachInfo | null };
+
+// Domaines d'emails grand public : on ne propose pas de les associer à une organisation
+const GENERIC_EMAIL_DOMAINS = new Set([
+  "gmail.com", "googlemail.com",
+  "outlook.com", "outlook.fr", "hotmail.com", "hotmail.fr", "live.com", "live.fr", "msn.com",
+  "yahoo.com", "yahoo.fr",
+  "icloud.com", "me.com", "mac.com",
+  "free.fr", "orange.fr", "wanadoo.fr", "sfr.fr", "laposte.net", "bbox.fr", "neuf.fr",
+  "gmx.com", "gmx.fr", "aol.com", "protonmail.com", "yopmail.com",
+]);
+
+function emailDomain(email: string): string | null {
+  const at = email.lastIndexOf("@");
+  if (at === -1) return null;
+  const domain = email.slice(at + 1).trim().toLowerCase();
+  return domain || null;
+}
+
 function PhoneDuplicateWarning({ check, onSelect }: { check: PpPhoneCheckResult; onSelect: () => void }) {
   if (check.status !== "taken") return null;
   return (
@@ -141,19 +166,32 @@ export function PpForm(props: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [identityFocused, setIdentityFocused] = useState(false);
+  const [attachedPm, setAttachedPm] = useState<PmAttachInfo | null>(null);
+  const [domainPrompt, setDomainPrompt] = useState<{ domain: string; pm: PmAttachInfo } | null>(null);
+  const domainPromptResolveRef = useRef<((associate: boolean) => void) | null>(null);
   const emailCheck = usePpEmailCheck(isCreate ? form.email : "");
   const emailTaken = isCreate && emailCheck.status === "taken";
   const telephoneCheck = usePpPhoneCheck("telephone", isCreate ? form.telephone : "");
   const portableCheck = usePpPhoneCheck("portable", isCreate ? form.portable : "");
 
-  // Restaure le brouillon laissé avant de consulter une fiche depuis la liste de doublons
+  // Restaure le brouillon laissé avant de consulter une fiche depuis la liste de doublons,
+  // ou la PM nouvellement créée depuis la recherche de rattachement
   useEffect(() => {
     if (!isCreate) return;
     try {
       const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
       if (raw) {
-        setForm(JSON.parse(raw) as FormState);
+        const draft = JSON.parse(raw) as DraftState;
+        setForm(draft.form);
+        setAttachedPm(draft.attachedPm);
         sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+      }
+    } catch {}
+    try {
+      const rawPm = sessionStorage.getItem(PP_ATTACH_PM_STORAGE_KEY);
+      if (rawPm) {
+        setAttachedPm(JSON.parse(rawPm) as PmAttachInfo);
+        sessionStorage.removeItem(PP_ATTACH_PM_STORAGE_KEY);
       }
     } catch {}
   }, [isCreate]);
@@ -161,8 +199,27 @@ export function PpForm(props: Props) {
   const saveDraft = () => {
     if (!isCreate) return;
     try {
-      sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(form));
+      sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ form, attachedPm } satisfies DraftState));
     } catch {}
+  };
+
+  const handleCreateNewPm = (query: string) => {
+    saveDraft();
+    const params = new URLSearchParams({ returnTo: "pp-create" });
+    if (query) params.set("raisonSociale", query);
+    router.push(`/personnes-morales/nouveau?${params}`);
+  };
+
+  const askDomainAssociation = (domain: string, pm: PmAttachInfo): Promise<boolean> =>
+    new Promise((resolve) => {
+      domainPromptResolveRef.current = resolve;
+      setDomainPrompt({ domain, pm });
+    });
+
+  const resolveDomainPrompt = (associate: boolean) => {
+    domainPromptResolveRef.current?.(associate);
+    domainPromptResolveRef.current = null;
+    setDomainPrompt(null);
   };
 
   const patch =
@@ -233,9 +290,31 @@ export function PpForm(props: Props) {
 
       const pp = await res.json();
       const targetId = props.mode === "create" ? pp.id : props.ppId;
+
       if (isCreate) {
         try { sessionStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
+
+        if (attachedPm) {
+          await fetch("/api/rattachements", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ personnePhysiqueId: pp.id, personneMoraleId: attachedPm.id }),
+          }).catch(() => {});
+
+          const domain = emailDomain(form.email);
+          if (domain && !GENERIC_EMAIL_DOMAINS.has(domain) && attachedPm.nomDomaine !== domain) {
+            const associate = await askDomainAssociation(domain, attachedPm);
+            if (associate) {
+              await fetch(`/api/personnes-morales/${attachedPm.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ nomDomaine: domain }),
+              }).catch(() => {});
+            }
+          }
+        }
       }
+
       router.push(`/personnes-physiques/${targetId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue");
@@ -360,6 +439,16 @@ export function PpForm(props: Props) {
           </FormField>
         </div>
       </section>
+
+      {/* Rattachement à une organisation */}
+      {isCreate && (
+        <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+            Rattachement à une organisation
+          </h3>
+          <PpAttachPmSection value={attachedPm} onChange={setAttachedPm} onCreateNew={handleCreateNewPm} />
+        </section>
+      )}
 
       {/* Profil avocat */}
       {form.profilType === "AVOCAT" && (
@@ -497,6 +586,41 @@ export function PpForm(props: Props) {
           {props.mode === "create" ? "Créer la personne physique" : "Enregistrer les modifications"}
         </SubmitButton>
       </div>
+
+      <Modal
+        open={domainPrompt !== null}
+        onClose={() => resolveDomainPrompt(false)}
+        title="Associer le domaine à l'organisation"
+        size="sm"
+      >
+        {domainPrompt && (
+          <div className="px-6 py-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center shrink-0">
+                <Globe size={16} className="text-primary-600" />
+              </div>
+              <p className="text-sm text-zinc-600">
+                L'email renseigné utilise le domaine{" "}
+                <span className="font-medium text-zinc-900">@{domainPrompt.domain}</span>.
+                Souhaitez-vous l'associer à l'organisation{" "}
+                <span className="font-medium text-zinc-900">{domainPrompt.pm.raisonSociale}</span> ?
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 pb-1">
+              <button
+                type="button"
+                onClick={() => resolveDomainPrompt(false)}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition cursor-pointer"
+              >
+                Non merci
+              </button>
+              <SubmitButton onClick={() => resolveDomainPrompt(true)}>
+                Associer le domaine
+              </SubmitButton>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

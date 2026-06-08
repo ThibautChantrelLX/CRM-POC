@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
@@ -9,6 +9,7 @@ import { SireneSearch } from "@/components/pm/SireneSearch";
 import type { TypeRelationPm } from "@/lib/server/modules/personnes-morales/dto";
 import type { SireneResult } from "@/app/api/sirene/route";
 import { TYPE_RELATION_PM_OPTIONS } from "@/lib/server/modules/personnes-morales/constants";
+import { PP_ATTACH_PM_STORAGE_KEY, type PmAttachInfo } from "@/lib/client/personnes-morales";
 
 type FormState = {
   raisonSociale: string;
@@ -52,8 +53,13 @@ const EMPTY: FormState = {
 
 export function PmCreateForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<FormState>(EMPTY);
+  const returnTo = searchParams.get("returnTo");
+  const [form, setForm] = useState<FormState>(() => ({
+    ...EMPTY,
+    raisonSociale: searchParams.get("raisonSociale") ?? EMPTY.raisonSociale,
+  }));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
@@ -131,6 +137,22 @@ export function PmCreateForm() {
 
       const pm = await res.json();
       await queryClient.invalidateQueries({ queryKey: ["personnes-morales"] });
+
+      if (returnTo === "pp-create") {
+        const attached: PmAttachInfo = {
+          id: pm.id,
+          raisonSociale: pm.raisonSociale,
+          siretSiren: pm.siretSiren ?? null,
+          typeStructure: pm.typeStructure ?? null,
+          nomDomaine: pm.nomDomaine ?? null,
+        };
+        try {
+          sessionStorage.setItem(PP_ATTACH_PM_STORAGE_KEY, JSON.stringify(attached));
+        } catch {}
+        router.push("/personnes-physiques/nouveau");
+        return;
+      }
+
       router.push(`/personnes-morales/${pm.id}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue");
@@ -237,7 +259,7 @@ export function PmCreateForm() {
       <div className="flex gap-3 justify-end pb-6">
         <button
           type="button"
-          onClick={() => router.push("/personnes-morales")}
+          onClick={() => router.push(returnTo === "pp-create" ? "/personnes-physiques/nouveau" : "/personnes-morales")}
           className="px-4 py-2 text-sm font-medium rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition cursor-pointer"
         >
           Annuler
