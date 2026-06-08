@@ -36,7 +36,7 @@ type PmFormState = {
 const EMPTY_FORM: PmFormState = {
   raisonSociale: "",
   siretSiren: "",
-  typeStructure: "Cabinet d'Avocats",
+  typeStructure: "",
   email: "",
   telephone: "",
   siteWeb: "",

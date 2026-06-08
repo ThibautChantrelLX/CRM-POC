@@ -35,7 +35,7 @@ type FormErrors = Partial<Record<keyof FormState, string>>;
 const EMPTY: FormState = {
   raisonSociale: "",
   siretSiren: "",
-  typeStructure: "Cabinet d'Avocats",
+  typeStructure: "",
   email: "",
   telephone: "",
   siteWeb: "",
