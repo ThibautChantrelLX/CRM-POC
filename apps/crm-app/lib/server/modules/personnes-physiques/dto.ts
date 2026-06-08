@@ -43,9 +43,10 @@ export type PersonnePhysiqueListQuery = {
   nom?: string;
   prenom?: string;
   email?: string;
-  profession?: string;
-  specialite?: string;
   // Filtres multi-select
+  profession?: string[];
+  specialite?: string[];
+  activiteDominante?: string[];
   typeRelation?: TypeRelationPp[];
   statutRgpd?: StatutRgpd[];
   barreau?: string[];

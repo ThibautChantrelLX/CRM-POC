@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
-import { TYPE_RELATION_PP_OPTIONS } from "@/lib/server/modules/personnes-physiques/constants";
+import { TYPE_RELATION_PP_OPTIONS, profilTypeFromPrincipal } from "@/lib/server/modules/personnes-physiques/constants";
 import type {
   TypeRelationPp,
   StatutRgpd,
@@ -64,13 +64,6 @@ const EMPTY: FormState = {
   dateNaissance: "",
   situationFamiliale: "",
 };
-
-function profilTypeFromPrincipal(t: string | null | undefined): ProfilType {
-  if (!t) return "PARTICULIER";
-  if (t === "PARTICULIER") return "PARTICULIER";
-  if (t === "AVOCAT_INTERNE" || t === "AVOCAT_EXTERNE") return "AVOCAT";
-  return "PRO";
-}
 
 function fromDetail(pp: PersonnePhysiqueDetail): FormState {
   const profilType = profilTypeFromPrincipal(pp.typeProfilPrincipal);
