@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/server/prisma";
 import {
   fetchPersonnesPhysiques,
   createPersonnePhysique,
@@ -23,8 +24,9 @@ export async function GET(request: Request) {
     nom: g("nom"),
     prenom: g("prenom"),
     email: g("email"),
-    profession: g("profession"),
-    specialite: g("specialite"),
+    profession: searchParams.getAll("profession"),
+    specialite: searchParams.getAll("specialite"),
+    activiteDominante: searchParams.getAll("activiteDominante"),
     typeRelation: searchParams.getAll("typeRelation") as TypeRelationPp[],
     statutRgpd: searchParams.getAll("statutRgpd") as StatutRgpd[],
     barreau: searchParams.getAll("barreau"),
@@ -48,6 +50,16 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const [body, actorName] = await Promise.all([request.json(), getActorName()]);
+    if (typeof body?.email !== "string" || !body.email.trim()) {
+      return NextResponse.json({ error: "L'email est requis" }, { status: 400 });
+    }
+    const existing = await prisma.personnePhysique.findFirst({
+      where: { email: { equals: body.email.trim(), mode: "insensitive" } },
+      select: { id: true },
+    });
+    if (existing) {
+      return NextResponse.json({ error: "Une personne physique existe déjà avec cet email" }, { status: 409 });
+    }
     return NextResponse.json(await createPersonnePhysique(body, actorName), { status: 201 });
   } catch (err) {
     console.error(err);

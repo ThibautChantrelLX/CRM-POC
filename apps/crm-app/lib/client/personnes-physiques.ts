@@ -20,6 +20,23 @@ export async function listPersonnesPhysiques(
   return handleResponse(res);
 }
 
+export type PersonnePhysiqueMatch = { id: string; nom: string; prenom: string | null } | null;
+
+export async function checkPersonnePhysiqueEmail(email: string): Promise<PersonnePhysiqueMatch> {
+  const res = await fetch(`/api/personnes-physiques/check-email?email=${encodeURIComponent(email)}`);
+  return handleResponse(res);
+}
+
+export async function checkPersonnePhysiquePhone(
+  field: "telephone" | "portable",
+  value: string,
+): Promise<PersonnePhysiqueMatch> {
+  const res = await fetch(
+    `/api/personnes-physiques/check-phone?field=${field}&value=${encodeURIComponent(value)}`,
+  );
+  return handleResponse(res);
+}
+
 export async function getPersonnePhysique(id: number): Promise<PersonnePhysiqueListItem> {
   const res = await fetch(`/api/personnes-physiques/${id}`);
   return handleResponse(res);

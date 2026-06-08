@@ -15,12 +15,12 @@ import {
 import { getPersonnePhysiqueDetail } from "@/lib/server/modules/personnes-physiques/service";
 import { Avatar } from "@/components/ui/avatar";
 import { DetailSection } from "@/components/detail/DetailSection";
-import { InfoGrid } from "@/components/detail/InfoGrid";
+import { InfoGrid, type InfoItem } from "@/components/detail/InfoGrid";
 import { RattachementsList } from "@/components/detail/RattachementsList";
 import { PpDetailActions } from "@/components/pp/PpDetailActions";
 import { cn } from "@/lib/utils";
 import type { TypeRelationPp, StatutRgpd } from "@/lib/server/modules/personnes-physiques/dto";
-import { TYPE_RELATION_PP_OPTIONS } from "@/lib/server/modules/personnes-physiques/constants";
+import { TYPE_RELATION_PP_OPTIONS, profilTypeFromPrincipal } from "@/lib/server/modules/personnes-physiques/constants";
 
 // ─── Labels / badges ──────────────────────────────────────────────────────────
 
@@ -91,6 +91,8 @@ export default async function PersonnePhysiquePage({
   const { id } = await params;
   const pp = await getPersonnePhysiqueDetail(id);
   if (!pp) notFound();
+
+  const estAvocat = profilTypeFromPrincipal(pp.typeProfilPrincipal) === "AVOCAT";
 
   return (
     <div className="flex flex-col min-h-full">
@@ -169,8 +171,13 @@ export default async function PersonnePhysiquePage({
                 items={[
                   { label: "Profession", value: pp.profession },
                   { label: "Spécialité", value: pp.specialite, span: 2 },
-                  { label: "Barreau", value: pp.barreau },
-                  { label: "Date de serment", value: fmtDate(pp.dateSerment) },
+                  ...(estAvocat
+                    ? ([
+                        { label: "Activité dominante", value: pp.activiteDominante, span: 2 },
+                        { label: "Barreau", value: pp.barreau },
+                        { label: "Date de serment", value: fmtDate(pp.dateSerment) },
+                      ] satisfies InfoItem[])
+                    : []),
                   {
                     label: "Type de relation",
                     value: (

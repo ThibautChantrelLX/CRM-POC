@@ -48,13 +48,19 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
   if (q.nom) and.push({ nom: ilike(q.nom) });
   if (q.prenom) and.push({ prenom: ilike(q.prenom) });
   if (q.email) and.push({ email: ilike(q.email) });
-  if (q.profession) and.push({
+  if (q.profession?.length) and.push({
     OR: [
-      { profilAvocat: { profession: ilike(q.profession) } },
-      { profilPro: { profession: ilike(q.profession) } },
+      { profilAvocat: { profession: { in: q.profession } } },
+      { profilPro: { profession: { in: q.profession } } },
     ],
   });
-  if (q.specialite) and.push({ profilAvocat: { specialite: ilike(q.specialite) } });
+  if (q.specialite?.length) and.push({
+    OR: [
+      { profilAvocat: { specialite: { in: q.specialite } } },
+      { profilPro: { specialite: { in: q.specialite } } },
+    ],
+  });
+  if (q.activiteDominante?.length) and.push({ profilAvocat: { activiteDominante: { in: q.activiteDominante } } });
 
   if (q.typeRelation?.length) and.push({ typeRelation: { in: q.typeRelation } });
   if (q.statutRgpd?.length) and.push({ statutRgpd: { in: q.statutRgpd } });
