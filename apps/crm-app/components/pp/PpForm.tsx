@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Check, AlertTriangle } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
 import { PpDuplicatesDropdown } from "@/components/pp/PpDuplicatesDropdown";
+import { usePpEmailCheck } from "@/lib/hooks/usePpEmailCheck";
+import { usePpPhoneCheck, type PpPhoneCheckResult } from "@/lib/hooks/usePpPhoneCheck";
+import { cn } from "@/lib/utils";
 import { TYPE_RELATION_PP_OPTIONS, profilTypeFromPrincipal } from "@/lib/server/modules/personnes-physiques/constants";
 import type {
   TypeRelationPp,
@@ -100,6 +105,23 @@ function fromDetail(pp: PersonnePhysiqueDetail): FormState {
 
 const DRAFT_STORAGE_KEY = "pp-create-draft";
 
+function PhoneDuplicateWarning({ check, onSelect }: { check: PpPhoneCheckResult; onSelect: () => void }) {
+  if (check.status !== "taken") return null;
+  return (
+    <p className="flex items-center gap-1 text-xs text-amber-600">
+      <AlertTriangle size={12} className="shrink-0" />
+      Déjà utilisé par{" "}
+      <Link
+        href={`/personnes-physiques/${check.match.id}`}
+        onClick={onSelect}
+        className="font-medium underline underline-offset-2 hover:text-amber-700"
+      >
+        {[check.match.prenom, check.match.nom].filter(Boolean).join(" ")}
+      </Link>
+    </p>
+  );
+}
+
 const PROFIL_TABS: { value: ProfilType; label: string }[] = [
   { value: "PARTICULIER", label: "Particulier" },
   { value: "AVOCAT", label: "Avocat" },
@@ -119,6 +141,10 @@ export function PpForm(props: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [identityFocused, setIdentityFocused] = useState(false);
+  const emailCheck = usePpEmailCheck(isCreate ? form.email : "");
+  const emailTaken = isCreate && emailCheck.status === "taken";
+  const telephoneCheck = usePpPhoneCheck("telephone", isCreate ? form.telephone : "");
+  const portableCheck = usePpPhoneCheck("portable", isCreate ? form.portable : "");
 
   // Restaure le brouillon laissé avant de consulter une fiche depuis la liste de doublons
   useEffect(() => {
@@ -153,6 +179,7 @@ export function PpForm(props: Props) {
   const handleSubmit = async () => {
     if (!form.nom.trim()) return;
     if (isCreate && !form.email.trim()) return;
+    if (emailTaken) return;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -273,13 +300,63 @@ export function PpForm(props: Props) {
         <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Coordonnées</h3>
         <div className="grid grid-cols-2 gap-4">
           <FormField label="Email" required={isCreate}>
-            <input type="email" className={inputCls} value={form.email} onChange={patch("email")} placeholder="jean.dupont@cabinet.fr" />
+            <input
+              type="email"
+              className={cn(
+                inputCls,
+                isCreate && emailCheck.status === "available" &&
+                  "border-green-400 focus:border-green-400 focus:ring-green-500/10",
+                isCreate && emailCheck.status === "taken" &&
+                  "border-red-400 focus:border-red-400 focus:ring-red-500/10",
+              )}
+              value={form.email}
+              onChange={patch("email")}
+              placeholder="jean.dupont@cabinet.fr"
+            />
+            {isCreate && emailCheck.status === "available" && (
+              <p className="flex items-center gap-1 text-xs text-green-600">
+                <Check size={12} /> Email disponible
+              </p>
+            )}
+            {isCreate && emailCheck.status === "taken" && (
+              <p className="flex items-center gap-1 text-xs text-red-600">
+                <AlertTriangle size={12} className="shrink-0" />
+                Déjà utilisé par{" "}
+                <Link
+                  href={`/personnes-physiques/${emailCheck.match.id}`}
+                  onClick={saveDraft}
+                  className="font-medium underline underline-offset-2 hover:text-red-700"
+                >
+                  {[emailCheck.match.prenom, emailCheck.match.nom].filter(Boolean).join(" ")}
+                </Link>
+              </p>
+            )}
           </FormField>
           <FormField label="Téléphone">
-            <input className={inputCls} value={form.telephone} onChange={patch("telephone")} placeholder="01 23 45 67 89" />
+            <input
+              className={cn(
+                inputCls,
+                isCreate && telephoneCheck.status === "taken" &&
+                  "border-amber-400 focus:border-amber-400 focus:ring-amber-500/10",
+              )}
+              value={form.telephone}
+              onChange={patch("telephone")}
+              placeholder="01 23 45 67 89"
+            />
+            {isCreate && <PhoneDuplicateWarning check={telephoneCheck} onSelect={saveDraft} />}
           </FormField>
           <FormField label="Portable" className="col-span-2">
-            <input className={inputCls} value={form.portable} onChange={patch("portable")} placeholder="06 12 34 56 78" />
+            <input
+              className={cn(
+                inputCls,
+                isCreate && portableCheck.status === "taken" &&
+                  "border-amber-400 focus:border-amber-400 focus:ring-amber-500/10",
+              )}
+              value={form.portable}
+              onChange={patch("portable")}
+              placeholder="06 12 34 56 78"
+            />
+            {isCreate && <PhoneDuplicateWarning check={portableCheck} onSelect={saveDraft} />}
           </FormField>
         </div>
       </section>
@@ -415,7 +492,7 @@ export function PpForm(props: Props) {
         <SubmitButton
           isLoading={isSubmitting}
           onClick={handleSubmit}
-          disabled={!form.nom.trim() || (isCreate && !form.email.trim())}
+          disabled={!form.nom.trim() || (isCreate && !form.email.trim()) || emailTaken}
         >
           {props.mode === "create" ? "Créer la personne physique" : "Enregistrer les modifications"}
         </SubmitButton>
