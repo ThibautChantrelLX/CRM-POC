@@ -5,6 +5,7 @@ import {
   createPersonnePhysique,
 } from "@/lib/server/modules/personnes-physiques/service";
 import type {
+  PersonnePhysiqueGroupFilter,
   PersonnePhysiqueListQuery,
   TypeRelationPp,
   StatutRgpd,
@@ -38,6 +39,39 @@ export async function GET(request: Request) {
     dateSermentApres: g("dateSermentApres"),
     dateSermentAvant: g("dateSermentAvant"),
   };
+
+  const groupsRaw = searchParams.get("groups");
+  if (groupsRaw) {
+    try {
+      const parsed = JSON.parse(groupsRaw) as Array<Record<string, unknown>>;
+      query.groups = parsed.map((obj): PersonnePhysiqueGroupFilter => ({
+        nom: typeof obj.nom === "string" ? obj.nom : undefined,
+        prenom: typeof obj.prenom === "string" ? obj.prenom : undefined,
+        email: typeof obj.email === "string" ? obj.email : undefined,
+        profession: Array.isArray(obj.profession) ? (obj.profession as string[]) : undefined,
+        specialite: Array.isArray(obj.specialite) ? (obj.specialite as string[]) : undefined,
+        activiteDominante: Array.isArray(obj.activiteDominante)
+          ? (obj.activiteDominante as string[])
+          : undefined,
+        typeRelation: Array.isArray(obj.typeRelation)
+          ? (obj.typeRelation as TypeRelationPp[])
+          : undefined,
+        barreau: Array.isArray(obj.barreau) ? (obj.barreau as string[]) : undefined,
+        creerLeApres: typeof obj.creerLeApres === "string" ? obj.creerLeApres : undefined,
+        creerLeAvant: typeof obj.creerLeAvant === "string" ? obj.creerLeAvant : undefined,
+        dernierEmailApres:
+          typeof obj.dernierEmailApres === "string" ? obj.dernierEmailApres : undefined,
+        dernierEmailAvant:
+          typeof obj.dernierEmailAvant === "string" ? obj.dernierEmailAvant : undefined,
+        dateSermentApres:
+          typeof obj.dateSermentApres === "string" ? obj.dateSermentApres : undefined,
+        dateSermentAvant:
+          typeof obj.dateSermentAvant === "string" ? obj.dateSermentAvant : undefined,
+      }));
+    } catch {
+      // invalid JSON, ignore
+    }
+  }
 
   try {
     return NextResponse.json(await fetchPersonnesPhysiques(query));

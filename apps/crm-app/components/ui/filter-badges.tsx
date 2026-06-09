@@ -1,41 +1,52 @@
 "use client";
 
+import { Fragment } from "react";
 import { X } from "lucide-react";
 import { conditionBadgeLabel } from "@/lib/url-state";
-import type { FieldDef, FilterCondition } from "@/lib/filters";
+import type { FieldDef, FilterGroup } from "@/lib/filters";
 
 type Props = {
-  conditions: FilterCondition[];
+  groups: FilterGroup[];
   fields: FieldDef[];
+  conditionCount: number;
   onRemove: (id: string) => void;
   onClearAll: () => void;
 };
 
-export function FilterBadges({ conditions, fields, onRemove, onClearAll }: Props) {
-  if (conditions.length === 0) return null;
+export function FilterBadges({ groups, fields, conditionCount, onRemove, onClearAll }: Props) {
+  if (conditionCount === 0) return null;
 
   return (
     <div className="flex flex-wrap items-center gap-1.5 px-6 pb-2">
-      {conditions.map((cond) => {
-        const label = conditionBadgeLabel(cond, fields);
-        if (!label) return null;
-        return (
-          <span
-            key={cond.id}
-            className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full bg-primary-100 text-primary-700 text-xs font-medium border border-primary-200"
-          >
-            {label}
-            <button
-              type="button"
-              aria-label="Supprimer ce filtre"
-              onClick={() => onRemove(cond.id)}
-              className="hover:bg-primary-200 rounded-full p-0.5 transition-colors"
-            >
-              <X size={10} />
-            </button>
-          </span>
-        );
-      })}
+      {groups.map((group, idx) => (
+        <Fragment key={group.id}>
+          {idx > 0 && (
+            <span className="text-xs font-bold text-primary-600 bg-primary-50 border border-primary-200 rounded-full px-2.5 py-0.5">
+              OU
+            </span>
+          )}
+          {group.conditions.map((cond) => {
+            const label = conditionBadgeLabel(cond, fields);
+            if (!label) return null;
+            return (
+              <span
+                key={cond.id}
+                className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 rounded-full bg-primary-100 text-primary-700 text-xs font-medium border border-primary-200"
+              >
+                {label}
+                <button
+                  type="button"
+                  aria-label="Supprimer ce filtre"
+                  onClick={() => onRemove(cond.id)}
+                  className="hover:bg-primary-200 rounded-full p-0.5 transition-colors"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            );
+          })}
+        </Fragment>
+      ))}
       <button
         type="button"
         onClick={onClearAll}
