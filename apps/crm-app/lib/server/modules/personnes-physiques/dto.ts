@@ -33,13 +33,30 @@ export type PersonnePhysiqueListItem = {
   } | null;
 };
 
+export type PersonnePhysiqueGroupFilter = {
+  nom?: string;
+  prenom?: string;
+  email?: string;
+  profession?: string[];
+  specialite?: string[];
+  activiteDominante?: string[];
+  typeRelation?: TypeRelationPp[];
+  barreau?: string[];
+  creerLeApres?: string;
+  creerLeAvant?: string;
+  dernierEmailApres?: string;
+  dernierEmailAvant?: string;
+  dateSermentApres?: string;
+  dateSermentAvant?: string;
+};
+
 export type PersonnePhysiqueListQuery = {
   page?: number;
   limit?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   search?: string;
-  // Filtres texte (contains)
+  // Filtres texte (contains) — chemin simple (1 groupe)
   nom?: string;
   prenom?: string;
   email?: string;
@@ -61,6 +78,8 @@ export type PersonnePhysiqueListQuery = {
   dernierEmailAvant?: string;
   dateSermentApres?: string;
   dateSermentAvant?: string;
+  // Groupes OR (chemin multi-groupes)
+  groups?: PersonnePhysiqueGroupFilter[];
 };
 
 export type PersonnePhysiqueListResponse = {

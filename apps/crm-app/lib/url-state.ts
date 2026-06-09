@@ -1,18 +1,65 @@
 import type { ReadonlyURLSearchParams } from "next/navigation";
 import { buildQueryParams, makeId } from "./filters";
-import type { FieldDef, FilterCondition, FilterState } from "./filters";
+import type { FieldDef, FilterCondition, FilterGroup, FilterState } from "./filters";
 
 // ─── URL ↔ FilterState ────────────────────────────────────────────────────────
 
 export function urlToState(sp: ReadonlyURLSearchParams, fields: FieldDef[]): FilterState {
+  const groupsRaw = sp.get("groups");
+  let groups: FilterGroup[];
+
+  if (groupsRaw) {
+    try {
+      const parsed = JSON.parse(groupsRaw) as Record<string, string | string[]>[];
+      groups = parsed
+        .map((obj) => ({ id: makeId(), conditions: decodeGroupObj(obj, fields) }))
+        .filter((g) => g.conditions.length > 0);
+    } catch {
+      groups = [];
+    }
+  } else {
+    const conditions = extractConditions(sp, fields);
+    groups = conditions.length > 0 ? [{ id: makeId(), conditions }] : [];
+  }
+
   return {
     search: sp.get("search") ?? "",
     sortBy: sp.get("sortBy") ?? "nom",
     sortOrder: (sp.get("sortOrder") as "asc" | "desc") ?? "asc",
     page: Math.max(1, Number(sp.get("page") ?? 1)),
     limit: Number(sp.get("limit") ?? 20),
-    conditions: extractConditions(sp, fields),
+    groups,
   };
+}
+
+function decodeGroupObj(
+  obj: Record<string, string | string[]>,
+  fields: FieldDef[],
+): FilterCondition[] {
+  const conditions: FilterCondition[] = [];
+  for (const field of fields) {
+    if (field.type === "text" && field.param) {
+      const v = obj[field.param];
+      if (v && typeof v === "string")
+        conditions.push({ id: makeId(), fieldKey: field.key, operator: "contains", value: v });
+    } else if (field.type === "select" && field.param) {
+      const vs = obj[field.param];
+      if (Array.isArray(vs) && vs.length)
+        conditions.push({ id: makeId(), fieldKey: field.key, operator: "in", value: vs });
+    } else if (field.type === "date") {
+      if (field.paramGte) {
+        const v = obj[field.paramGte];
+        if (v && typeof v === "string")
+          conditions.push({ id: makeId(), fieldKey: field.key, operator: "gte", value: v });
+      }
+      if (field.paramLte) {
+        const v = obj[field.paramLte];
+        if (v && typeof v === "string")
+          conditions.push({ id: makeId(), fieldKey: field.key, operator: "lte", value: v });
+      }
+    }
+  }
+  return conditions;
 }
 
 function extractConditions(sp: ReadonlyURLSearchParams, fields: FieldDef[]): FilterCondition[] {
@@ -38,7 +85,6 @@ function extractConditions(sp: ReadonlyURLSearchParams, fields: FieldDef[]): Fil
   return out;
 }
 
-// State → URL query string (reuses buildQueryParams which already covers all fields)
 export function stateToURL(state: FilterState, fields: FieldDef[]): string {
   return buildQueryParams(state, fields).toString();
 }

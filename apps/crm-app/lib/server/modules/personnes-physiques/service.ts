@@ -3,6 +3,7 @@ import { prisma } from "@/lib/server/prisma";
 import type {
   CreatePersonnePhysiqueInput,
   PersonnePhysiqueDetail,
+  PersonnePhysiqueGroupFilter,
   PersonnePhysiqueListItem,
   PersonnePhysiqueListQuery,
   PersonnePhysiqueListResponse,
@@ -28,6 +29,61 @@ function fmtDate(d: Date | null | undefined): string | null {
 }
 
 // ─── List ─────────────────────────────────────────────────────────────────────
+
+function buildGroupConditions(
+  q: PersonnePhysiqueGroupFilter,
+): Prisma.PersonnePhysiqueWhereInput[] {
+  const and: Prisma.PersonnePhysiqueWhereInput[] = [];
+
+  if (q.nom) and.push({ nom: ilike(q.nom) });
+  if (q.prenom) and.push({ prenom: ilike(q.prenom) });
+  if (q.email) and.push({ email: ilike(q.email) });
+  if (q.profession?.length) and.push({
+    OR: [
+      { profilAvocat: { profession: { in: q.profession } } },
+      { profilPro: { profession: { in: q.profession } } },
+    ],
+  });
+  if (q.specialite?.length) and.push({
+    OR: [
+      { profilAvocat: { specialite: { in: q.specialite } } },
+      { profilPro: { specialite: { in: q.specialite } } },
+    ],
+  });
+  if (q.activiteDominante?.length)
+    and.push({ profilAvocat: { activiteDominante: { in: q.activiteDominante } } });
+  if (q.typeRelation?.length) and.push({ typeRelation: { in: q.typeRelation } });
+  if (q.barreau?.length) and.push({ profilAvocat: { barreau: { in: q.barreau } } });
+
+  if (q.creerLeApres || q.creerLeAvant) {
+    and.push({
+      creerLe: {
+        ...(q.creerLeApres && { gte: new Date(q.creerLeApres) }),
+        ...(q.creerLeAvant && { lte: new Date(q.creerLeAvant) }),
+      },
+    });
+  }
+  if (q.dernierEmailApres || q.dernierEmailAvant) {
+    and.push({
+      dernierEmailLe: {
+        ...(q.dernierEmailApres && { gte: new Date(q.dernierEmailApres) }),
+        ...(q.dernierEmailAvant && { lte: new Date(q.dernierEmailAvant) }),
+      },
+    });
+  }
+  if (q.dateSermentApres || q.dateSermentAvant) {
+    and.push({
+      profilAvocat: {
+        dateSerment: {
+          ...(q.dateSermentApres && { gte: new Date(q.dateSermentApres) }),
+          ...(q.dateSermentAvant && { lte: new Date(q.dateSermentAvant) }),
+        },
+      },
+    });
+  }
+
+  return and;
+}
 
 function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereInput {
   const and: Prisma.PersonnePhysiqueWhereInput[] = [];
@@ -95,6 +151,16 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
         },
       },
     });
+  }
+
+  if (q.groups?.length === 1) {
+    and.push(...buildGroupConditions(q.groups[0]));
+  } else if (q.groups && q.groups.length > 1) {
+    const orClauses = q.groups
+      .map((g) => buildGroupConditions(g))
+      .filter((gc) => gc.length > 0)
+      .map((gc) => (gc.length === 1 ? gc[0] : { AND: gc }));
+    if (orClauses.length > 0) and.push({ OR: orClauses });
   }
 
   return and.length ? { AND: and } : {};

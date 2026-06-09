@@ -27,14 +27,15 @@ function PersonnesMoralesContent() {
       sorting={ds.sorting}
       isLoading={isLoading}
       isFetching={isFetching}
-      conditions={ds.conditions}
+      groups={ds.groups}
+      conditionCount={ds.conditionCount}
       searchValue={ds.search}
       onPageChange={ds.setPage}
       onLimitChange={ds.setLimit}
       onSortingChange={ds.setSorting}
-      onApplyFilters={ds.setConditions}
+      onApplyGroups={ds.setGroups}
       onRemoveCondition={ds.removeCondition}
-      onClearConditions={ds.clearConditions}
+      onClearGroups={ds.clearGroups}
       onSearch={ds.setSearch}
       onRowClick={(row) => router.push(`/personnes-morales/${row.id}`)}
       actionSlot={

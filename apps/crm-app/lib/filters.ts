@@ -22,9 +22,14 @@ export type FilterCondition = {
   value: string | string[];
 };
 
+export type FilterGroup = {
+  id: string;
+  conditions: FilterCondition[];
+};
+
 export type FilterState = {
   search: string;
-  conditions: FilterCondition[];
+  groups: FilterGroup[];
   sortBy: string;
   sortOrder: "asc" | "desc";
   page: number;
@@ -55,6 +60,33 @@ export function defaultValue(field: FieldDef): string | string[] {
   return "";
 }
 
+function isConditionEmpty(cond: FilterCondition): boolean {
+  if (Array.isArray(cond.value)) return cond.value.length === 0;
+  return !cond.value;
+}
+
+function encodeGroupToObj(
+  group: FilterGroup,
+  fieldMap: Map<string, FieldDef>,
+): Record<string, string | string[]> {
+  const obj: Record<string, string | string[]> = {};
+  for (const cond of group.conditions) {
+    const field = fieldMap.get(cond.fieldKey);
+    if (!field || isConditionEmpty(cond)) continue;
+    if (field.type === "text" && field.param) {
+      obj[field.param] = cond.value as string;
+    } else if (field.type === "select" && field.param) {
+      obj[field.param] = cond.value as string[];
+    } else if (field.type === "date") {
+      const v = cond.value as string;
+      if (!v) continue;
+      if (cond.operator === "gte" && field.paramGte) obj[field.paramGte] = v;
+      if (cond.operator === "lte" && field.paramLte) obj[field.paramLte] = v;
+    }
+  }
+  return obj;
+}
+
 // ─── Query builder ────────────────────────────────────────────────────────────
 
 export function buildQueryParams(state: FilterState, fields: FieldDef[]): URLSearchParams {
@@ -66,22 +98,34 @@ export function buildQueryParams(state: FilterState, fields: FieldDef[]): URLSea
   p.set("limit", String(state.limit));
 
   const fieldMap = new Map(fields.map((f) => [f.key, f]));
+  const nonEmptyGroups = state.groups.filter((g) =>
+    g.conditions.some((c) => !isConditionEmpty(c)),
+  );
 
-  for (const cond of state.conditions) {
-    const field = fieldMap.get(cond.fieldKey);
-    if (!field) continue;
-    if (!cond.value || (Array.isArray(cond.value) && cond.value.length === 0)) continue;
+  if (nonEmptyGroups.length === 0) return p;
 
-    if (field.type === "text" && field.param) {
-      p.set(field.param, cond.value as string);
-    } else if (field.type === "select" && field.param) {
-      (cond.value as string[]).forEach((v) => p.append(field.param!, v));
-    } else if (field.type === "date") {
-      const v = cond.value as string;
-      if (!v) continue;
-      if (cond.operator === "gte" && field.paramGte) p.set(field.paramGte, v);
-      if (cond.operator === "lte" && field.paramLte) p.set(field.paramLte, v);
+  if (nonEmptyGroups.length === 1) {
+    // Groupe unique : params plats (rétro-compatible, URL lisible)
+    for (const cond of nonEmptyGroups[0].conditions) {
+      const field = fieldMap.get(cond.fieldKey);
+      if (!field || isConditionEmpty(cond)) continue;
+      if (field.type === "text" && field.param) {
+        p.set(field.param, cond.value as string);
+      } else if (field.type === "select" && field.param) {
+        (cond.value as string[]).forEach((v) => p.append(field.param!, v));
+      } else if (field.type === "date") {
+        const v = cond.value as string;
+        if (!v) continue;
+        if (cond.operator === "gte" && field.paramGte) p.set(field.paramGte, v);
+        if (cond.operator === "lte" && field.paramLte) p.set(field.paramLte, v);
+      }
     }
+  } else {
+    // Groupes multiples : JSON-encodé
+    p.set(
+      "groups",
+      JSON.stringify(nonEmptyGroups.map((g) => encodeGroupToObj(g, fieldMap))),
+    );
   }
 
   return p;
