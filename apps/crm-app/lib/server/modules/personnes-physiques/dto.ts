@@ -82,6 +82,40 @@ export type PersonnePhysiqueListQuery = {
   groups?: PersonnePhysiqueGroupFilter[];
 };
 
+export type PersonnePhysiqueExportItem = {
+  id: string;
+  nom: string;
+  prenom: string | null;
+  email: string | null;
+  telephone: string | null;
+  portable: string | null;
+  profession: string | null;
+  specialite: string | null;
+  barreau: string | null;
+  dateSerment: string | null;
+  activiteDominante: string | null;
+  typeRelation: TypeRelationPp;
+  statutRgpd: StatutRgpd | null;
+  actif: boolean;
+  optInEmail: boolean;
+  optInSms: boolean;
+  optOutGlobal: boolean;
+  emailInvalide: boolean;
+  totalEmails: number | null;
+  dernierEmailLe: string | null;
+  creerLe: string;
+  modifierLe: string;
+  rattachements: {
+    raisonSociale: string;
+    siretSirenPm: string | null;
+    titreFonction: string | null;
+    dateDebut: string | null;
+    dateFin: string | null;
+    emailPm: string | null;
+    telephonePm: string | null;
+  }[];
+};
+
 export type PersonnePhysiqueListResponse = {
   data: PersonnePhysiqueListItem[];
   total: number;
