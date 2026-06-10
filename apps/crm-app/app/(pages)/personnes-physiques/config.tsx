@@ -3,6 +3,7 @@ import { Mail, Phone, Smartphone } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { FieldDef } from "@/lib/filters";
+import { splitEmails } from "@/lib/email-utils";
 import type {
   PersonnePhysiqueListItem,
   TypeRelationPp,
@@ -137,17 +138,26 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
     enableSorting: true,
     cell: ({ getValue }) => {
       const v = getValue<string | null>();
-      return v ? (
-        <a
-          href={`mailto:${v}`}
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1.5 text-secondary-600 hover:underline max-w-50"
-        >
-          <Mail size={12} className="shrink-0 text-secondary-400" />
-          <span className="truncate">{v}</span>
-        </a>
-      ) : (
-        <span className="text-zinc-300">—</span>
+      if (!v) return <span className="text-zinc-300">—</span>;
+      const emails = splitEmails(v);
+      const first = emails[0];
+      const rest = emails.length - 1;
+      return (
+        <div className="flex items-center gap-1.5">
+          <a
+            href={`mailto:${first}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 text-secondary-600 hover:underline max-w-50"
+          >
+            <Mail size={12} className="shrink-0 text-secondary-400" />
+            <span className="truncate">{first}</span>
+          </a>
+          {rest > 0 && (
+            <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 rounded-full px-1.5 py-0.5 shrink-0">
+              +{rest}
+            </span>
+          )}
+        </div>
       );
     },
   }),

@@ -16,15 +16,15 @@ export type PpEmailCheckResult =
   | { status: "available"; match: null }
   | { status: "taken"; match: NonNullable<PersonnePhysiqueMatch> };
 
-export function usePpEmailCheck(email: string): PpEmailCheckResult {
+export function usePpEmailCheck(email: string, excludeId?: string): PpEmailCheckResult {
   const trimmed = email.trim();
   const debounced = useDebouncedValue(trimmed, DEBOUNCE_MS);
   const isValidFormat = EMAIL_REGEX.test(debounced);
   const settled = debounced === trimmed;
 
   const { data, isFetching } = useQuery({
-    queryKey: ["pp-email-check", debounced],
-    queryFn: () => checkPersonnePhysiqueEmail(debounced),
+    queryKey: ["pp-email-check", debounced, excludeId],
+    queryFn: () => checkPersonnePhysiqueEmail(debounced, excludeId),
     enabled: isValidFormat,
     placeholderData: (prev) => prev,
   });

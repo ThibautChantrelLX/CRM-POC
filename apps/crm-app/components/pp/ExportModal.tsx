@@ -5,12 +5,13 @@ import { Download, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
+import { splitEmails, filterProEmails } from "@/lib/email-utils";
 import type { PersonnePhysiqueExportItem } from "@/lib/server/modules/personnes-physiques/dto";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type FieldConfig = {
-  nom: boolean; prenom: boolean; email: boolean; telephone: boolean; portable: boolean;
+  nom: boolean; prenom: boolean; email: boolean; emailProOnly: boolean; telephone: boolean; portable: boolean;
   profession: boolean; specialite: boolean; barreau: boolean; dateSerment: boolean; activiteDominante: boolean;
   typeRelation: boolean; statutRgpd: boolean; actif: boolean;
   optInEmail: boolean; optInSms: boolean; optOutGlobal: boolean; emailInvalide: boolean;
@@ -37,7 +38,7 @@ type Props = {
 // ─── Defaults ────────────────────────────────────────────────────────────────
 
 const DEFAULT_FIELDS: FieldConfig = {
-  nom: true, prenom: true, email: true, telephone: false, portable: false,
+  nom: true, prenom: true, email: true, emailProOnly: false, telephone: false, portable: false,
   profession: true, specialite: true, barreau: false, dateSerment: false, activiteDominante: false,
   typeRelation: true, statutRgpd: false, actif: false,
   optInEmail: false, optInSms: false, optOutGlobal: false, emailInvalide: false,
@@ -99,7 +100,11 @@ function buildXlsx(
     const row: Row = [];
     if (fields.nom) row.push(pp.nom);
     if (fields.prenom) row.push(pp.prenom ?? "");
-    if (fields.email) row.push(pp.email ?? "");
+    if (fields.email) {
+      const emails = splitEmails(pp.email);
+      const kept = fields.emailProOnly ? filterProEmails(emails) : emails;
+      row.push(kept.join("; "));
+    }
     if (fields.telephone) row.push(pp.telephone ?? "");
     if (fields.portable) row.push(pp.portable ?? "");
     if (fields.profession) row.push(pp.profession ?? "");
@@ -284,6 +289,16 @@ export function ExportModal({ isOpen, onClose, params, total }: Props) {
             <Check label="Téléphone" checked={fields.telephone} onChange={() => toggleField("telephone")} />
             <Check label="Portable" checked={fields.portable} onChange={() => toggleField("portable")} />
           </CheckGrid>
+          {fields.email && (
+            <div className="ml-1 mt-0.5">
+              <Check
+                label="Emails pro uniquement — si plusieurs adresses, exclure @gmail, @orange…"
+                checked={fields.emailProOnly}
+                onChange={() => toggleField("emailProOnly")}
+                subtle
+              />
+            </div>
+          )}
         </Section>
 
         {/* ── Profil ───────────────────────────────────────── */}
@@ -424,10 +439,12 @@ function Check({
   label,
   checked,
   onChange,
+  subtle = false,
 }: {
   label: string;
   checked: boolean;
   onChange: () => void;
+  subtle?: boolean;
 }) {
   return (
     <label className="flex items-center gap-2 cursor-pointer group">
@@ -435,9 +452,15 @@ function Check({
         type="checkbox"
         checked={checked}
         onChange={onChange}
-        className="w-3.5 h-3.5 rounded border-zinc-300 text-primary-500 accent-primary-500 cursor-pointer"
+        className="w-3.5 h-3.5 rounded border-zinc-300 text-primary-500 accent-primary-500 cursor-pointer shrink-0"
       />
-      <span className={cn("text-sm transition-colors", checked ? "text-zinc-800" : "text-zinc-400 group-hover:text-zinc-600")}>
+      <span
+        className={cn(
+          "transition-colors",
+          subtle ? "text-xs" : "text-sm",
+          checked ? "text-zinc-700" : "text-zinc-400 group-hover:text-zinc-600",
+        )}
+      >
         {label}
       </span>
     </label>

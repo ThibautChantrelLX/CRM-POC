@@ -22,8 +22,13 @@ export async function listPersonnesPhysiques(
 
 export type PersonnePhysiqueMatch = { id: string; nom: string; prenom: string | null } | null;
 
-export async function checkPersonnePhysiqueEmail(email: string): Promise<PersonnePhysiqueMatch> {
-  const res = await fetch(`/api/personnes-physiques/check-email?email=${encodeURIComponent(email)}`);
+export async function checkPersonnePhysiqueEmail(
+  email: string,
+  excludeId?: string,
+): Promise<PersonnePhysiqueMatch> {
+  const params = new URLSearchParams({ email });
+  if (excludeId) params.set("excludeId", excludeId);
+  const res = await fetch(`/api/personnes-physiques/check-email?${params.toString()}`);
   return handleResponse(res);
 }
 

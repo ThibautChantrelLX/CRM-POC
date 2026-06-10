@@ -21,6 +21,7 @@ import { PpDetailActions } from "@/components/pp/PpDetailActions";
 import { cn } from "@/lib/utils";
 import type { TypeRelationPp, StatutRgpd } from "@/lib/server/modules/personnes-physiques/dto";
 import { TYPE_RELATION_PP_OPTIONS, profilTypeFromPrincipal } from "@/lib/server/modules/personnes-physiques/constants";
+import { splitEmails } from "@/lib/email-utils";
 
 // ─── Labels / badges ──────────────────────────────────────────────────────────
 
@@ -93,6 +94,7 @@ export default async function PersonnePhysiquePage({
   if (!pp) notFound();
 
   const estAvocat = profilTypeFromPrincipal(pp.typeProfilPrincipal) === "AVOCAT";
+  const emails = splitEmails(pp.email);
 
   return (
     <div className="flex flex-col min-h-full">
@@ -134,12 +136,20 @@ export default async function PersonnePhysiquePage({
                   { label: "Nom", value: pp.nom.toUpperCase() },
                   { label: "Prénom", value: pp.prenom },
                   {
-                    label: "Email",
-                    value: pp.email ? (
-                      <a href={`mailto:${pp.email}`} className="text-secondary-600 hover:underline flex items-center gap-1">
-                        <Mail size={12} />
-                        {pp.email}
-                      </a>
+                    label: emails.length > 1 ? "Emails" : "Email",
+                    value: emails.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {emails.map((email) => (
+                          <a
+                            key={email}
+                            href={`mailto:${email}`}
+                            className="text-secondary-600 hover:underline flex items-center gap-1"
+                          >
+                            <Mail size={12} />
+                            {email}
+                          </a>
+                        ))}
+                      </div>
                     ) : null,
                   },
                   {
