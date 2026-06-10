@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, AlertTriangle, Globe } from "lucide-react";
+import { Check, AlertTriangle, Globe, Plus, X } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Modal } from "@/components/ui/modal";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
@@ -17,6 +17,7 @@ import {
   type PmAttachInfo,
 } from "@/lib/client/personnes-morales";
 import { TYPE_RELATION_PP_OPTIONS, profilTypeFromPrincipal } from "@/lib/server/modules/personnes-physiques/constants";
+import { splitEmails } from "@/lib/email-utils";
 import type {
   TypeRelationPp,
   StatutRgpd,
@@ -29,6 +30,7 @@ type FormState = {
   nom: string;
   prenom: string;
   email: string;
+  extraEmails: string[];
   telephone: string;
   portable: string;
   typeRelation: TypeRelationPp;
@@ -57,6 +59,7 @@ const EMPTY: FormState = {
   nom: "",
   prenom: "",
   email: "",
+  extraEmails: [],
   telephone: "",
   portable: "",
   typeRelation: "CONTACT",
@@ -79,12 +82,14 @@ const EMPTY: FormState = {
 
 function fromDetail(pp: PersonnePhysiqueDetail): FormState {
   const profilType = profilTypeFromPrincipal(pp.typeProfilPrincipal);
+  const emails = splitEmails(pp.email);
   return {
     ...EMPTY,
     profilType,
     nom: pp.nom,
     prenom: pp.prenom ?? "",
-    email: pp.email ?? "",
+    email: emails[0] ?? "",
+    extraEmails: emails.slice(1),
     telephone: pp.telephone ?? "",
     portable: pp.portable ?? "",
     typeRelation: pp.typeRelation,
@@ -169,8 +174,16 @@ export function PpForm(props: Props) {
   const [attachedPm, setAttachedPm] = useState<PmAttachInfo | null>(null);
   const [domainPrompt, setDomainPrompt] = useState<{ domain: string; pm: PmAttachInfo } | null>(null);
   const domainPromptResolveRef = useRef<((associate: boolean) => void) | null>(null);
-  const emailCheck = usePpEmailCheck(isCreate ? form.email : "");
-  const emailTaken = isCreate && emailCheck.status === "taken";
+  const ppId = props.mode === "edit" ? props.ppId : undefined;
+  const emailCheck = usePpEmailCheck(form.email, ppId);
+  const emailTaken = emailCheck.status === "taken";
+  // 4 slots fixes (hooks sans condition, slot vide → idle)
+  const extraCheck0 = usePpEmailCheck(form.extraEmails[0] ?? "", ppId);
+  const extraCheck1 = usePpEmailCheck(form.extraEmails[1] ?? "", ppId);
+  const extraCheck2 = usePpEmailCheck(form.extraEmails[2] ?? "", ppId);
+  const extraCheck3 = usePpEmailCheck(form.extraEmails[3] ?? "", ppId);
+  const extraEmailChecks = [extraCheck0, extraCheck1, extraCheck2, extraCheck3];
+  const anyExtraEmailTaken = extraEmailChecks.slice(0, form.extraEmails.length).some(c => c.status === "taken");
   const telephoneCheck = usePpPhoneCheck("telephone", isCreate ? form.telephone : "");
   const portableCheck = usePpPhoneCheck("portable", isCreate ? form.portable : "");
 
@@ -236,14 +249,16 @@ export function PpForm(props: Props) {
   const handleSubmit = async () => {
     if (!form.nom.trim()) return;
     if (isCreate && !form.email.trim()) return;
-    if (emailTaken) return;
+    if (emailTaken || anyExtraEmailTaken) return;
     setIsSubmitting(true);
     setError(null);
     try {
+      const allEmails = [form.email.trim(), ...form.extraEmails.map(e => e.trim())].filter(Boolean);
+      const emailValue = allEmails.length > 0 ? allEmails.join("|") : undefined;
       const body = {
         nom: form.nom.trim(),
         prenom: form.prenom || undefined,
-        email: form.email || undefined,
+        email: emailValue,
         telephone: form.telephone || undefined,
         portable: form.portable || undefined,
         typeRelation: form.typeRelation,
@@ -378,26 +393,47 @@ export function PpForm(props: Props) {
       <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Coordonnées</h3>
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Email" required={isCreate}>
+
+          {/* Email — pleine largeur, multi-email */}
+          <div className="col-span-2 flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
+                Email{isCreate && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
+              {form.extraEmails.length < 4 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({ ...prev, extraEmails: [...prev.extraEmails, ""] }))
+                  }
+                  className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 transition-colors"
+                >
+                  <Plus size={12} />
+                  Ajouter un email
+                </button>
+              )}
+            </div>
+
+            {/* Email principal */}
             <input
               type="email"
               className={cn(
                 inputCls,
-                isCreate && emailCheck.status === "available" &&
+                emailCheck.status === "available" &&
                   "border-green-400 focus:border-green-400 focus:ring-green-500/10",
-                isCreate && emailCheck.status === "taken" &&
+                emailCheck.status === "taken" &&
                   "border-red-400 focus:border-red-400 focus:ring-red-500/10",
               )}
               value={form.email}
               onChange={patch("email")}
               placeholder="jean.dupont@cabinet.fr"
             />
-            {isCreate && emailCheck.status === "available" && (
+            {emailCheck.status === "available" && (
               <p className="flex items-center gap-1 text-xs text-green-600">
                 <Check size={12} /> Email disponible
               </p>
             )}
-            {isCreate && emailCheck.status === "taken" && (
+            {emailCheck.status === "taken" && (
               <p className="flex items-center gap-1 text-xs text-red-600">
                 <AlertTriangle size={12} className="shrink-0" />
                 Déjà utilisé par{" "}
@@ -410,7 +446,70 @@ export function PpForm(props: Props) {
                 </Link>
               </p>
             )}
-          </FormField>
+
+            {/* Emails supplémentaires */}
+            {form.extraEmails.map((extraEmail, i) => {
+              const check = extraEmailChecks[i];
+              return (
+                <div key={i} className="flex items-start gap-2 mt-1">
+                  <div className="flex flex-col gap-1 flex-1">
+                    <input
+                      type="email"
+                      className={cn(
+                        inputCls,
+                        check.status === "available" && extraEmail &&
+                          "border-green-400 focus:border-green-400 focus:ring-green-500/10",
+                        check.status === "taken" &&
+                          "border-red-400 focus:border-red-400 focus:ring-red-500/10",
+                      )}
+                      value={extraEmail}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          extraEmails: prev.extraEmails.map((x, j) =>
+                            j === i ? e.target.value : x,
+                          ),
+                        }))
+                      }
+                      placeholder="autre@cabinet.fr"
+                    />
+                    {check.status === "available" && extraEmail && (
+                      <p className="flex items-center gap-1 text-xs text-green-600">
+                        <Check size={12} /> Email disponible
+                      </p>
+                    )}
+                    {check.status === "taken" && (
+                      <p className="flex items-center gap-1 text-xs text-red-600">
+                        <AlertTriangle size={12} className="shrink-0" />
+                        Déjà utilisé par{" "}
+                        <Link
+                          href={`/personnes-physiques/${check.match.id}`}
+                          onClick={saveDraft}
+                          className="font-medium underline underline-offset-2 hover:text-red-700"
+                        >
+                          {[check.match.prenom, check.match.nom].filter(Boolean).join(" ")}
+                        </Link>
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    title="Supprimer cet email"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        extraEmails: prev.extraEmails.filter((_, j) => j !== i),
+                      }))
+                    }
+                    className="mt-2 text-zinc-300 hover:text-red-400 transition-colors p-0.5"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
           <FormField label="Téléphone">
             <input
               className={cn(
@@ -424,7 +523,7 @@ export function PpForm(props: Props) {
             />
             {isCreate && <PhoneDuplicateWarning check={telephoneCheck} onSelect={saveDraft} />}
           </FormField>
-          <FormField label="Portable" className="col-span-2">
+          <FormField label="Portable">
             <input
               className={cn(
                 inputCls,
@@ -581,7 +680,7 @@ export function PpForm(props: Props) {
         <SubmitButton
           isLoading={isSubmitting}
           onClick={handleSubmit}
-          disabled={!form.nom.trim() || (isCreate && !form.email.trim()) || emailTaken}
+          disabled={!form.nom.trim() || (isCreate && !form.email.trim()) || emailTaken || anyExtraEmailTaken}
         >
           {props.mode === "create" ? "Créer la personne physique" : "Enregistrer les modifications"}
         </SubmitButton>

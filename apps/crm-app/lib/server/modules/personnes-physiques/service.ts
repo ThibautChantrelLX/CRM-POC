@@ -3,6 +3,7 @@ import { prisma } from "@/lib/server/prisma";
 import type {
   CreatePersonnePhysiqueInput,
   PersonnePhysiqueDetail,
+  PersonnePhysiqueExportItem,
   PersonnePhysiqueGroupFilter,
   PersonnePhysiqueListItem,
   PersonnePhysiqueListQuery,
@@ -202,6 +203,72 @@ export async function fetchPersonnesPhysiques(
   })) as unknown as PersonnePhysiqueListItem[];
 
   return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
+}
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+
+export async function exportPersonnesPhysiques(
+  q: PersonnePhysiqueListQuery,
+): Promise<PersonnePhysiqueExportItem[]> {
+  const where = buildWhere(q);
+
+  const rows = await prisma.personnePhysique.findMany({
+    where,
+    orderBy: { nom: "asc" },
+    take: 10000,
+    include: {
+      profilAvocat: {
+        select: {
+          profession: true, specialite: true, barreau: true,
+          dateSerment: true, activiteDominante: true,
+        },
+      },
+      profilPro: { select: { profession: true, specialite: true } },
+      rattachements: {
+        include: {
+          personneMorale: { select: { raisonSociale: true, siretSiren: true, email: true, telephone: true } },
+        },
+        orderBy: [
+          { dateFin: { sort: "asc", nulls: "first" } },
+          { dateDebut: "desc" },
+        ],
+      },
+    },
+  });
+
+  return rows.map((r) => ({
+    id: r.id,
+    nom: r.nom,
+    prenom: r.prenom,
+    email: r.email,
+    telephone: r.telephone,
+    portable: r.portable,
+    profession: r.profilAvocat?.profession ?? r.profilPro?.profession ?? null,
+    specialite: r.profilAvocat?.specialite ?? r.profilPro?.specialite ?? null,
+    barreau: r.profilAvocat?.barreau ?? null,
+    dateSerment: fmtDate(r.profilAvocat?.dateSerment),
+    activiteDominante: r.profilAvocat?.activiteDominante ?? null,
+    typeRelation: r.typeRelation as PersonnePhysiqueExportItem["typeRelation"],
+    statutRgpd: r.statutRgpd as PersonnePhysiqueExportItem["statutRgpd"],
+    actif: r.actif,
+    optInEmail: r.optInEmail,
+    optInSms: r.optInSms,
+    optOutGlobal: r.optOutGlobal,
+    emailInvalide: r.emailInvalide,
+    totalEmails: r.totalEmails,
+    dernierEmailLe: fmtDate(r.dernierEmailLe),
+    creerLe: (r.creerLe as Date).toISOString().split("T")[0],
+    modifierLe: (r.modifierLe as Date).toISOString().split("T")[0],
+    rattachements: r.rattachements.map((ratt) => ({
+      raisonSociale: ratt.personneMorale.raisonSociale,
+      siretSirenPm: ratt.personneMorale.siretSiren,
+      titreFonction: ratt.titreFonction,
+      dateDebut: fmtDate(ratt.dateDebut as Date | null),
+      dateFin: fmtDate(ratt.dateFin),
+      emailPm: ratt.personneMorale.email,
+      telephonePm: ratt.personneMorale.telephone,
+    })),
+  }));
 }
 
 // ─── Detail (liste + rattachements) ───────────────────────────────────────────

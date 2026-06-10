@@ -10,6 +10,7 @@ type ModalProps = {
   title: string;
   subtitle?: string;
   children: React.ReactNode;
+  footer?: React.ReactNode;
   size?: "sm" | "md" | "lg" | "xl";
 };
 
@@ -20,7 +21,7 @@ const SIZES: Record<NonNullable<ModalProps["size"]>, string> = {
   xl: "max-w-4xl",
 };
 
-export function Modal({ open, onClose, title, subtitle, children, size = "md" }: ModalProps) {
+export function Modal({ open, onClose, title, subtitle, children, footer, size = "md" }: ModalProps) {
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => {
@@ -61,6 +62,9 @@ export function Modal({ open, onClose, title, subtitle, children, size = "md" }:
           </button>
         </div>
         <div className="overflow-y-auto flex-1">{children}</div>
+        {footer && (
+          <div className="px-6 py-4 border-t border-zinc-100 shrink-0">{footer}</div>
+        )}
       </div>
     </div>
   );
