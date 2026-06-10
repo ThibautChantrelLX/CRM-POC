@@ -191,22 +191,24 @@ export function PpForm(props: Props) {
   // ou la PM nouvellement créée depuis la recherche de rattachement
   useEffect(() => {
     if (!isCreate) return;
-    try {
-      const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
-      if (raw) {
-        const draft = JSON.parse(raw) as DraftState;
-        setForm(draft.form);
-        setAttachedPm(draft.attachedPm);
-        sessionStorage.removeItem(DRAFT_STORAGE_KEY);
-      }
-    } catch {}
-    try {
-      const rawPm = sessionStorage.getItem(PP_ATTACH_PM_STORAGE_KEY);
-      if (rawPm) {
-        setAttachedPm(JSON.parse(rawPm) as PmAttachInfo);
-        sessionStorage.removeItem(PP_ATTACH_PM_STORAGE_KEY);
-      }
-    } catch {}
+    void (async () => {
+      try {
+        const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+        if (raw) {
+          const draft = JSON.parse(raw) as DraftState;
+          setForm(draft.form);
+          setAttachedPm(draft.attachedPm);
+          sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+        }
+      } catch {}
+      try {
+        const rawPm = sessionStorage.getItem(PP_ATTACH_PM_STORAGE_KEY);
+        if (rawPm) {
+          setAttachedPm(JSON.parse(rawPm) as PmAttachInfo);
+          sessionStorage.removeItem(PP_ATTACH_PM_STORAGE_KEY);
+        }
+      } catch {}
+    })();
   }, [isCreate]);
 
   const saveDraft = () => {
@@ -699,9 +701,9 @@ export function PpForm(props: Props) {
                 <Globe size={16} className="text-primary-600" />
               </div>
               <p className="text-sm text-zinc-600">
-                L'email renseigné utilise le domaine{" "}
+                L&apos;email renseigné utilise le domaine{" "}
                 <span className="font-medium text-zinc-900">@{domainPrompt.domain}</span>.
-                Souhaitez-vous l'associer à l'organisation{" "}
+                Souhaitez-vous l&apos;associer à l&apos;organisation{" "}
                 <span className="font-medium text-zinc-900">{domainPrompt.pm.raisonSociale}</span> ?
               </p>
             </div>

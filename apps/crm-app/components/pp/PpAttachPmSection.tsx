@@ -24,11 +24,7 @@ export function PpAttachPmSection({ value, onChange, onCreateNew }: Props) {
 
   useEffect(() => {
     const trimmed = debouncedQuery.trim();
-    if (!trimmed || value) {
-      setResults([]);
-      setHasSearched(false);
-      return;
-    }
+    if (!trimmed || value) return;
     let cancelled = false;
     setIsSearching(true);
     setHasSearched(true);
@@ -84,7 +80,7 @@ export function PpAttachPmSection({ value, onChange, onCreateNew }: Props) {
         {isSearching && <Loader2 size={14} className="animate-spin text-zinc-400 shrink-0" />}
       </div>
 
-      {results.length > 0 && (
+      {!!query.trim() && results.length > 0 && (
         <div className="border border-zinc-100 rounded-xl overflow-hidden bg-white divide-y divide-zinc-50 max-h-48 overflow-y-auto">
           {results.map((pm) => (
             <button
@@ -106,7 +102,7 @@ export function PpAttachPmSection({ value, onChange, onCreateNew }: Props) {
         </div>
       )}
 
-      {hasSearched && !isSearching && (
+      {!!query.trim() && hasSearched && !isSearching && (
         <div className="flex items-center justify-between gap-3 px-1">
           <p className="text-xs text-zinc-400">
             {results.length === 0 ? "Aucune organisation trouvée." : "Vous ne trouvez pas l'organisation ?"}

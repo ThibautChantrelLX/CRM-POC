@@ -105,6 +105,8 @@ export function StepRattachements({
     return `/api/personnes-physiques?${params}`;
   }, [debouncedNom, debouncedPrenom, debouncedEmail, debouncedProfession, debouncedSpecialite, debouncedBarreau]);
 
+  const hasAnyQuery = !!(nom.trim() || prenom.trim() || email.trim() || profession.trim() || specialite.trim() || barreau.trim());
+
   useEffect(() => {
     const hasQuery =
       debouncedNom.trim() ||
@@ -113,11 +115,7 @@ export function StepRattachements({
       debouncedProfession.trim() ||
       debouncedSpecialite.trim() ||
       debouncedBarreau.trim();
-    if (!hasQuery) {
-      setPpResults([]);
-      setHasSearched(false);
-      return;
-    }
+    if (!hasQuery) return;
     let cancelled = false;
     setIsSearching(true);
     setHasSearched(true);
@@ -362,11 +360,11 @@ export function StepRattachements({
         </div>
       </div>
 
-      {hasSearched && ppResults.length === 0 && !isSearching && (
+      {hasAnyQuery && hasSearched && ppResults.length === 0 && !isSearching && (
         <p className="text-xs text-zinc-400 text-center py-2">Aucun résultat.</p>
       )}
 
-      {ppResults.length > 0 && (
+      {hasAnyQuery && ppResults.length > 0 && (
         <div className="border border-zinc-100 rounded-xl overflow-hidden bg-white divide-y divide-zinc-50 max-h-52 overflow-y-auto">
           {ppResults.map((pp) => {
             const isSel = selected.has(pp.id);

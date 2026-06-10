@@ -39,11 +39,7 @@ export function StepRattachementsPm({ ppId, ppNom, onDone }: Props) {
 
   useEffect(() => {
     const trimmed = debouncedQuery.trim();
-    if (!trimmed) {
-      setResults([]);
-      setHasSearched(false);
-      return;
-    }
+    if (!trimmed) return;
     let cancelled = false;
     setIsSearching(true);
     setHasSearched(true);
@@ -124,11 +120,11 @@ export function StepRattachementsPm({ ppId, ppNom, onDone }: Props) {
         />
       </div>
 
-      {hasSearched && results.length === 0 && !isSearching && (
+      {!!query.trim() && hasSearched && results.length === 0 && !isSearching && (
         <p className="text-xs text-zinc-400 text-center py-2">Aucun résultat.</p>
       )}
 
-      {results.length > 0 && (
+      {!!query.trim() && results.length > 0 && (
         <div className="border border-zinc-100 rounded-xl overflow-hidden bg-white divide-y divide-zinc-50 max-h-48 overflow-y-auto">
           {results.map((pm) => {
             const isSel = selected?.id === pm.id;
