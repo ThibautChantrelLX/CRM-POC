@@ -1,0 +1,11 @@
+#!/bin/sh
+set -e
+
+ROOT="$(git rev-parse --show-toplevel)"
+APP="$ROOT/apps/crm-app"
+
+echo "🔍 ESLint..."
+(cd "$APP" && npm run lint)
+
+echo "🔍 TypeScript..."
+(cd "$APP" && npx tsc --noEmit)

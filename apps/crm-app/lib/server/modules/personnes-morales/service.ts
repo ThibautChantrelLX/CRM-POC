@@ -221,13 +221,13 @@ export async function createPersonneMorale(
     Object.entries(rest).filter(([, v]) => v !== undefined),
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pm = await prisma.personneMorale.create({
     data: {
       ...cleanRest,
       ...(adresseId !== undefined ? { adresseId } : {}),
       creerPar: actorName ?? null,
       modifierPar: actorName ?? null,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any,
     include: { adresse: { select: { ville: true, codePostal: true, pays: true } } },
   });
@@ -271,9 +271,9 @@ export async function updatePersonneMorale(
     Object.entries(rest).filter(([, v]) => v !== undefined),
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pm = await prisma.personneMorale.update({
     where: { id },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: { ...cleanRest, ...adresseIdPatch, modifierPar: actorName ?? null } as any,
     include: { adresse: { select: { ville: true, codePostal: true, pays: true } } },
   });

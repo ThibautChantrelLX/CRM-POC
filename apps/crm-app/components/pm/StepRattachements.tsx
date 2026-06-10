@@ -117,22 +117,21 @@ export function StepRattachements({
       debouncedBarreau.trim();
     if (!hasQuery) return;
     let cancelled = false;
-    setIsSearching(true);
-    setHasSearched(true);
-    fetch(buildSearchUrl())
-      .then((res) => res.json())
-      .then((data) => {
+    const run = async () => {
+      setIsSearching(true);
+      setHasSearched(true);
+      try {
+        const res = await fetch(buildSearchUrl());
+        const data = await res.json();
         if (!cancelled) setPpResults(data.data ?? []);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setPpResults([]);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setIsSearching(false);
-      });
-    return () => {
-      cancelled = true;
+      }
     };
+    void run();
+    return () => { cancelled = true; };
   }, [buildSearchUrl, debouncedNom, debouncedPrenom, debouncedEmail, debouncedProfession, debouncedSpecialite, debouncedBarreau]);
 
   const toggleSelected = (pp: PpResult) => {

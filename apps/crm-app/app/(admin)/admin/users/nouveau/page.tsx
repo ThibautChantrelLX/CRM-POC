@@ -25,7 +25,7 @@ export default async function NewUserPage() {
 
       <div className="mb-6">
         <h1 className="text-lg font-semibold text-zinc-900">Nouvel utilisateur</h1>
-        <p className="text-sm text-zinc-500 mt-0.5">Créer un compte d'accès à LexCRM</p>
+        <p className="text-sm text-zinc-500 mt-0.5">Créer un compte d&apos;accès à LexCRM</p>
       </div>
 
       <div className="bg-white rounded-xl border border-zinc-200 p-6">

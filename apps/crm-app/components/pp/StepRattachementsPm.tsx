@@ -41,23 +41,22 @@ export function StepRattachementsPm({ ppId, ppNom, onDone }: Props) {
     const trimmed = debouncedQuery.trim();
     if (!trimmed) return;
     let cancelled = false;
-    setIsSearching(true);
-    setHasSearched(true);
-    const params = new URLSearchParams({ search: trimmed, limit: "20" });
-    fetch(`/api/personnes-morales?${params}`)
-      .then((res) => res.json())
-      .then((data) => {
+    const run = async () => {
+      setIsSearching(true);
+      setHasSearched(true);
+      const params = new URLSearchParams({ search: trimmed, limit: "20" });
+      try {
+        const res = await fetch(`/api/personnes-morales?${params}`);
+        const data = await res.json();
         if (!cancelled) setResults(data.data ?? []);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setResults([]);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setIsSearching(false);
-      });
-    return () => {
-      cancelled = true;
+      }
     };
+    void run();
+    return () => { cancelled = true; };
   }, [debouncedQuery]);
 
   const handleSubmit = async () => {

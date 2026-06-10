@@ -29,7 +29,7 @@ export default async function EditUserPage({ params }: { params: Promise<{ id: s
       </nav>
 
       <div className="mb-6">
-        <h1 className="text-lg font-semibold text-zinc-900">Modifier l'utilisateur</h1>
+        <h1 className="text-lg font-semibold text-zinc-900">Modifier l&apos;utilisateur</h1>
         <p className="text-sm text-zinc-500 mt-0.5">{user.email}</p>
       </div>
 
