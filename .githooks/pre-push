@@ -8,4 +8,7 @@ echo "🔍 ESLint..."
 (cd "$APP" && npm run lint)
 
 echo "🔍 TypeScript..."
+# Supprime les types Next.js générés localement (potentiellement obsolètes)
+# pour reproduire l'état CI où .next/ n'existe pas.
+rm -rf "$APP/.next/types"
 (cd "$APP" && npx tsc --noEmit)
