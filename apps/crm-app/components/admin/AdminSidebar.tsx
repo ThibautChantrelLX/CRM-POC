@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Users, Scale, ArrowLeft } from "lucide-react";
+import { Users, Scale, ArrowLeft, GraduationCap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ADMIN_NAV = [
   { href: "/admin/users", label: "Utilisateurs", icon: Users },
+  { href: "/admin/formations", label: "Formations", icon: GraduationCap },
 ];
 
 export function AdminSidebar() {
