@@ -57,6 +57,11 @@ function decodeGroupObj(
         if (v && typeof v === "string")
           conditions.push({ id: makeId(), fieldKey: field.key, operator: "lte", value: v });
       }
+    } else if (field.type === "number-range") {
+      const min = field.paramGte ? (obj[field.paramGte] as string | undefined) : undefined;
+      const max = field.paramLte ? (obj[field.paramLte] as string | undefined) : undefined;
+      if (min || max)
+        conditions.push({ id: makeId(), fieldKey: field.key, operator: "between", value: `${min ?? ""}|${max ?? ""}` });
     }
   }
   return conditions;
@@ -80,6 +85,11 @@ function extractConditions(sp: ReadonlyURLSearchParams, fields: FieldDef[]): Fil
         const v = sp.get(field.paramLte);
         if (v) out.push({ id: makeId(), fieldKey: field.key, operator: "lte", value: v });
       }
+    } else if (field.type === "number-range") {
+      const min = field.paramGte ? sp.get(field.paramGte) : null;
+      const max = field.paramLte ? sp.get(field.paramLte) : null;
+      if (min || max)
+        out.push({ id: makeId(), fieldKey: field.key, operator: "between", value: `${min ?? ""}|${max ?? ""}` });
     }
   }
   return out;
@@ -100,6 +110,14 @@ export function conditionBadgeLabel(cond: FilterCondition, fields: FieldDef[]): 
   }
   if (field.type === "number") {
     return `${field.label} : ≥ ${cond.value}`;
+  }
+  if (field.type === "number-range") {
+    const v = cond.value as string;
+    const [min, max] = v.includes("|") ? v.split("|") : ["", ""];
+    if (min && max) return `${field.label} : entre ${min}% et ${max}%`;
+    if (min) return `${field.label} : ≥ ${min}%`;
+    if (max) return `${field.label} : ≤ ${max}%`;
+    return field.label;
   }
   if (field.type === "select") {
     const vals = cond.value as string[];

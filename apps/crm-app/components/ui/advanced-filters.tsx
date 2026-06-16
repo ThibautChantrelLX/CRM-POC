@@ -297,6 +297,7 @@ function ConditionRow({
       </div>
       {field.type === "text" && <TextRow condition={condition} onChange={onChange} />}
       {field.type === "number" && <NumberRow condition={condition} onChange={onChange} />}
+      {field.type === "number-range" && <NumberRangeRow condition={condition} onChange={onChange} />}
       {field.type === "select" && field.optionsUrl && (
         <SelectSearchRow condition={condition} field={field} onChange={onChange} />
       )}
@@ -350,6 +351,47 @@ function NumberRow({
         className="w-20 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400"
       />
       <span className="text-xs text-zinc-400">formation(s)</span>
+    </div>
+  );
+}
+
+function NumberRangeRow({
+  condition,
+  onChange,
+}: {
+  condition: FilterCondition;
+  onChange: (p: Partial<FilterCondition>) => void;
+}) {
+  const raw = typeof condition.value === "string" ? condition.value : "|";
+  const [min, max] = raw.includes("|") ? raw.split("|") : ["", ""];
+
+  const update = (newMin: string, newMax: string) => {
+    onChange({ value: `${newMin}|${newMax}` });
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-zinc-400 shrink-0">Entre</span>
+      <input
+        type="number"
+        min={0}
+        max={100}
+        placeholder="0"
+        value={min}
+        onChange={(e) => update(e.target.value, max)}
+        className="w-16 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400"
+      />
+      <span className="text-xs text-zinc-400">et</span>
+      <input
+        type="number"
+        min={0}
+        max={100}
+        placeholder="100"
+        value={max}
+        onChange={(e) => update(min, e.target.value)}
+        className="w-16 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400"
+      />
+      <span className="text-xs text-zinc-400">%</span>
     </div>
   );
 }

@@ -83,6 +83,8 @@ export type PersonnePhysiqueListQuery = {
   // Filtres formations
   minFormations?: number;
   formationIds?: string[];
+  satisfMin?: number;
+  satisfMax?: number;
   // Groupes OR (chemin multi-groupes)
   groups?: PersonnePhysiqueGroupFilter[];
 };

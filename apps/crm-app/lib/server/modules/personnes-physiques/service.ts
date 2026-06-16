@@ -163,6 +163,19 @@ function buildWhere(
     and.push({ id: { in: formationCountIds } });
   if (q.formationIds?.length)
     and.push({ participations: { some: { formationId: { in: q.formationIds } } } });
+  if (q.satisfMin !== undefined || q.satisfMax !== undefined) {
+    and.push({
+      participations: {
+        some: {
+          satisfaction: {
+            not: null,
+            ...(q.satisfMin !== undefined && { gte: q.satisfMin }),
+            ...(q.satisfMax !== undefined && { lte: q.satisfMax }),
+          },
+        },
+      },
+    });
+  }
 
   if (q.groups?.length === 1) {
     and.push(...buildGroupConditions(q.groups[0]));

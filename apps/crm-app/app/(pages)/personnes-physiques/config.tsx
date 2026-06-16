@@ -82,6 +82,13 @@ export const PP_FIELDS: FieldDef[] = [
     param: "minFormations",
   },
   {
+    key: "satisfaction",
+    label: "Satisfaction",
+    type: "number-range",
+    paramGte: "satisfMin",
+    paramLte: "satisfMax",
+  },
+  {
     key: "formationIds",
     label: "Formations suivies",
     type: "select",
