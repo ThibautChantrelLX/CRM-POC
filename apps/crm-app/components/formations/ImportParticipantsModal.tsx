@@ -51,6 +51,9 @@ type RawParticipant = {
   telephone: string | null;
   portable: string | null;
   entreprise: string | null;
+  adresseEntreprise: string | null;
+  cpEntreprise: string | null;
+  villeEntreprise: string | null;
   barreau: string | null;
   present: boolean;
   satisfaction: number | null;
@@ -83,6 +86,23 @@ function rowToParticipant(row: RawRow): RawParticipant | null {
       parseStr(row["Entreprise"]) ??
       parseStr(row["Société"]) ??
       parseStr(row["Structure"]) ??
+      null,
+    adresseEntreprise:
+      parseStr(row["Adresse (Entreprise)"]) ??
+      parseStr(row["Adresse (actuelle)"]) ??
+      parseStr(row["Rue (Entreprise)"]) ??
+      parseStr(row["Adresse"]) ??
+      null,
+    cpEntreprise:
+      parseStr(row["Code Postal (Entreprise)"]) ??
+      parseStr(row["CP (Entreprise)"]) ??
+      parseStr(row["Code Postal (actuel)"]) ??
+      parseStr(row["Code Postal"]) ??
+      null,
+    villeEntreprise:
+      parseStr(row["Ville (Entreprise)"]) ??
+      parseStr(row["Ville (actuelle)"]) ??
+      parseStr(row["Ville"]) ??
       null,
     barreau: parseStr(row["Barreau (Participant)"]),
     present: String(row["Présence ADF"] ?? "").toLowerCase() === "oui",
@@ -849,6 +869,9 @@ export function ImportParticipantsModal({ formationId, onClose, onImported }: Pr
             portable: createPPEntry.raw.portable ?? "",
             barreau: createPPEntry.raw.barreau ?? "",
             entreprise: createPPEntry.raw.entreprise ?? "",
+            adresseEntreprise: createPPEntry.raw.adresseEntreprise ?? "",
+            cpEntreprise: createPPEntry.raw.cpEntreprise ?? "",
+            villeEntreprise: createPPEntry.raw.villeEntreprise ?? "",
           }}
           onCreated={(ppId) => {
             updateEntry(createPPEntry.raw.idInscription, {

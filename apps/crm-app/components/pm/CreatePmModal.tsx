@@ -92,7 +92,7 @@ function StepPmForm({
 
   return (
     <div className="px-6 py-5 space-y-6">
-      <SireneSearch onSelect={handleSireneSelect} />
+      <SireneSearch onSelect={handleSireneSelect} initialQuery={form.raisonSociale || undefined} />
 
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Raison sociale" required className="col-span-2">
@@ -178,13 +178,18 @@ type Props = {
   onClose: () => void;
   /** When provided, skip step 2 and call this after PM creation instead of navigating. */
   onCreated?: (pm: { id: string; raisonSociale: string; siretSiren: string | null; typeStructure: string | null; nomDomaine: string | null }) => void;
+  /** Pre-fills raison sociale and auto-triggers SIRENE search on open. */
+  initialRaisonSociale?: string;
 };
 
-export function CreatePmModal({ open, onClose, onCreated }: Props) {
+export function CreatePmModal({ open, onClose, onCreated, initialRaisonSociale }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<1 | 2>(1);
-  const [form, setForm] = useState<PmFormState>(EMPTY_FORM);
+  const [form, setForm] = useState<PmFormState>(() => ({
+    ...EMPTY_FORM,
+    raisonSociale: initialRaisonSociale ?? "",
+  }));
   const [createdPm, setCreatedPm] = useState<{ id: string; raisonSociale: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);

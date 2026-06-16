@@ -8,29 +8,31 @@ import type { SireneResult } from "@/app/api/sirene/route";
 
 type Props = {
   onSelect: (result: SireneResult) => void;
+  /** Pré-remplit le champ de recherche (la recherche reste manuelle). */
+  initialQuery?: string;
 };
 
-export function SireneSearch({ onSelect }: Props) {
-  const [query, setQuery] = useState("");
+export function SireneSearch({ onSelect, initialQuery }: Props) {
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [results, setResults] = useState<SireneResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
 
-  const search = useCallback(async () => {
-    const q = query.trim();
-    if (!q) return;
+  const doSearch = useCallback(async (q: string) => {
+    const trimmed = q.trim();
+    if (!trimmed) return;
     setIsLoading(true);
     setError(null);
     setResults([]);
     try {
-      const digits = q.replace(/\s/g, "");
+      const digits = trimmed.replace(/\s/g, "");
       const param =
         /^\d{14}$/.test(digits)
           ? `siret=${encodeURIComponent(digits)}`
           : /^\d{9}$/.test(digits)
             ? `siren=${encodeURIComponent(digits)}`
-            : `q=${encodeURIComponent(q)}`;
+            : `q=${encodeURIComponent(trimmed)}`;
       const res = await fetch(`/api/sirene?${param}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erreur SIRENE");
@@ -41,7 +43,9 @@ export function SireneSearch({ onSelect }: Props) {
     } finally {
       setIsLoading(false);
     }
-  }, [query]);
+  }, []);
+
+  const search = useCallback(() => void doSearch(query), [doSearch, query]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") search();
