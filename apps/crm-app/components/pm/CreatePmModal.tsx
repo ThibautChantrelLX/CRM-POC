@@ -176,9 +176,11 @@ function StepPmForm({
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** When provided, skip step 2 and call this after PM creation instead of navigating. */
+  onCreated?: (pm: { id: string; raisonSociale: string; siretSiren: string | null; typeStructure: string | null; nomDomaine: string | null }) => void;
 };
 
-export function CreatePmModal({ open, onClose }: Props) {
+export function CreatePmModal({ open, onClose, onCreated }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<1 | 2>(1);
@@ -236,8 +238,19 @@ export function CreatePmModal({ open, onClose }: Props) {
       }
 
       const pm = await res.json();
-      setCreatedPm({ id: pm.id, raisonSociale: pm.raisonSociale });
       await queryClient.invalidateQueries({ queryKey: ["personnes-morales"] });
+      if (onCreated) {
+        onCreated({
+          id: pm.id,
+          raisonSociale: pm.raisonSociale,
+          siretSiren: pm.siretSiren ?? null,
+          typeStructure: pm.typeStructure ?? null,
+          nomDomaine: form.nomDomaine || null,
+        });
+        resetAndClose();
+        return;
+      }
+      setCreatedPm({ id: pm.id, raisonSociale: pm.raisonSociale });
       setStep(2);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue");

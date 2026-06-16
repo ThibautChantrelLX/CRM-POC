@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { auth } from "@/lib/server/auth";
 import { getFormationDetail } from "@/lib/server/modules/formations/service";
+import { getFormationParticipants } from "@/lib/server/modules/formations/participants-service";
+import { ParticipantsSection } from "@/components/formations/ParticipantsSection";
 import type { Role } from "@/app/generated/prisma/client";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +73,10 @@ export default async function FormationDetailPage({ params }: { params: Promise<
   if (!ALLOWED_ROLES.includes(userRole)) redirect("/personnes-physiques");
 
   const { id } = await params;
-  const f = await getFormationDetail(id);
+  const [f, participants] = await Promise.all([
+    getFormationDetail(id),
+    getFormationParticipants(id),
+  ]);
   if (!f) notFound();
 
   const hasSatisfChaud = f.satisfGenerale !== null || f.satisfFormateur !== null || f.satisfSalle !== null;
@@ -241,8 +246,8 @@ export default async function FormationDetailPage({ params }: { params: Promise<
               <InfoRow
                 label="Dans le CRM"
                 value={
-                  f._count.participations > 0 ? (
-                    <span className="font-semibold text-zinc-900">{f._count.participations}</span>
+                  participants.length > 0 ? (
+                    <span className="font-semibold text-zinc-900">{participants.length}</span>
                   ) : (
                     <span className="text-zinc-300 text-xs">Aucune</span>
                   )
@@ -293,6 +298,11 @@ export default async function FormationDetailPage({ params }: { params: Promise<
               {f.modifierPar && <InfoRow label="Modifié par" value={f.modifierPar} />}
             </Card>
           </div>
+        </div>
+
+        {/* Participants section — full width */}
+        <div className="mt-8 bg-white rounded-2xl border border-zinc-200 px-6 py-5">
+          <ParticipantsSection formationId={id} participants={participants} />
         </div>
       </div>
     </div>
