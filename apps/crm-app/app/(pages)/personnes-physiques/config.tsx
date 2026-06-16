@@ -75,6 +75,19 @@ export const PP_FIELDS: FieldDef[] = [
     paramGte: "creerLeApres",
     paramLte: "creerLeAvant",
   },
+  {
+    key: "minFormations",
+    label: "A participé à X formations",
+    type: "number",
+    param: "minFormations",
+  },
+  {
+    key: "formationIds",
+    label: "Formations suivies",
+    type: "select",
+    param: "formationIds",
+    optionsUrl: "/api/personnes-physiques/formations",
+  },
 ];
 
 // ─── Badge styles ─────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type FieldType = "text" | "select" | "date";
+export type FieldType = "text" | "select" | "date" | "number";
 
 export type SelectOption = { value: string; label: string };
 
@@ -10,7 +10,7 @@ export type FieldDef = {
   type: FieldType;
   options?: SelectOption[];
   optionsUrl?: string; // select → URL pour charger les options dynamiquement
-  param?: string;      // text/select → query param name (select: repeatable)
+  param?: string;      // text/select/number → query param name (select: repeatable)
   paramGte?: string;   // date → gte param name
   paramLte?: string;   // date → lte param name
 };
@@ -57,12 +57,14 @@ export function defaultOperator(field: FieldDef): FilterCondition["operator"] {
 
 export function defaultValue(field: FieldDef): string | string[] {
   if (field.type === "select") return [];
+  if (field.type === "number") return "1";
   return "";
 }
 
 function isConditionEmpty(cond: FilterCondition): boolean {
   if (Array.isArray(cond.value)) return cond.value.length === 0;
-  return !cond.value;
+  if (cond.value === "") return true;
+  return false;
 }
 
 function encodeGroupToObj(
@@ -73,7 +75,7 @@ function encodeGroupToObj(
   for (const cond of group.conditions) {
     const field = fieldMap.get(cond.fieldKey);
     if (!field || isConditionEmpty(cond)) continue;
-    if (field.type === "text" && field.param) {
+    if ((field.type === "text" || field.type === "number") && field.param) {
       obj[field.param] = cond.value as string;
     } else if (field.type === "select" && field.param) {
       obj[field.param] = cond.value as string[];
@@ -109,7 +111,7 @@ export function buildQueryParams(state: FilterState, fields: FieldDef[]): URLSea
     for (const cond of nonEmptyGroups[0].conditions) {
       const field = fieldMap.get(cond.fieldKey);
       if (!field || isConditionEmpty(cond)) continue;
-      if (field.type === "text" && field.param) {
+      if ((field.type === "text" || field.type === "number") && field.param) {
         p.set(field.param, cond.value as string);
       } else if (field.type === "select" && field.param) {
         (cond.value as string[]).forEach((v) => p.append(field.param!, v));

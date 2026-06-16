@@ -86,7 +86,10 @@ function buildGroupConditions(
   return and;
 }
 
-function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereInput {
+function buildWhere(
+  q: PersonnePhysiqueListQuery,
+  formationCountIds?: string[] | null,
+): Prisma.PersonnePhysiqueWhereInput {
   const and: Prisma.PersonnePhysiqueWhereInput[] = [];
 
   if (q.search) {
@@ -154,6 +157,13 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
     });
   }
 
+  if (q.minFormations === 1)
+    and.push({ participations: { some: {} } });
+  if (formationCountIds !== null && formationCountIds !== undefined)
+    and.push({ id: { in: formationCountIds } });
+  if (q.formationIds?.length)
+    and.push({ participations: { some: { formationId: { in: q.formationIds } } } });
+
   if (q.groups?.length === 1) {
     and.push(...buildGroupConditions(q.groups[0]));
   } else if (q.groups && q.groups.length > 1) {
@@ -174,7 +184,25 @@ export async function fetchPersonnesPhysiques(
   const limit = Math.min(100, Math.max(1, q.limit ?? 20));
   const sortBy = ALLOWED_SORT[q.sortBy ?? ""] ? q.sortBy! : "nom";
   const sortOrder = q.sortOrder === "desc" ? "desc" : "asc";
-  const where = buildWhere(q);
+
+  // Filtre "au moins N formations" — nécessite une sous-requête SQL pour N > 1
+  let formationCountIds: string[] | null = null;
+  if (q.minFormations && q.minFormations >= 1) {
+    if (q.minFormations === 1) {
+      // Cas simple géré dans buildWhere via Prisma
+    } else {
+      const rows = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT personne_physique_id::text AS id
+        FROM participations_formations
+        WHERE personne_physique_id IS NOT NULL
+        GROUP BY personne_physique_id
+        HAVING COUNT(*) >= ${BigInt(q.minFormations)}
+      `;
+      formationCountIds = rows.map((r) => r.id);
+    }
+  }
+
+  const where = buildWhere(q, formationCountIds);
 
   const [total, rows] = await Promise.all([
     prisma.personnePhysique.count({ where }),
@@ -300,6 +328,21 @@ export async function getPersonnePhysiqueDetail(
           { dateDebut: "desc" },
         ],
       },
+      participations: {
+        include: {
+          formation: {
+            select: {
+              id: true,
+              numero: true,
+              intitule: true,
+              intituleCourt: true,
+              dateDebut: true,
+              dateFin: true,
+            },
+          },
+        },
+        orderBy: { formation: { dateDebut: "desc" } },
+      },
     },
   });
 
@@ -352,6 +395,17 @@ export async function getPersonnePhysiqueDetail(
       dateDebut: fmtDate(r.dateDebut as Date),
       dateFin: fmtDate(r.dateFin),
       personneMorale: r.personneMorale,
+    })),
+    participations: pp.participations.map((p) => ({
+      id: p.id,
+      formationId: p.formation.id,
+      intitule: p.formation.intitule,
+      intituleCourt: p.formation.intituleCourt,
+      numero: p.formation.numero,
+      dateDebut: fmtDate(p.formation.dateDebut),
+      dateFin: fmtDate(p.formation.dateFin),
+      present: p.present,
+      dateInscription: fmtDate(p.dateInscription),
     })),
   };
 }

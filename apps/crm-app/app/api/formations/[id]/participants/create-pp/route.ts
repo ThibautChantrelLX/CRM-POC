@@ -67,6 +67,7 @@ export async function POST(req: Request) {
           personnePhysiqueId: pp.id,
           personneMoraleId: pmId,
           dateDebut: new Date(),
+          titreFonction: str("titreFonction") ?? null,
         },
       });
     }

@@ -10,6 +10,7 @@ import {
   Plus,
   Building2,
   ArrowLeft,
+  Copy,
 } from "lucide-react";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
 import { SPECIALITES, ACTIVITES_DOMINANTES } from "@/lib/constants/specialites";
@@ -64,6 +65,7 @@ type FormState = {
   civilite: string;
   dateNaissance: string;
   situationFamiliale: string;
+  titreFonction: string;
 };
 
 type TypeRelationPm = "CABINET_POSTULATION" | "CLIENT_DIRECT" | "HYBRIDE" | "AUTRE" | "PROSPECT";
@@ -99,6 +101,48 @@ interface Props {
   };
   onCreated: (ppId: string) => void;
   onClose: () => void;
+}
+
+// ─── Copy avocat button ───────────────────────────────────────────────────────
+
+function CopyAvocatButton({
+  barreau,
+  prenom,
+  nom,
+}: {
+  barreau: string;
+  prenom: string;
+  nom: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const text = [
+    barreau && `Barreau ${barreau}`,
+    [prenom, nom].filter(Boolean).join(" "),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (!text.trim()) return null;
+
+  const handleCopy = () => {
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-zinc-200 bg-zinc-50 text-[11px] text-zinc-500 hover:text-zinc-800 hover:border-zinc-300 transition-colors"
+      title={`Copier : ${text}`}
+    >
+      {copied ? <Check size={11} className="text-green-500" /> : <Copy size={11} />}
+      {copied ? "Copié !" : text}
+    </button>
+  );
 }
 
 // ─── Searchable multi-select ──────────────────────────────────────────────────
@@ -506,13 +550,14 @@ export function CreatePPForImportModal({ formationId, prefilled, onCreated, onCl
     barreau: prefilled.barreau,
     dateSerment: "",
     specialite: [],
-    profession: "",
+    profession: "Avocat",
     activiteDominante: [],
     professionPro: "",
     specialitePro: "",
     civilite: "",
     dateNaissance: "",
     situationFamiliale: "",
+    titreFonction: "",
   });
 
   // Pre-compute whether we'll issue a PM suggestion search
@@ -638,6 +683,7 @@ export function CreatePPForImportModal({ formationId, prefilled, onCreated, onCl
             situationFamiliale: form.situationFamiliale || null,
           }),
           pmId: attachedPm?.id ?? null,
+          titreFonction: form.titreFonction.trim() || null,
         }),
       });
 
@@ -901,12 +947,30 @@ export function CreatePPForImportModal({ formationId, prefilled, onCreated, onCl
               onChange={setAttachedPm}
               onCreateNew={(query) => openPmDrawer(query || prefilled.entreprise)}
             />
+
+            {attachedPm && (
+              <FormField label="Poste / fonction" className="mt-3">
+                <input
+                  className={inputCls}
+                  value={form.titreFonction}
+                  onChange={patch("titreFonction")}
+                  placeholder="Avocat associé, Collaborateur…"
+                />
+              </FormField>
+            )}
           </section>
 
           {/* Profil avocat */}
           {form.profilType === "AVOCAT" && (
             <section>
-              <SectionTitle>Profil avocat</SectionTitle>
+              <div className="flex items-center justify-between mb-2.5">
+                <SectionTitle>Profil avocat</SectionTitle>
+                <CopyAvocatButton
+                  barreau={form.barreau}
+                  prenom={form.prenom}
+                  nom={form.nom}
+                />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <FormField label="Barreau">
                   <input

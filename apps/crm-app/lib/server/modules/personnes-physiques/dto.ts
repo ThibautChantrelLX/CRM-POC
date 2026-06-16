@@ -48,6 +48,8 @@ export type PersonnePhysiqueGroupFilter = {
   dernierEmailAvant?: string;
   dateSermentApres?: string;
   dateSermentAvant?: string;
+  minFormations?: number;
+  formationIds?: string[];
 };
 
 export type PersonnePhysiqueListQuery = {
@@ -78,6 +80,9 @@ export type PersonnePhysiqueListQuery = {
   dernierEmailAvant?: string;
   dateSermentApres?: string;
   dateSermentAvant?: string;
+  // Filtres formations
+  minFormations?: number;
+  formationIds?: string[];
   // Groupes OR (chemin multi-groupes)
   groups?: PersonnePhysiqueGroupFilter[];
 };
@@ -177,6 +182,17 @@ export type PersonnePhysiqueDetail = {
   creerPar: string | null;
   modifierPar: string | null;
   // Relations
+  participations: {
+    id: number;
+    formationId: string;
+    intitule: string;
+    intituleCourt: string | null;
+    numero: string;
+    dateDebut: string | null;
+    dateFin: string | null;
+    present: boolean;
+    dateInscription: string | null;
+  }[];
   adresse: {
     rue: string | null;
     complementAdresse: string | null;
