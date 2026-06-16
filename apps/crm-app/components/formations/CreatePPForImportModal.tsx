@@ -16,6 +16,7 @@ import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
 import { SPECIALITES, ACTIVITES_DOMINANTES } from "@/lib/constants/specialites";
 import { PpAttachPmSection } from "@/components/pp/PpAttachPmSection";
 import { SireneSearch } from "@/components/pm/SireneSearch";
+import { MaisonMereSearch, type MaisonMereValue } from "@/components/pm/MaisonMereSearch";
 import { usePpEmailCheck } from "@/lib/hooks/usePpEmailCheck";
 import { cn } from "@/lib/utils";
 import { TYPE_RELATION_PP_OPTIONS } from "@/lib/server/modules/personnes-physiques/constants";
@@ -79,6 +80,7 @@ type PmDraftState = {
   telephone: string;
   siteWeb: string;
   nomDomaine: string;
+  maisonMere: MaisonMereValue | null;
   rue: string;
   codePostal: string;
   ville: string;
@@ -277,6 +279,7 @@ function PmCreationDrawer({
     telephone: "",
     siteWeb: "",
     nomDomaine: ppDomain,
+    maisonMere: null,
     rue: initialAddress.rue,
     codePostal: initialAddress.codePostal,
     ville: initialAddress.ville,
@@ -320,6 +323,7 @@ function PmCreationDrawer({
           telephone: draft.telephone || undefined,
           siteWeb: draft.siteWeb || undefined,
           nomDomaine: draft.nomDomaine || undefined,
+          maisonMereId: draft.maisonMere?.id ?? undefined,
           ...(hasAdresse && {
             adresse: {
               rue: draft.rue || undefined,
@@ -455,6 +459,13 @@ function PmCreationDrawer({
             />
           </FormField>
         </div>
+
+        <FormField label="Maison mère">
+          <MaisonMereSearch
+            value={draft.maisonMere}
+            onChange={(v) => setDraft((prev) => ({ ...prev, maisonMere: v }))}
+          />
+        </FormField>
 
         {/* Adresse */}
         <div>

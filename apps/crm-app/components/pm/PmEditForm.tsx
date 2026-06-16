@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
+import { MaisonMereSearch, type MaisonMereValue } from "@/components/pm/MaisonMereSearch";
 import type { TypeRelationPm, PersonneMoraleDetail } from "@/lib/server/modules/personnes-morales/dto";
 import { TYPE_RELATION_PM_OPTIONS } from "@/lib/server/modules/personnes-morales/constants";
 
@@ -20,6 +21,7 @@ type FormState = {
   secteurActivite: string;
   categorieEntreprise: string;
   sourceOrigine: string;
+  maisonMere: MaisonMereValue | null;
   rue: string;
   complementAdresse: string;
   codePostal: string;
@@ -42,6 +44,7 @@ export function PmEditForm({ pm }: { pm: PersonneMoraleDetail }) {
     secteurActivite: pm.secteurActivite ?? "",
     categorieEntreprise: pm.categorieEntreprise ?? "",
     sourceOrigine: pm.sourceOrigine ?? "",
+    maisonMere: pm.maisonMere ?? null,
     rue: pm.adresse?.rue ?? "",
     complementAdresse: pm.adresse?.complementAdresse ?? "",
     codePostal: pm.adresse?.codePostal ?? "",
@@ -90,6 +93,7 @@ export function PmEditForm({ pm }: { pm: PersonneMoraleDetail }) {
           secteurActivite: form.secteurActivite || undefined,
           categorieEntreprise: form.categorieEntreprise || undefined,
           sourceOrigine: form.sourceOrigine || undefined,
+          maisonMereId: form.maisonMere ? form.maisonMere.id : null,
           adresse,
         }),
       });
@@ -170,6 +174,13 @@ export function PmEditForm({ pm }: { pm: PersonneMoraleDetail }) {
             </label>
           </FormField>
         </div>
+        <FormField label="Maison mère">
+          <MaisonMereSearch
+            value={form.maisonMere}
+            onChange={(v) => setForm((prev) => ({ ...prev, maisonMere: v }))}
+            excludeId={pm.id}
+          />
+        </FormField>
       </section>
 
       {/* Adresse */}

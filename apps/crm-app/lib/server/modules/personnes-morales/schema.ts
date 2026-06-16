@@ -32,6 +32,7 @@ export const CreatePersonneMoraleSchema = z.object({
   secteurActivite: z.string().optional(),
   categorieEntreprise: z.string().optional(),
   nomDomaine: z.string().optional(),
+  maisonMereId: z.string().uuid().nullable().optional(),
   adresse: AdresseSchema.optional(),
 });
 
@@ -52,6 +53,7 @@ export const UpdatePersonneMoraleSchema = z.object({
   categorieEntreprise: z.string().optional(),
   sourceOrigine: z.string().optional(),
   nomDomaine: z.string().optional(),
+  maisonMereId: z.string().uuid().nullable().optional(),
   adresse: AdresseSchema.optional(),
 });
 

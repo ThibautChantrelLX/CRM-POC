@@ -8,6 +8,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
 import { SireneSearch } from "@/components/pm/SireneSearch";
 import { StepRattachements } from "@/components/pm/StepRattachements";
+import { MaisonMereSearch, type MaisonMereValue } from "@/components/pm/MaisonMereSearch";
 import type { TypeRelationPm } from "@/lib/server/modules/personnes-morales/dto";
 import type { SireneResult } from "@/app/api/sirene/route";
 import { TYPE_RELATION_PM_OPTIONS } from "@/lib/server/modules/personnes-morales/constants";
@@ -26,6 +27,7 @@ type PmFormState = {
   actif: boolean;
   secteurActivite: string;
   categorieEntreprise: string;
+  maisonMere: MaisonMereValue | null;
   rue: string;
   complementAdresse: string;
   codePostal: string;
@@ -45,6 +47,7 @@ const EMPTY_FORM: PmFormState = {
   actif: true,
   secteurActivite: "",
   categorieEntreprise: "",
+  maisonMere: null,
   rue: "",
   complementAdresse: "",
   codePostal: "",
@@ -137,6 +140,13 @@ function StepPmForm({
           </label>
         </FormField>
       </div>
+
+      <FormField label="Maison mère">
+        <MaisonMereSearch
+          value={form.maisonMere}
+          onChange={(v) => onChange({ maisonMere: v })}
+        />
+      </FormField>
 
       <div>
         <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">Adresse</p>
@@ -233,6 +243,7 @@ export function CreatePmModal({ open, onClose, onCreated, initialRaisonSociale }
           actif: form.actif,
           secteurActivite: form.secteurActivite || undefined,
           categorieEntreprise: form.categorieEntreprise || undefined,
+          maisonMereId: form.maisonMere?.id ?? undefined,
           ...(hasAdresse ? { adresse } : {}),
         }),
       });
