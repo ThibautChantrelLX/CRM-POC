@@ -10,13 +10,14 @@ from datetime import datetime
 URL_PORTAIL = "https://portail.barotech.fr/_services/entity-grid-data.json/aa9a2081-0315-4c2f-8055-d2d74cbbc0c8"
 
 
-OUTPUT_FILE = "extraction_barotech.csv"
+
 
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
-INPUT_CSV = os.path.join(_DIR, "extraction_barotech_specialities_activites.csv")
-OUTPUT_CSV = os.path.join(_DIR, "extraction_barotech_specialities_activites.csv")
-PROGRESS = os.path.join(_DIR, ".enrich_fiches_progress.csv")
+_DATE = os.environ.get("EXTRACTION_DATE", datetime.date.today().strftime("%Y-%m-%d"))
+INPUT_CSV = os.path.join(_DIR, f"{_DATE}_extraction_barotech_specialities_activites.csv")
+OUTPUT_CSV = os.path.join(_DIR, f"{_DATE}_extraction_barotech_specialities_activites.csv")
+PROGRESS = os.path.join(_DIR, f".{_DATE}_enrich_fiches_progress.csv")
 
 BASE_URL = "https://portail.barotech.fr/annuaire/avocat/?id="
 MAX_WORKERS = 15

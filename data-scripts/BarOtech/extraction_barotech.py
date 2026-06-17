@@ -2,11 +2,14 @@ import requests
 import csv
 import argparse
 import os
+import datetime
 
 URL_PORTAIL = "https://portail.barotech.fr/_services/entity-grid-data.json/aa9a2081-0315-4c2f-8055-d2d74cbbc0c8"
 
 
-OUTPUT_FILE = "extraction_barotech.csv"
+_DIR = os.path.dirname(os.path.abspath(__file__))
+_DATE = os.environ.get("EXTRACTION_DATE", datetime.date.today().strftime("%Y-%m-%d"))
+OUTPUT_FILE = os.path.join(_DIR, f"{_DATE}_extraction_barotech.csv")
 
 
 def get_attr(record, name):

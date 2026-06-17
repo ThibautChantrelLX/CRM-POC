@@ -2,6 +2,20 @@
 
 Scripts Python d'extraction des annuaires avocats et d'import dans le CRM.
 
+## Convention de nommage des fichiers
+
+Tous les fichiers CSV produits sont préfixés par la date d'extraction au format `YYYY-MM-DD` :
+
+```
+2026-06-17_extraction_barotech.csv
+2026-06-17_extraction_barreau_amiens.csv
+...
+```
+
+Quand le pipeline est lancé via `main.py`, la date est fixée une fois pour toutes au démarrage et partagée entre toutes les étapes (via la variable d'env `EXTRACTION_DATE`). Quand un script est lancé seul, il utilise la date du jour.
+
+---
+
 ## Installation
 
 ```bash
@@ -46,7 +60,7 @@ uv run python BarreauAmiens/extract.py --output /tmp/amiens.csv
 uv run python BarreauAmiens/extract.py --delay 0.5
 ```
 
-**Output :** `output/BarreauAmiens/extraction_barreau_amiens.csv`
+**Output :** `output/BarreauAmiens/YYYY-MM-DD_extraction_barreau_amiens.csv`
 
 | Colonne | Description |
 |---|---|
@@ -84,19 +98,19 @@ uv run python BarreauParis/extract.py --token "eyJ..." --act 5
 uv run python BarreauParis/extract.py --list-criteria
 ```
 
-**Output :** `output/BarreauParis/extraction_barreau_paris.csv`
+**Output :** `output/BarreauParis/YYYY-MM-DD_extraction_barreau_paris.csv`
 
 #### Étape 2 — Post-traitement (split PP / Structures + enrichissement SIRENE)
 
-Prérequis : `extraction_barreau_paris.csv` existant.
+Prérequis : `YYYY-MM-DD_extraction_barreau_paris.csv` existant.
 
 ```bash
 uv run python BarreauParis/post_process.py
 ```
 
 **Outputs :**
-- `output/BarreauParis/extraction_barreau_paris_pp.csv` — contacts PP (avocats individuels)
-- `output/BarreauParis/extraction_structures_barreau_paris.csv` — structures enrichies SIRENE
+- `output/BarreauParis/YYYY-MM-DD_extraction_barreau_paris_pp.csv` — contacts PP (avocats individuels)
+- `output/BarreauParis/YYYY-MM-DD_extraction_structures_barreau_paris.csv` — structures enrichies SIRENE
 
 #### Étape 3 — Enrichissement des fiches PP (structures, spécialités, date de serment)
 
@@ -107,7 +121,7 @@ uv run python BarreauParis/enrich_pp.py --token "eyJ..."
 uv run python BarreauParis/enrich_pp.py --token "eyJ..." --workers 10
 ```
 
-**Output :** met à jour `extraction_barreau_paris_pp.csv` sur place (colonnes `Activité(s) dominante(s)`, `Spécialité(s)`, `Date serment`, `Structure(s)`).
+**Output :** met à jour `YYYY-MM-DD_extraction_barreau_paris_pp.csv` sur place (colonnes `Activité(s) dominante(s)`, `Spécialité(s)`, `Date serment`, `Structure(s)`).
 
 > Reprise automatique via checkpoint JSON — relancer la commande suffit en cas d'interruption.
 
@@ -134,7 +148,7 @@ uv run python BarOtech/extraction_barotech.py \
   --base64 "2H1pgl..."
 ```
 
-**Output :** `BarOtech/extraction_barotech.csv` (~10 000 avocats)
+**Output :** `BarOtech/YYYY-MM-DD_extraction_barotech.csv` (~10 000 avocats)
 
 #### Étape 2 — Enrichissement spécialités
 
@@ -143,8 +157,8 @@ uv run python BarOtech/enrich_specialites.py \
   --cookie "..." --token "..." --base64 "..."
 ```
 
-**Input :** `extraction_barotech.csv`
-**Output :** `extraction_barotech_specialities.csv`
+**Input :** `YYYY-MM-DD_extraction_barotech.csv`
+**Output :** `YYYY-MM-DD_extraction_barotech_specialities.csv`
 
 #### Étape 3 — Enrichissement activités dominantes
 
@@ -153,8 +167,8 @@ uv run python BarOtech/enrich_activites.py \
   --cookie "..." --token "..." --base64 "..."
 ```
 
-**Input :** `extraction_barotech_specialities.csv`
-**Output :** `extraction_barotech_specialities_activites.csv`
+**Input :** `YYYY-MM-DD_extraction_barotech_specialities.csv`
+**Output :** `YYYY-MM-DD_extraction_barotech_specialities_activites.csv`
 
 #### Étape 4 — Enrichissement fiches individuelles (case + date de serment)
 
@@ -164,9 +178,9 @@ Seul le cookie est requis (scraping HTML, pas d'API JSON).
 uv run python BarOtech/enrich_fiches.py --cookie "..."
 ```
 
-**Input/Output :** `extraction_barotech_specialities_activites.csv` (mise à jour sur place)
+**Input/Output :** `YYYY-MM-DD_extraction_barotech_specialities_activites.csv` (mise à jour sur place)
 
-> Reprise automatique via `.enrich_fiches_progress.csv` — relancer la commande suffit.
+> Reprise automatique via `.YYYY-MM-DD_enrich_fiches_progress.csv` — relancer la commande suffit.
 
 #### Étape 5 — Enrichissement structures via SIRENE
 
@@ -176,8 +190,8 @@ Aucune authentification — utilise l'API publique [recherche-entreprises.api.go
 uv run python BarOtech/enrich_structures_sirene.py
 ```
 
-**Input :** `extraction_barotech_specialities_activites.csv`
-**Output :** `extraction_structures_sirene.csv`
+**Input :** `YYYY-MM-DD_extraction_barotech_specialities_activites.csv`
+**Output :** `YYYY-MM-DD_extraction_structures_sirene.csv`
 
 ---
 

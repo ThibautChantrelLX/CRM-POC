@@ -2,11 +2,12 @@ import requests
 import csv
 import os
 import argparse
+import datetime
 
 URL_PORTAIL = "https://portail.barotech.fr/_services/entity-grid-data.json/aa9a2081-0315-4c2f-8055-d2d74cbbc0c8"
 
 
-OUTPUT_FILE = "extraction_barotech.csv"
+
 
 
 SPECIALITES = {
@@ -41,8 +42,9 @@ SPECIALITES = {
 }
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
-INPUT_CSV = os.path.join(_DIR, "extraction_barotech.csv")
-OUTPUT_CSV = os.path.join(_DIR, "extraction_barotech_specialities.csv")
+_DATE = os.environ.get("EXTRACTION_DATE", datetime.date.today().strftime("%Y-%m-%d"))
+INPUT_CSV = os.path.join(_DIR, f"{_DATE}_extraction_barotech.csv")
+OUTPUT_CSV = os.path.join(_DIR, f"{_DATE}_extraction_barotech_specialities.csv")
 
 
 def fetch_ids_for_specialite(filter_value, req_headers, base64_config):
