@@ -8,8 +8,10 @@ URL_PORTAIL = "https://portail.barotech.fr/_services/entity-grid-data.json/aa9a2
 
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
+_OUT_DIR = os.path.join(os.path.dirname(_DIR), "output", "BarOtech")
+os.makedirs(_OUT_DIR, exist_ok=True)
 _DATE = os.environ.get("EXTRACTION_DATE", datetime.date.today().strftime("%Y-%m-%d"))
-OUTPUT_FILE = os.path.join(_DIR, f"{_DATE}_extraction_barotech.csv")
+OUTPUT_FILE = os.path.join(_OUT_DIR, f"{_DATE}_extraction_barotech.csv")
 
 
 def get_attr(record, name):

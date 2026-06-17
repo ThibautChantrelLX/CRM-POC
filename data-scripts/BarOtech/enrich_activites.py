@@ -34,9 +34,11 @@ ACTIVITES = {
 }
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
+_OUT_DIR = os.path.join(os.path.dirname(_DIR), "output", "BarOtech")
+os.makedirs(_OUT_DIR, exist_ok=True)
 _DATE = os.environ.get("EXTRACTION_DATE", datetime.date.today().strftime("%Y-%m-%d"))
-INPUT_CSV = os.path.join(_DIR, f"{_DATE}_extraction_barotech_specialities.csv")
-OUTPUT_CSV = os.path.join(_DIR, f"{_DATE}_extraction_barotech_specialities_activites.csv")
+INPUT_CSV = os.path.join(_OUT_DIR, f"{_DATE}_extraction_barotech.csv")
+OUTPUT_CSV = INPUT_CSV
 
 
 def fetch_ids_for_activite(filter_value, req_headers, base64_config):

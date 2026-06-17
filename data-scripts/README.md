@@ -148,7 +148,7 @@ uv run python BarOtech/extraction_barotech.py \
   --base64 "2H1pgl..."
 ```
 
-**Output :** `BarOtech/YYYY-MM-DD_extraction_barotech.csv` (~10 000 avocats)
+**Output :** `output/BarOtech/YYYY-MM-DD_extraction_barotech.csv` (~10 000 avocats)
 
 #### Étape 2 — Enrichissement spécialités
 
@@ -157,8 +157,7 @@ uv run python BarOtech/enrich_specialites.py \
   --cookie "..." --token "..." --base64 "..."
 ```
 
-**Input :** `YYYY-MM-DD_extraction_barotech.csv`
-**Output :** `YYYY-MM-DD_extraction_barotech_specialities.csv`
+**Input/Output :** `output/BarOtech/YYYY-MM-DD_extraction_barotech.csv` (mise à jour sur place)
 
 #### Étape 3 — Enrichissement activités dominantes
 
@@ -167,8 +166,7 @@ uv run python BarOtech/enrich_activites.py \
   --cookie "..." --token "..." --base64 "..."
 ```
 
-**Input :** `YYYY-MM-DD_extraction_barotech_specialities.csv`
-**Output :** `YYYY-MM-DD_extraction_barotech_specialities_activites.csv`
+**Input/Output :** `output/BarOtech/YYYY-MM-DD_extraction_barotech.csv` (mise à jour sur place)
 
 #### Étape 4 — Enrichissement fiches individuelles (case + date de serment)
 
@@ -178,7 +176,7 @@ Seul le cookie est requis (scraping HTML, pas d'API JSON).
 uv run python BarOtech/enrich_fiches.py --cookie "..."
 ```
 
-**Input/Output :** `YYYY-MM-DD_extraction_barotech_specialities_activites.csv` (mise à jour sur place)
+**Input/Output :** `output/BarOtech/YYYY-MM-DD_extraction_barotech.csv` (mise à jour sur place)
 
 > Reprise automatique via `.YYYY-MM-DD_enrich_fiches_progress.csv` — relancer la commande suffit.
 
@@ -190,8 +188,8 @@ Aucune authentification — utilise l'API publique [recherche-entreprises.api.go
 uv run python BarOtech/enrich_structures_sirene.py
 ```
 
-**Input :** `YYYY-MM-DD_extraction_barotech_specialities_activites.csv`
-**Output :** `YYYY-MM-DD_extraction_structures_sirene.csv`
+**Input :** `output/BarOtech/YYYY-MM-DD_extraction_barotech.csv`
+**Output :** `output/BarOtech/YYYY-MM-DD_extraction_structures_sirene.csv`
 
 ---
 

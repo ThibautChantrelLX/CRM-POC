@@ -5,7 +5,7 @@ import argparse
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+import datetime
 
 URL_PORTAIL = "https://portail.barotech.fr/_services/entity-grid-data.json/aa9a2081-0315-4c2f-8055-d2d74cbbc0c8"
 
@@ -14,10 +14,12 @@ URL_PORTAIL = "https://portail.barotech.fr/_services/entity-grid-data.json/aa9a2
 
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
+_OUT_DIR = os.path.join(os.path.dirname(_DIR), "output", "BarOtech")
+os.makedirs(_OUT_DIR, exist_ok=True)
 _DATE = os.environ.get("EXTRACTION_DATE", datetime.date.today().strftime("%Y-%m-%d"))
-INPUT_CSV = os.path.join(_DIR, f"{_DATE}_extraction_barotech_specialities_activites.csv")
-OUTPUT_CSV = os.path.join(_DIR, f"{_DATE}_extraction_barotech_specialities_activites.csv")
-PROGRESS = os.path.join(_DIR, f".{_DATE}_enrich_fiches_progress.csv")
+INPUT_CSV = os.path.join(_OUT_DIR, f"{_DATE}_extraction_barotech.csv")
+OUTPUT_CSV = INPUT_CSV
+PROGRESS = os.path.join(_OUT_DIR, f".{_DATE}_enrich_fiches_progress.csv")
 
 BASE_URL = "https://portail.barotech.fr/annuaire/avocat/?id="
 MAX_WORKERS = 15
@@ -32,7 +34,7 @@ def parse_date(raw):
     if not raw:
         return ""
     try:
-        return datetime.fromisoformat(raw[:10]).strftime("%d/%m/%Y")
+        return datetime.datetime.fromisoformat(raw[:10]).strftime("%d/%m/%Y")
     except Exception:
         return raw[:10]
 

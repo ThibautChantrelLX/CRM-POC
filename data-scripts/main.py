@@ -42,10 +42,8 @@ def pipeline_barotech(args):
 
     print("\n✅  Pipeline BarOtech terminée.")
     print(f"    CSV produits (préfixe {date}) :")
-    print(f"      BarOtech/{date}_extraction_barotech.csv")
-    print(f"      BarOtech/{date}_extraction_barotech_specialities.csv")
-    print(f"      BarOtech/{date}_extraction_barotech_specialities_activites.csv")
-    print(f"      BarOtech/{date}_extraction_structures_sirene.csv")
+    print(f"      output/BarOtech/{date}_extraction_barotech.csv  (avocats, toutes colonnes enrichies)")
+    print(f"      output/BarOtech/{date}_extraction_structures_sirene.csv  (structures / PM)")
 
 
 # ─── BarreauAmiens ────────────────────────────────────────────────────────────
