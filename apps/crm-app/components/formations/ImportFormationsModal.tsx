@@ -476,7 +476,8 @@ export function ImportFormationsModal({ onClose, onImported }: Props) {
     setIsSubmitting(true);
     setError(null);
     try {
-      const toCreate = previewRows.map(({ _key: _k, ...f }) => f);
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const toCreate = previewRows.map(({ _key, ...f }) => f);
       const res = await fetch("/api/formations/import/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
