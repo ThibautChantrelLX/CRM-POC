@@ -11,6 +11,9 @@ import {
   BarChart2,
   Shield,
   Info,
+  GraduationCap,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { getPersonnePhysiqueDetail } from "@/lib/server/modules/personnes-physiques/service";
 import { Avatar } from "@/components/ui/avatar";
@@ -315,6 +318,41 @@ export default async function PersonnePhysiquePage({
                 ppId={pp.id}
                 ppNom={`${pp.prenom ?? ""} ${pp.nom}`.trim()}
               />
+            </DetailSection>
+
+            {/* Formations */}
+            <DetailSection
+              title={`Formations (${pp.participations.length})`}
+              icon={GraduationCap}
+            >
+              {pp.participations.length === 0 ? (
+                <p className="text-sm text-zinc-400">Aucune participation enregistrée</p>
+              ) : (
+                <div className="divide-y divide-zinc-100">
+                  {pp.participations.map((p) => (
+                    <div key={p.id} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+                      <div className="mt-0.5 shrink-0">
+                        {p.present ? (
+                          <CheckCircle2 size={14} className="text-green-500" />
+                        ) : (
+                          <XCircle size={14} className="text-zinc-300" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <Link
+                          href={`/formations/${p.formationId}`}
+                          className="text-xs font-medium text-zinc-800 hover:text-secondary-700 hover:underline truncate block"
+                        >
+                          {p.intituleCourt ?? p.intitule}
+                        </Link>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                          {[p.numero, p.dateDebut && fmtDate(p.dateDebut)].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </DetailSection>
           </div>
         </div>

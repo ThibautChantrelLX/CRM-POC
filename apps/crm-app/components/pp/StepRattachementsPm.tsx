@@ -21,7 +21,7 @@ type Props = {
   onDone: () => void;
 };
 
-export function StepRattachementsPm({ ppId, ppNom, onDone }: Props) {
+export function StepRattachementsPm({ ppId, onDone }: Props) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PmResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);

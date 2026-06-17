@@ -32,6 +32,12 @@ export async function GET(request: Request) {
     statutRgpd: searchParams.getAll("statutRgpd") as StatutRgpd[],
     barreau: searchParams.getAll("barreau"),
     actif: searchParams.has("actif") ? searchParams.get("actif") === "true" : undefined,
+    minFormations: searchParams.has("minFormations")
+      ? Number(searchParams.get("minFormations"))
+      : undefined,
+    formationIds: searchParams.getAll("formationIds"),
+    satisfMin: searchParams.has("satisfMin") ? Number(searchParams.get("satisfMin")) / 100 : undefined,
+    satisfMax: searchParams.has("satisfMax") ? Number(searchParams.get("satisfMax")) / 100 : undefined,
     creerLeApres: g("creerLeApres"),
     creerLeAvant: g("creerLeAvant"),
     dernierEmailApres: g("dernierEmailApres"),

@@ -8,6 +8,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
 import { SireneSearch } from "@/components/pm/SireneSearch";
 import { StepRattachements } from "@/components/pm/StepRattachements";
+import { MaisonMereSearch, type MaisonMereValue } from "@/components/pm/MaisonMereSearch";
 import type { TypeRelationPm } from "@/lib/server/modules/personnes-morales/dto";
 import type { SireneResult } from "@/app/api/sirene/route";
 import { TYPE_RELATION_PM_OPTIONS } from "@/lib/server/modules/personnes-morales/constants";
@@ -26,6 +27,7 @@ type PmFormState = {
   actif: boolean;
   secteurActivite: string;
   categorieEntreprise: string;
+  maisonMere: MaisonMereValue | null;
   rue: string;
   complementAdresse: string;
   codePostal: string;
@@ -45,6 +47,7 @@ const EMPTY_FORM: PmFormState = {
   actif: true,
   secteurActivite: "",
   categorieEntreprise: "",
+  maisonMere: null,
   rue: "",
   complementAdresse: "",
   codePostal: "",
@@ -92,7 +95,7 @@ function StepPmForm({
 
   return (
     <div className="px-6 py-5 space-y-6">
-      <SireneSearch onSelect={handleSireneSelect} />
+      <SireneSearch onSelect={handleSireneSelect} initialQuery={form.raisonSociale || undefined} />
 
       <div className="grid grid-cols-2 gap-4">
         <FormField label="Raison sociale" required className="col-span-2">
@@ -138,6 +141,13 @@ function StepPmForm({
         </FormField>
       </div>
 
+      <FormField label="Maison mère">
+        <MaisonMereSearch
+          value={form.maisonMere}
+          onChange={(v) => onChange({ maisonMere: v })}
+        />
+      </FormField>
+
       <div>
         <p className="text-xs font-medium text-zinc-400 uppercase tracking-wide mb-3">Adresse</p>
         <div className="grid grid-cols-2 gap-4">
@@ -176,13 +186,20 @@ function StepPmForm({
 type Props = {
   open: boolean;
   onClose: () => void;
+  /** When provided, skip step 2 and call this after PM creation instead of navigating. */
+  onCreated?: (pm: { id: string; raisonSociale: string; siretSiren: string | null; typeStructure: string | null; nomDomaine: string | null }) => void;
+  /** Pre-fills raison sociale and auto-triggers SIRENE search on open. */
+  initialRaisonSociale?: string;
 };
 
-export function CreatePmModal({ open, onClose }: Props) {
+export function CreatePmModal({ open, onClose, onCreated, initialRaisonSociale }: Props) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [step, setStep] = useState<1 | 2>(1);
-  const [form, setForm] = useState<PmFormState>(EMPTY_FORM);
+  const [form, setForm] = useState<PmFormState>(() => ({
+    ...EMPTY_FORM,
+    raisonSociale: initialRaisonSociale ?? "",
+  }));
   const [createdPm, setCreatedPm] = useState<{ id: string; raisonSociale: string } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -226,6 +243,7 @@ export function CreatePmModal({ open, onClose }: Props) {
           actif: form.actif,
           secteurActivite: form.secteurActivite || undefined,
           categorieEntreprise: form.categorieEntreprise || undefined,
+          maisonMereId: form.maisonMere?.id ?? undefined,
           ...(hasAdresse ? { adresse } : {}),
         }),
       });
@@ -236,8 +254,19 @@ export function CreatePmModal({ open, onClose }: Props) {
       }
 
       const pm = await res.json();
-      setCreatedPm({ id: pm.id, raisonSociale: pm.raisonSociale });
       await queryClient.invalidateQueries({ queryKey: ["personnes-morales"] });
+      if (onCreated) {
+        onCreated({
+          id: pm.id,
+          raisonSociale: pm.raisonSociale,
+          siretSiren: pm.siretSiren ?? null,
+          typeStructure: pm.typeStructure ?? null,
+          nomDomaine: form.nomDomaine || null,
+        });
+        resetAndClose();
+        return;
+      }
+      setCreatedPm({ id: pm.id, raisonSociale: pm.raisonSociale });
       setStep(2);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue");

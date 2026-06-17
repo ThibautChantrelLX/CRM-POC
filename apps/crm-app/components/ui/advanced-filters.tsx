@@ -296,6 +296,8 @@ function ConditionRow({
         </button>
       </div>
       {field.type === "text" && <TextRow condition={condition} onChange={onChange} />}
+      {field.type === "number" && <NumberRow condition={condition} onChange={onChange} />}
+      {field.type === "number-range" && <NumberRangeRow condition={condition} onChange={onChange} />}
       {field.type === "select" && field.optionsUrl && (
         <SelectSearchRow condition={condition} field={field} onChange={onChange} />
       )}
@@ -326,6 +328,70 @@ function TextRow({
         onChange={(e) => onChange({ value: e.target.value })}
         className="flex-1 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400 placeholder:text-zinc-300"
       />
+    </div>
+  );
+}
+
+function NumberRow({
+  condition,
+  onChange,
+}: {
+  condition: FilterCondition;
+  onChange: (p: Partial<FilterCondition>) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-zinc-400 shrink-0">Au moins</span>
+      <input
+        type="number"
+        min={1}
+        placeholder="1"
+        value={condition.value as string}
+        onChange={(e) => onChange({ value: e.target.value })}
+        className="w-20 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400"
+      />
+      <span className="text-xs text-zinc-400">formation(s)</span>
+    </div>
+  );
+}
+
+function NumberRangeRow({
+  condition,
+  onChange,
+}: {
+  condition: FilterCondition;
+  onChange: (p: Partial<FilterCondition>) => void;
+}) {
+  const raw = typeof condition.value === "string" ? condition.value : "|";
+  const [min, max] = raw.includes("|") ? raw.split("|") : ["", ""];
+
+  const update = (newMin: string, newMax: string) => {
+    onChange({ value: `${newMin}|${newMax}` });
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-zinc-400 shrink-0">Entre</span>
+      <input
+        type="number"
+        min={0}
+        max={100}
+        placeholder="0"
+        value={min}
+        onChange={(e) => update(e.target.value, max)}
+        className="w-16 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400"
+      />
+      <span className="text-xs text-zinc-400">et</span>
+      <input
+        type="number"
+        min={0}
+        max={100}
+        placeholder="100"
+        value={max}
+        onChange={(e) => update(min, e.target.value)}
+        className="w-16 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400"
+      />
+      <span className="text-xs text-zinc-400">%</span>
     </div>
   );
 }
@@ -381,7 +447,15 @@ function SelectSearchRow({
     if (!field.optionsUrl) return;
     fetch(field.optionsUrl)
       .then((r) => r.json())
-      .then((data: string[]) => setOptions(data.map((v) => ({ value: v, label: v }))))
+      .then((data: unknown) => {
+        const arr = data as Array<string | { value: string; label: string }>;
+        if (!arr.length) return;
+        if (typeof arr[0] === "string") {
+          setOptions((arr as string[]).map((v) => ({ value: v, label: v })));
+        } else {
+          setOptions((arr as { value: string; label: string }[]).map(({ value, label }) => ({ value, label })));
+        }
+      })
       .catch(() => {});
   }, [field.optionsUrl]);
 
@@ -406,17 +480,20 @@ function SelectSearchRow({
       />
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {selected.map((v) => (
-            <span
-              key={v}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-500 text-white text-xs font-medium"
-            >
-              {v}
-              <button type="button" onClick={() => toggle(v)} className="hover:opacity-75">
-                <X size={10} />
-              </button>
-            </span>
-          ))}
+          {selected.map((v) => {
+            const label = options.find((o) => o.value === v)?.label ?? v;
+            return (
+              <span
+                key={v}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-500 text-white text-xs font-medium"
+              >
+                {label}
+                <button type="button" onClick={() => toggle(v)} className="hover:opacity-75">
+                  <X size={10} />
+                </button>
+              </span>
+            );
+          })}
         </div>
       )}
       <div className="max-h-35 overflow-y-auto flex flex-col gap-0.5 pr-1">

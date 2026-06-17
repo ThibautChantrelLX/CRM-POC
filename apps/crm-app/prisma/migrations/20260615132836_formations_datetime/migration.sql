@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "formations" ALTER COLUMN "date_debut" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "date_fin" SET DATA TYPE TIMESTAMP(3);

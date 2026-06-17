@@ -1,5 +1,5 @@
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
-import { Mail, Phone, Globe } from "lucide-react";
+import { Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { FieldDef } from "@/lib/filters";
 import type {

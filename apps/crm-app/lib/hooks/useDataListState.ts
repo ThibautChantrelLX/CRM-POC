@@ -55,7 +55,7 @@ export function useDataListState(
     [searchParams],
   );
 
-  const params = useMemo(() => buildQueryParams(filterState, fields), [filterState]);
+  const params = useMemo(() => buildQueryParams(filterState, fields), [filterState, fields]);
 
   const conditionCount = useMemo(
     () => filterState.groups.reduce((acc, g) => acc + g.conditions.length, 0),

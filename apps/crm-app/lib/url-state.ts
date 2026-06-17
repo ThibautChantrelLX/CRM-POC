@@ -38,7 +38,7 @@ function decodeGroupObj(
 ): FilterCondition[] {
   const conditions: FilterCondition[] = [];
   for (const field of fields) {
-    if (field.type === "text" && field.param) {
+    if ((field.type === "text" || field.type === "number") && field.param) {
       const v = obj[field.param];
       if (v && typeof v === "string")
         conditions.push({ id: makeId(), fieldKey: field.key, operator: "contains", value: v });
@@ -57,6 +57,11 @@ function decodeGroupObj(
         if (v && typeof v === "string")
           conditions.push({ id: makeId(), fieldKey: field.key, operator: "lte", value: v });
       }
+    } else if (field.type === "number-range") {
+      const min = field.paramGte ? (obj[field.paramGte] as string | undefined) : undefined;
+      const max = field.paramLte ? (obj[field.paramLte] as string | undefined) : undefined;
+      if (min || max)
+        conditions.push({ id: makeId(), fieldKey: field.key, operator: "between", value: `${min ?? ""}|${max ?? ""}` });
     }
   }
   return conditions;
@@ -65,7 +70,7 @@ function decodeGroupObj(
 function extractConditions(sp: ReadonlyURLSearchParams, fields: FieldDef[]): FilterCondition[] {
   const out: FilterCondition[] = [];
   for (const field of fields) {
-    if (field.type === "text" && field.param) {
+    if ((field.type === "text" || field.type === "number") && field.param) {
       const v = sp.get(field.param);
       if (v) out.push({ id: makeId(), fieldKey: field.key, operator: "contains", value: v });
     } else if (field.type === "select" && field.param) {
@@ -80,6 +85,11 @@ function extractConditions(sp: ReadonlyURLSearchParams, fields: FieldDef[]): Fil
         const v = sp.get(field.paramLte);
         if (v) out.push({ id: makeId(), fieldKey: field.key, operator: "lte", value: v });
       }
+    } else if (field.type === "number-range") {
+      const min = field.paramGte ? sp.get(field.paramGte) : null;
+      const max = field.paramLte ? sp.get(field.paramLte) : null;
+      if (min || max)
+        out.push({ id: makeId(), fieldKey: field.key, operator: "between", value: `${min ?? ""}|${max ?? ""}` });
     }
   }
   return out;
@@ -98,8 +108,24 @@ export function conditionBadgeLabel(cond: FilterCondition, fields: FieldDef[]): 
   if (field.type === "text") {
     return `${field.label} : ${cond.value}`;
   }
+  if (field.type === "number") {
+    return `${field.label} : ≥ ${cond.value}`;
+  }
+  if (field.type === "number-range") {
+    const v = cond.value as string;
+    const [min, max] = v.includes("|") ? v.split("|") : ["", ""];
+    if (min && max) return `${field.label} : entre ${min}% et ${max}%`;
+    if (min) return `${field.label} : ≥ ${min}%`;
+    if (max) return `${field.label} : ≤ ${max}%`;
+    return field.label;
+  }
   if (field.type === "select") {
-    const labels = (cond.value as string[])
+    const vals = cond.value as string[];
+    if (field.optionsUrl) {
+      // Labels non disponibles statiquement — afficher le compte
+      return `${field.label} : ${vals.length} sélectionné(s)`;
+    }
+    const labels = vals
       .map((v) => field.options?.find((o) => o.value === v)?.label ?? v)
       .join(", ");
     return `${field.label} : ${labels}`;
