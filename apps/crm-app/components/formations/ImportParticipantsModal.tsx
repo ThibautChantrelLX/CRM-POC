@@ -61,7 +61,17 @@ type RawParticipant = {
   satisfaction: number | null;
   dateInscription: string | null;
   prixParticipant: number | null;
+  // SIREN résolu via l'annuaire entreprises pour entreprise — permet de détecter
+  // qu'une structure au libellé différent est en fait la même entreprise (raison sociale imparfaite)
+  structureSiren: string | null;
 };
+
+// Normalizes a SIRET/SIREN string down to its 9-digit SIREN prefix, for comparison.
+function sirenOf(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 9 ? digits.slice(0, 9) : null;
+}
 
 function rowToParticipant(row: RawRow): RawParticipant | null {
   const id = parseNum(row["ID Inscription"]);
@@ -111,6 +121,7 @@ function rowToParticipant(row: RawRow): RawParticipant | null {
     satisfaction: parseNum(row["Satisfaction"]),
     dateInscription: excelSerialToDateStr(row["Date d'inscription"]),
     prixParticipant: parseNum(row["Prix total Participant"]),
+    structureSiren: null,
   };
 }
 
@@ -140,6 +151,10 @@ function needsStructureDecision(e: EntryState): boolean {
   if (!entreprise) return false;
   const candidate = linkedCandidate(e);
   if (!candidate) return false;
+  const incomingSiren = sirenOf(e.raw.structureSiren);
+  if (incomingSiren && candidate.rattachements.some((r) => sirenOf(r.siretSiren) === incomingSiren)) {
+    return false;
+  }
   return !candidate.rattachements.some(
     (r) => r.raisonSociale.toLowerCase() === entreprise.toLowerCase(),
   );
@@ -606,12 +621,28 @@ export function ImportParticipantsModal({ formationId, onClose, onImported }: Pr
 
       setExistingCount(matchResults.filter((r) => r.existing).length);
 
+      // Résout le SIREN de chaque entreprise citée pour détecter une même entreprise
+      // sous un libellé différent (raison sociale imparfaite dans le fichier).
+      const uniqueEntreprises = [...new Set(parsed.map((p) => p.entreprise).filter((s): s is string => !!s))];
+      const sirenMap = new Map<string, string | null>();
+      await Promise.all(
+        uniqueEntreprises.map(async (nom) => {
+          try {
+            const r = await fetch(`/api/sirene?q=${encodeURIComponent(nom)}`);
+            const data = r.ok ? await r.json() : null;
+            sirenMap.set(nom, data?.results?.[0]?.siren ?? null);
+          } catch {
+            sirenMap.set(nom, null);
+          }
+        }),
+      );
+
       const newEntries: EntryState[] = parsed
         .map((raw): EntryState | null => {
           const mr = matchResults.find((r) => r.idInscription === raw.idInscription)!;
           if (mr.existing) return null;
           return {
-            raw,
+            raw: { ...raw, structureSiren: raw.entreprise ? (sirenMap.get(raw.entreprise) ?? null) : null },
             matchResult: mr,
             open: false,
             ppId: mr.status === "exact" ? (mr.candidates[0]?.id ?? null) : null,

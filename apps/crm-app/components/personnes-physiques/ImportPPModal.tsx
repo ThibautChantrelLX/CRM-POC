@@ -71,6 +71,9 @@ type RawPP = {
   structures: string[];
   siteWeb: string | null;
   idExterne: string | null;
+  // SIREN résolu via l'annuaire entreprises pour structures[0] — permet de détecter
+  // qu'une structure au libellé différent est en fait la même entreprise (raison sociale imparfaite)
+  structureSiren: string | null;
 };
 
 function rowToRawPP(row: RawRow, rowIndex: number): RawPP | null {
@@ -116,8 +119,16 @@ function rowToRawPP(row: RawRow, rowIndex: number): RawPP | null {
     activiteDominante: parseStr(row["Activité(s) dominante(s)"] ?? row["Activité dominante"]),
     idExterne,
     structures,
+    structureSiren: null,
     siteWeb: parseStr(row["Site Web"]),
   };
+}
+
+// Normalizes a SIRET/SIREN string down to its 9-digit SIREN prefix, for comparison.
+function sirenOf(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 9 ? digits.slice(0, 9) : null;
 }
 
 // ─── Entry state ──────────────────────────────────────────────────────────────
@@ -147,6 +158,10 @@ function needsStructureDecision(e: EntryState): boolean {
   const candidate = linkedCandidate(e);
   if (!candidate) return false;
   const existingNames = new Set(candidate.rattachements.map((r) => r.raisonSociale.toLowerCase()));
+  const incomingSiren = sirenOf(e.raw.structureSiren);
+  const sameSirenAlreadyLinked =
+    !!incomingSiren && candidate.rattachements.some((r) => sirenOf(r.siretSiren) === incomingSiren);
+  if (sameSirenAlreadyLinked) return false;
   return e.raw.structures.some((s) => !existingNames.has(s.toLowerCase()));
 }
 
@@ -638,7 +653,29 @@ export function ImportPPModal({ onClose, onImported }: Props) {
         matchResults = await res.json();
       }
 
-      const newEntries: EntryState[] = pendingRows.map((raw): EntryState => {
+      // Résout le SIREN de chaque structure citée pour détecter une même entreprise
+      // sous un libellé différent (raison sociale imparfaite dans le fichier).
+      const uniqueStructureNames = [
+        ...new Set(pendingRows.map((p) => p.structures[0]).filter((s): s is string => !!s)),
+      ];
+      const sirenMap = new Map<string, string | null>();
+      await Promise.all(
+        uniqueStructureNames.map(async (nom) => {
+          try {
+            const r = await fetch(`/api/sirene?q=${encodeURIComponent(nom)}`);
+            const data = r.ok ? await r.json() : null;
+            sirenMap.set(nom, data?.results?.[0]?.siren ?? null);
+          } catch {
+            sirenMap.set(nom, null);
+          }
+        }),
+      );
+      const enrichedRows = pendingRows.map((p) => ({
+        ...p,
+        structureSiren: p.structures[0] ? (sirenMap.get(p.structures[0]) ?? null) : null,
+      }));
+
+      const newEntries: EntryState[] = enrichedRows.map((raw): EntryState => {
         const mr = matchResults.find((r) => r.rowIndex === raw.rowIndex)!;
         const resolution: Resolution =
           mr.status === "exact" ? "auto-exact"

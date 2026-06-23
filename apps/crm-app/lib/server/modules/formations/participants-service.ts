@@ -10,7 +10,7 @@ export type PPCandidate = {
   email: string | null;
   barreau: string | null;
   entreprise: string | null;
-  rattachements: Array<{ id: number; raisonSociale: string }>;
+  rattachements: Array<{ id: number; raisonSociale: string; siretSiren: string | null }>;
 };
 
 export type { StructureRattachementInput };
@@ -82,7 +82,7 @@ const PP_SELECT = {
   email: true,
   profilAvocat: { select: { barreau: true } },
   rattachements: {
-    select: { id: true, personneMorale: { select: { raisonSociale: true } } },
+    select: { id: true, personneMorale: { select: { raisonSociale: true, siretSiren: true } } },
   },
 } as const;
 
@@ -92,7 +92,7 @@ type PpRow = {
   prenom: string | null;
   email: string | null;
   profilAvocat: { barreau: string | null } | null;
-  rattachements: Array<{ id: number; personneMorale: { raisonSociale: string } }>;
+  rattachements: Array<{ id: number; personneMorale: { raisonSociale: string; siretSiren: string | null } }>;
 };
 
 function toCandidate(pp: PpRow): PPCandidate {
@@ -103,7 +103,11 @@ function toCandidate(pp: PpRow): PPCandidate {
     email: pp.email,
     barreau: pp.profilAvocat?.barreau ?? null,
     entreprise: pp.rattachements[0]?.personneMorale.raisonSociale ?? null,
-    rattachements: pp.rattachements.map((r) => ({ id: r.id, raisonSociale: r.personneMorale.raisonSociale })),
+    rattachements: pp.rattachements.map((r) => ({
+      id: r.id,
+      raisonSociale: r.personneMorale.raisonSociale,
+      siretSiren: r.personneMorale.siretSiren,
+    })),
   };
 }
 

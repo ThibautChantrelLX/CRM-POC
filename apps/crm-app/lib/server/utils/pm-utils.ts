@@ -21,6 +21,13 @@ type SireneResult = {
   ville: string | null;
 };
 
+// Normalizes a SIRET/SIREN string down to its 9-digit SIREN prefix, for comparison.
+export function sirenOf(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  return digits.length >= 9 ? digits.slice(0, 9) : null;
+}
+
 export async function searchSirene(nom: string): Promise<SireneResult | null> {
   try {
     const url = `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(nom)}&per_page=1`;
@@ -81,6 +88,19 @@ export async function findOrCreatePM(
   if (existing) return { id: existing.id, created: false };
 
   const sirene = await searchSirene(raisonSociale);
+
+  // The free-text name may not match any existing PM, but SIRENE can resolve it to a
+  // company already in the CRM under a different (canonical) raison sociale — reuse it
+  // instead of creating a duplicate.
+  const siren = sirenOf(sirene?.siret ?? sirene?.siren ?? null);
+  if (siren) {
+    // SIRET always starts with the 9-digit SIREN, so this matches both 9- and 14-digit storage.
+    const bySiren = await prisma.personneMorale.findFirst({
+      where: { siretSiren: { startsWith: siren } },
+      select: { id: true },
+    });
+    if (bySiren) return { id: bySiren.id, created: false };
+  }
 
   let adresseId: number | null = null;
   if (sirene && (sirene.rue || sirene.codePostal || sirene.ville)) {
