@@ -16,10 +16,12 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { CreatePPForImportModal } from "@/components/formations/CreatePPForImportModal";
+import { StructureReconciliationWidget } from "@/components/shared/StructureReconciliationWidget";
 import type {
   ParticipantMatchInput,
   ParticipantMatchResult,
   PPCandidate,
+  StructureRattachementInput,
 } from "@/lib/server/modules/formations/participants-service";
 
 // ─── Excel helpers ────────────────────────────────────────────────────────────
@@ -124,10 +126,30 @@ type EntryState = {
   skipped: boolean;
   // Multi flow: candidate selected, awaiting email decision
   pendingCandidate: PPCandidate | null;
+  // Structure reconciliation (when linked PP has different entreprise)
+  structureRattachement: StructureRattachementInput | null;
 };
 
+function linkedCandidate(e: EntryState): PPCandidate | null {
+  if (!e.ppId) return null;
+  return e.matchResult.candidates.find((c) => c.id === e.ppId) ?? null;
+}
+
+function needsStructureDecision(e: EntryState): boolean {
+  const entreprise = e.raw.entreprise;
+  if (!entreprise) return false;
+  const candidate = linkedCandidate(e);
+  if (!candidate) return false;
+  return !candidate.rattachements.some(
+    (r) => r.raisonSociale.toLowerCase() === entreprise.toLowerCase(),
+  );
+}
+
 function isResolved(e: EntryState): boolean {
-  return e.matchResult.status === "exact" || e.ppId !== null || e.skipped;
+  const identityOk = e.matchResult.status === "exact" || e.ppId !== null || e.skipped;
+  if (!identityOk) return false;
+  if (!e.skipped && needsStructureDecision(e) && e.structureRattachement === null) return false;
+  return true;
 }
 
 type Phase = "upload" | "matching" | "resolve" | "importing" | "done";
@@ -201,27 +223,33 @@ function WarningRow({
   onOpenCreatePP: () => void;
 }) {
   const { raw, matchResult, open, ppId, skipped, pendingCandidate } = entry;
-  const resolved = ppId !== null || skipped;
+  const identityResolved = ppId !== null || skipped;
+  const structureNeeded = ppId !== null && needsStructureDecision(entry);
+  const fullyResolved = isResolved(entry);
   const status = matchResult.status;
   const label = raw.nomAffiche ?? `${raw.prenom ?? ""} ${raw.nom ?? ""}`.trim();
   const candidate = matchResult.candidates[0] ?? null;
   const md = matchResult.matchDetail;
 
-  const rowBorder = resolved
+  const rowBorder = fullyResolved
     ? "border-zinc-100"
-    : status === "partial"
+    : identityResolved && structureNeeded
       ? "border-amber-200"
-      : status === "multi"
-        ? "border-blue-200"
-        : "border-zinc-200";
+      : status === "partial"
+        ? "border-amber-200"
+        : status === "multi"
+          ? "border-blue-200"
+          : "border-zinc-200";
 
-  const rowBg = resolved
+  const rowBg = fullyResolved
     ? "bg-zinc-50/40"
-    : status === "partial"
-      ? "bg-amber-50/20"
-      : status === "multi"
-        ? "bg-blue-50/10"
-        : "bg-zinc-50/30";
+    : identityResolved && structureNeeded
+      ? "bg-amber-50/10"
+      : status === "partial"
+        ? "bg-amber-50/20"
+        : status === "multi"
+          ? "bg-blue-50/10"
+          : "bg-zinc-50/30";
 
   return (
     <div className={`border rounded-lg overflow-hidden ${rowBorder} ${rowBg}`}>
@@ -241,7 +269,7 @@ function WarningRow({
           )}
         </span>
         <span className="shrink-0">
-          {resolved ? (
+          {fullyResolved ? (
             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-500">
               {ppId ? (
                 <><Check size={10} className="text-green-500" /> Lié</>
@@ -249,14 +277,30 @@ function WarningRow({
                 <><UserX size={10} /> Sans lien</>
               )}
             </span>
+          ) : identityResolved && structureNeeded ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600">
+              <AlertTriangle size={10} /> Structure à traiter
+            </span>
           ) : (
             <StatusBadge status={status} />
           )}
         </span>
       </button>
 
-      {/* Body — unresolved */}
-      {open && !resolved && (
+      {/* Structure reconciliation — always visible when identity resolved but org differs */}
+      {structureNeeded && (
+        <div className="px-3 py-2.5 border-t border-amber-100 bg-amber-50/20">
+          <StructureReconciliationWidget
+            structureNom={raw.entreprise!}
+            existingRattachements={linkedCandidate(entry)?.rattachements ?? []}
+            decision={entry.structureRattachement}
+            onChange={(d) => onUpdate({ structureRattachement: d })}
+          />
+        </div>
+      )}
+
+      {/* Body — unresolved identity */}
+      {open && !identityResolved && (
         <div className="px-3 pb-3 pt-2 border-t border-zinc-100 space-y-2.5">
 
           {/* ── PARTIAL ─────────────────────────────────────────────────── */}
@@ -487,8 +531,8 @@ function WarningRow({
         </div>
       )}
 
-      {/* Body — resolved */}
-      {open && resolved && (
+      {/* Body — resolved (info text, only when no structure decision pending) */}
+      {open && identityResolved && !structureNeeded && (
         <div className="px-3 pb-2 pt-1.5 border-t border-zinc-100 text-[11px] text-zinc-400">
           {ppId
             ? `Lié${entry.updatePpEmail ? " · email PP mis à jour" : ""}`
@@ -574,6 +618,7 @@ export function ImportParticipantsModal({ formationId, onClose, onImported }: Pr
             updatePpEmail: false,
             skipped: false,
             pendingCandidate: null,
+            structureRattachement: null,
           };
         })
         .filter(Boolean) as EntryState[];
@@ -603,6 +648,7 @@ export function ImportParticipantsModal({ formationId, onClose, onImported }: Pr
         ...e.raw,
         personnePhysiqueId: e.ppId,
         updatePpEmail: e.updatePpEmail,
+        structureRattachement: e.structureRattachement,
       }));
 
       const res = await fetch(`/api/formations/${formationId}/participants/import`, {
@@ -625,8 +671,12 @@ export function ImportParticipantsModal({ formationId, onClose, onImported }: Pr
 
   // ─── Derived stats ──────────────────────────────────────────────────────────
 
-  const exactEntries = entries.filter((e) => e.matchResult.status === "exact");
-  const warningEntries = entries.filter((e) => e.matchResult.status !== "exact");
+  const exactEntries = entries.filter(
+    (e) => e.matchResult.status === "exact" && !needsStructureDecision(e),
+  );
+  const warningEntries = entries.filter(
+    (e) => e.matchResult.status !== "exact" || needsStructureDecision(e),
+  );
   const unresolvedCount = warningEntries.filter((e) => !isResolved(e)).length;
   const canImport = phase === "resolve" && unresolvedCount === 0;
 

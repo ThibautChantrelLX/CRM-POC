@@ -1,9 +1,14 @@
 import { prisma } from "@/lib/server/prisma";
 import type { PPCandidate } from "@/lib/server/modules/formations/participants-service";
+import {
+  findOrCreatePM,
+  reconcileRattachements,
+  type StructureRattachementInput,
+} from "@/lib/server/utils/pm-utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type { PPCandidate };
+export type { PPCandidate, StructureRattachementInput };
 
 export type PPImportMatchInput = {
   rowIndex: number;
@@ -33,9 +38,29 @@ export type PPImportCreateInput = {
   activiteDominante: string | null;
   structures: string[];
   siteWeb: string | null;
-  resolution: "auto-create" | "createNew" | "linkExisting";
+  resolution: "auto-create" | "createNew" | "linkExisting" | "auto-exact";
   linkedPpId: string | null;
+  // When linking to an existing PP: reconciliation of PM rattachements
+  structureRattachement: StructureRattachementInput | null;
+  // When linking to an existing PP with a different email: use the xlsx email instead of keeping the existing one
+  updatePpEmail: boolean;
+  // External ID mapping (mapping_sources) — set when the xlsx has an "Id" column
+  idExterne: string | null;
+  sourceLogiciel: string | null;
 };
+
+// Merges two "|"-separated multi-value fields, de-duplicating case-insensitively.
+function mergeListField(existing: string | null, incoming: string | null): string | null {
+  if (!incoming) return existing;
+  if (!existing) return incoming;
+  const existingParts = existing.split("|").map((s) => s.trim()).filter(Boolean);
+  const incomingParts = incoming.split("|").map((s) => s.trim()).filter(Boolean);
+  const merged = [...existingParts];
+  for (const p of incomingParts) {
+    if (!merged.some((m) => m.toLowerCase() === p.toLowerCase())) merged.push(p);
+  }
+  return merged.join(" | ");
+}
 
 export type PPImportResult = {
   ppCreees: number;
@@ -52,8 +77,7 @@ const PP_SELECT = {
   email: true,
   profilAvocat: { select: { barreau: true } },
   rattachements: {
-    take: 1,
-    select: { personneMorale: { select: { raisonSociale: true } } },
+    select: { id: true, personneMorale: { select: { raisonSociale: true } } },
   },
 } as const;
 
@@ -63,7 +87,7 @@ type PpRow = {
   prenom: string | null;
   email: string | null;
   profilAvocat: { barreau: string | null } | null;
-  rattachements: Array<{ personneMorale: { raisonSociale: string } }>;
+  rattachements: Array<{ id: number; personneMorale: { raisonSociale: string } }>;
 };
 
 function toCandidate(pp: PpRow): PPCandidate {
@@ -74,7 +98,19 @@ function toCandidate(pp: PpRow): PPCandidate {
     email: pp.email,
     barreau: pp.profilAvocat?.barreau ?? null,
     entreprise: pp.rattachements[0]?.personneMorale.raisonSociale ?? null,
+    rattachements: pp.rattachements.map((r) => ({ id: r.id, raisonSociale: r.personneMorale.raisonSociale })),
   };
+}
+
+// ─── Sources (mapping_sources) ─────────────────────────────────────────────────
+
+export async function getDistinctSourceNoms(): Promise<string[]> {
+  const rows = await prisma.mappingSource.findMany({
+    distinct: ["sourceNom"],
+    select: { sourceNom: true },
+    orderBy: { sourceNom: "asc" },
+  });
+  return rows.map((r) => r.sourceNom);
 }
 
 // ─── Match ────────────────────────────────────────────────────────────────────
@@ -168,104 +204,6 @@ export async function matchPPsForImport(
   });
 }
 
-// ─── SIREN enrichment ─────────────────────────────────────────────────────────
-
-type SireneResult = {
-  raisonSociale: string;
-  siret: string | null;
-  siren: string | null;
-  typeStructure: string | null;
-  secteurActivite: string | null;
-  rue: string | null;
-  codePostal: string | null;
-  ville: string | null;
-};
-
-async function searchSirene(nom: string): Promise<SireneResult | null> {
-  try {
-    const url = `https://recherche-entreprises.api.gouv.fr/search?q=${encodeURIComponent(nom)}&per_page=1`;
-    const resp = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!resp.ok) return null;
-    const json = (await resp.json()) as {
-      results?: Array<{
-        nom_complet?: string;
-        nom_raison_sociale?: string;
-        siren?: string;
-        forme_juridique?: string;
-        activite_principale?: string;
-        libelle_activite_principale?: string;
-        siege?: {
-          siret?: string;
-          numero_voie?: string;
-          type_voie?: string;
-          libelle_voie?: string;
-          adresse?: string;
-          code_postal?: string;
-          libelle_commune?: string;
-        };
-      }>;
-    };
-    const r = json.results?.[0];
-    if (!r) return null;
-    const siege = r.siege ?? {};
-    const rueParts = [siege.numero_voie, siege.type_voie, siege.libelle_voie].filter(Boolean);
-    const rue = rueParts.length > 0 ? rueParts.join(" ") : (siege.adresse ?? null);
-    const naf = r.activite_principale && r.libelle_activite_principale
-      ? `${r.activite_principale} - ${r.libelle_activite_principale}`
-      : (r.activite_principale ?? null);
-    return {
-      raisonSociale: r.nom_complet ?? r.nom_raison_sociale ?? nom,
-      siret: siege.siret ?? null,
-      siren: r.siren ?? null,
-      typeStructure: r.forme_juridique ?? null,
-      secteurActivite: naf,
-      rue: rue ?? null,
-      codePostal: siege.code_postal ?? null,
-      ville: siege.libelle_commune ?? null,
-    };
-  } catch {
-    return null;
-  }
-}
-
-// ─── Structure lookup / create ────────────────────────────────────────────────
-
-async function findOrCreatePM(raisonSociale: string): Promise<{ id: string; created: boolean }> {
-  const existing = await prisma.personneMorale.findFirst({
-    where: { raisonSociale: { equals: raisonSociale.trim(), mode: "insensitive" } },
-    select: { id: true },
-  });
-  if (existing) return { id: existing.id, created: false };
-
-  const sirene = await searchSirene(raisonSociale);
-
-  let adresseId: number | null = null;
-  if (sirene && (sirene.rue || sirene.codePostal || sirene.ville)) {
-    const adresse = await prisma.adresse.create({
-      data: {
-        rue: sirene.rue ?? null,
-        codePostal: sirene.codePostal ?? null,
-        ville: sirene.ville ?? null,
-        pays: "France",
-        typeAdresse: "SIEGE",
-      },
-    });
-    adresseId = adresse.id;
-  }
-
-  const pm = await prisma.personneMorale.create({
-    data: {
-      raisonSociale: sirene?.raisonSociale ?? raisonSociale.trim(),
-      siretSiren: sirene?.siret ?? sirene?.siren ?? null,
-      typeStructure: sirene?.typeStructure ?? "cabinet d'avocats",
-      secteurActivite: sirene?.secteurActivite ?? null,
-      sourceOrigine: sirene ? "XLSX+SIRENE" : "XLSX",
-      adresseId,
-    },
-  });
-  return { id: pm.id, created: true };
-}
-
 // ─── Import ───────────────────────────────────────────────────────────────────
 
 export async function importPPs(rows: PPImportCreateInput[]): Promise<PPImportResult> {
@@ -275,13 +213,53 @@ export async function importPPs(rows: PPImportCreateInput[]): Promise<PPImportRe
 
   for (const row of rows) {
     try {
-      let ppId: string;
+      const isNew = row.resolution === "auto-create" || row.resolution === "createNew";
+      const isLinked = (row.resolution === "linkExisting" || row.resolution === "auto-exact") && row.linkedPpId;
 
-      if (row.resolution === "linkExisting" && row.linkedPpId) {
-        ppId = row.linkedPpId;
+      let ppId: string | undefined;
+
+      if (isLinked) {
+        ppId = row.linkedPpId!;
         ppIgnorees++;
-      } else {
-        // Create PP
+
+        if (row.updatePpEmail && row.email) {
+          await prisma.personnePhysique.update({
+            where: { id: ppId },
+            data: { email: row.email },
+          });
+        }
+
+        // Merge specialite/activiteDominante with existing values instead of overwriting
+        const existingProfil = await prisma.profilAvocat.findUnique({
+          where: { personnePhysiqueId: ppId },
+        });
+        const mergedSpecialite = mergeListField(existingProfil?.specialite ?? null, row.specialite);
+        const mergedActivite = mergeListField(existingProfil?.activiteDominante ?? null, row.activiteDominante);
+        if (existingProfil) {
+          if (mergedSpecialite !== existingProfil.specialite || mergedActivite !== existingProfil.activiteDominante) {
+            await prisma.profilAvocat.update({
+              where: { personnePhysiqueId: ppId },
+              data: { specialite: mergedSpecialite, activiteDominante: mergedActivite },
+            });
+          }
+        } else if (row.specialite || row.activiteDominante || row.barreau || row.dateSerment) {
+          await prisma.profilAvocat.create({
+            data: {
+              personnePhysiqueId: ppId,
+              barreau: row.barreau ?? null,
+              dateSerment: row.dateSerment ? new Date(row.dateSerment) : null,
+              specialite: mergedSpecialite,
+              activiteDominante: mergedActivite,
+            },
+          });
+        }
+
+        // Reconcile PM rattachements if user made a structure decision
+        if (row.structureRattachement && row.structureRattachement.action !== "skip") {
+          const { pmCreee } = await reconcileRattachements(ppId, row.structureRattachement);
+          if (pmCreee) structuresCreees++;
+        }
+      } else if (isNew) {
         const pp = await prisma.personnePhysique.create({
           data: {
             nom: row.nom,
@@ -303,28 +281,48 @@ export async function importPPs(rows: PPImportCreateInput[]): Promise<PPImportRe
         });
         ppId = pp.id;
         ppCreees++;
+
+        // For new PP: create rattachements for all structures
+        for (const structureNom of row.structures) {
+          if (!structureNom.trim()) continue;
+          const { id: pmId, created } = await findOrCreatePM(structureNom);
+          if (created) structuresCreees++;
+          const already = await prisma.rattachementPpPm.findFirst({
+            where: { personnePhysiqueId: ppId, personneMoraleId: pmId },
+          });
+          if (!already) {
+            await prisma.rattachementPpPm.create({
+              data: {
+                personnePhysiqueId: ppId,
+                personneMoraleId: pmId,
+                titreFonction: "Avocat",
+                dateDebut: new Date(),
+              },
+            });
+          }
+        }
       }
 
-      // Structures + rattachements
-      for (const structureNom of row.structures) {
-        if (!structureNom.trim()) continue;
-        const { id: pmId, created } = await findOrCreatePM(structureNom);
-        if (created) structuresCreees++;
-
-        // Avoid duplicate rattachements
-        const existing = await prisma.rattachementPpPm.findFirst({
-          where: { personnePhysiqueId: ppId, personneMoraleId: pmId },
-        });
-        if (!existing) {
-          await prisma.rattachementPpPm.create({
-            data: {
-              personnePhysiqueId: ppId,
-              personneMoraleId: pmId,
-              titreFonction: "Avocat",
-              dateDebut: new Date(),
+      if (ppId && row.idExterne && row.sourceLogiciel) {
+        await prisma.mappingSource.upsert({
+          where: {
+            entiteCrm_sourceNom_sourceIdExterne: {
+              entiteCrm: "PersonnePhysique",
+              sourceNom: row.sourceLogiciel,
+              sourceIdExterne: row.idExterne,
             },
-          });
-        }
+          },
+          create: {
+            entiteCrm: "PersonnePhysique",
+            entiteCrmId: ppId,
+            sourceNom: row.sourceLogiciel,
+            sourceIdExterne: row.idExterne,
+          },
+          update: {
+            entiteCrmId: ppId,
+            dateDerniereSynchro: new Date(),
+          },
+        });
       }
     } catch (err) {
       console.error(`[importPPs] Erreur ligne ${row.rowIndex}:`, err);

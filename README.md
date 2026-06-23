@@ -12,6 +12,7 @@ Déployé sur **Vercel** — une seule instance Next.js couvre le frontend et le
 - [Monter le projet](#monter-le-projet)
 - [Bases de données](#bases-de-données)
 - [Authentification & rôles](#authentification--rôles)
+- [Import manuel via Excel (xlsx)](#import-manuel-via-excel-xlsx)
 - [Import des données Anaba](#import-des-données-anaba)
 
 ---
@@ -263,6 +264,83 @@ Le middleware actuel (`middleware.ts`) vérifie uniquement que l'utilisateur est
 BETTER_AUTH_SECRET=   # Clé secrète pour signer les sessions (obligatoire)
 BETTER_AUTH_URL=      # URL publique de l'app (ex: https://crm.lx.legal en prod)
 ```
+
+---
+
+## Import manuel via Excel (xlsx)
+
+Deux flux d'import manuel partagent la même architecture en trois temps : **parsing client** → **matching serveur** → **résolution des conflits (UI)** → **import serveur**.
+
+| Flux | Composant | Service serveur |
+|---|---|---|
+| Avocats (PP) | `components/personnes-physiques/ImportPPModal.tsx` | `lib/server/modules/personnes-physiques/import-service.ts` |
+| Participants formation | `components/formations/ImportParticipantsModal.tsx` | `lib/server/modules/formations/participants-service.ts` |
+
+La réconciliation des rattachements PP ↔ PM est mutualisée entre les deux flux : `lib/server/utils/pm-utils.ts` + `components/shared/StructureReconciliationWidget.tsx`.
+
+### Algorithme de matching (commun aux deux flux)
+
+Pour chaque ligne du fichier, le matching cherche une `PersonnePhysique` existante en deux passes :
+
+1. **Par email** (égalité insensible à la casse) :
+   - 0 résultat → passe au matching par nom.
+   - 1 résultat → si nom **et** prénom correspondent aussi → `exact`. Sinon → `partial` (email identique, nom différent).
+   - Plusieurs résultats → `multi`.
+2. **Par nom + prénom** (si le fichier n'a pas d'email, ou si la recherche par email n'a rien donné) :
+   - 0 résultat → `none` (aucune correspondance, sera créée).
+   - 1 résultat → si l'email du fichier correspond aussi (ou est absent) → `exact`. Sinon → `partial` (nom identique, email différent).
+   - Plusieurs résultats → `multi`.
+
+| Statut | Signification | Action par défaut |
+|---|---|---|
+| `exact` | Nom + prénom + email tous identiques | Lié automatiquement, aucune action utilisateur |
+| `partial` | Une seule correspondance trouvée mais avec une divergence (email **ou** nom) | Arbitrage manuel requis |
+| `multi` | Plusieurs PP correspondent | Sélection manuelle du bon candidat |
+| `none` | Aucune correspondance | Création automatique d'une nouvelle PP |
+
+### Résolution des conflits — email
+
+Quand une ligne est liée à une PP existante dont l'email diverge de celui du fichier (cas `partial`, ou choix manuel après sélection d'un candidat dans un `multi`), un choix est proposé :
+
+- **Garder** l'email déjà présent sur la PP.
+- **Utiliser** l'email du fichier (écrase l'existant).
+
+> **Import PP (avocats)** : le bouton *Utiliser* est mis en avant visuellement — la politique par défaut est de privilégier la donnée entrante.
+> **Import participants (formations)** : les deux options sont proposées à parité, aucune n'est pré-sélectionnée — l'utilisateur choisit explicitement à chaque conflit.
+
+Hors de ce choix, aucun autre champ (téléphone, barreau…) n'est mis à jour sur la PP existante lors d'une simple liaison.
+
+### Fusion spécialité / activité dominante (import PP uniquement)
+
+Quand une ligne est liée à une PP existante — y compris un match `exact` — les champs `Spécialité(s)` et `Activité(s) dominante(s)` ne sont **jamais écrasés** : les valeurs du fichier et celles déjà en base sont fusionnées (union dédupliquée, insensible à la casse), séparées par `" | "`. Voir `mergeListField()` dans `import-service.ts`. Ce comportement n'existe pas sur le flux participants (ces champs n'y sont pas importés).
+
+### Réconciliation des rattachements structure (PP ↔ PM)
+
+Quand une ligne référence une structure (`Entreprise` / `Structure(s)`) différente de celle déjà rattachée à la PP, le `StructureReconciliationWidget` propose :
+
+| Action | Effet |
+|---|---|
+| **Ajouter — garder les anciens** | Crée le nouveau rattachement, conserve tous les existants |
+| **Remplacer — supprimer les anciens** | Supprime tous les rattachements existants, ne garde que le nouveau |
+| **Gérer au cas par cas** | Choix individuel garder/supprimer pour chaque rattachement existant |
+| **Ne pas modifier** | Aucun changement de rattachement |
+
+Si la structure n'existe pas encore en CRM comme `PersonneMorale`, elle est créée automatiquement via une recherche SIRENE (`findOrCreatePM` dans `pm-utils.ts`).
+
+### Import des avocats (PP) — spécificités
+
+Colonnes attendues : `Nom Complet` (ou `Nom` + `Prénom`), `Id`, `Email(s)`, `Téléphone(s)`, `Barreau`, `Date serment`, `Spécialité(s)`, `Activité(s) dominante(s)`, `Structure(s)`, `Site Web`. Les colonnes multi-valeurs sont séparées par `|`.
+
+Avant le matching, une étape de configuration s'adapte au contenu du fichier :
+
+- **Colonne `Id` présente** → demande le **logiciel source** (sélection parmi les sources déjà connues en base, ou saisie libre via "Autre"). Chaque PP créée ou liée reçoit alors un enregistrement dans `mapping_sources` (`entiteCrm: "PersonnePhysique"`, `sourceNom`, `sourceIdExterne`) qui trace la correspondance avec l'identifiant du système externe.
+- **Colonne `Id` absente** → demande si l'on souhaite rapprocher les lignes des fiches CRM existantes. Si oui, les champs utilisés pour le matching sont configurables : Nom + Prénom toujours actifs, Email activable en plus. Si non, toutes les lignes sont créées sans recherche de doublon.
+
+### Import des participants à une formation (LAP Dendreo)
+
+Colonnes attendues : champs du fichier LAP Dendreo (`ID Inscription`, `Participant`, `Prénom`, `Nom d'usage`, `Email`, `Entreprise`, `Barreau`, etc.). `ID Inscription` sert uniquement de clé d'idempotence pour la participation à la formation — il n'y a pas de mapping vers un système externe sur ce flux.
+
+Le matching et la réconciliation de structure suivent les mêmes règles que l'import PP. Il n'y a pas d'étape de configuration préalable (le matching est toujours actif, pas de question logiciel source) ni de fusion de champs métier (spécialité/activité dominante n'existent pas dans ce contexte).
 
 ---
 

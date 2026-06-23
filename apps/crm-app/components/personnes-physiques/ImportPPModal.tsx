@@ -12,7 +12,9 @@ import type {
   PPImportCreateInput,
   PPImportResult,
   PPCandidate,
+  StructureRattachementInput,
 } from "@/lib/server/modules/personnes-physiques/import-service";
+import { StructureReconciliationWidget } from "@/components/shared/StructureReconciliationWidget";
 
 // ─── Parsers Excel ────────────────────────────────────────────────────────────
 
@@ -68,9 +70,11 @@ type RawPP = {
   activiteDominante: string | null;
   structures: string[];
   siteWeb: string | null;
+  idExterne: string | null;
 };
 
 function rowToRawPP(row: RawRow, rowIndex: number): RawPP | null {
+  const idExterne = parseStr(row["Id"] ?? row["ID"] ?? row["Identifiant"]);
   const nomDirect = parseStr(row["Nom"]);
   const prenomDirect = parseStr(row["Prénom"]);
   const nomCompletRaw = parseStr(row["Nom Complet"]);
@@ -110,6 +114,7 @@ function rowToRawPP(row: RawRow, rowIndex: number): RawPP | null {
     dateSerment: parseDateField(row["Date serment"]),
     specialite: parseStr(row["Spécialité(s)"] ?? row["Spécialité"]),
     activiteDominante: parseStr(row["Activité(s) dominante(s)"] ?? row["Activité dominante"]),
+    idExterne,
     structures,
     siteWeb: parseStr(row["Site Web"]),
   };
@@ -126,13 +131,32 @@ type EntryState = {
   resolution: Resolution;
   linkedPpId: string | null;
   pendingCandidate: PPCandidate | null;
+  structureRattachement: StructureRattachementInput | null;
+  // When linking to an existing PP with a different email
+  updatePpEmail: boolean;
 };
 
-function isResolved(e: EntryState): boolean {
-  return e.resolution !== null;
+function linkedCandidate(e: EntryState): PPCandidate | null {
+  if (!e.linkedPpId) return null;
+  return e.matchResult.candidates.find((c) => c.id === e.linkedPpId) ?? null;
 }
 
-type Phase = "upload" | "matching" | "resolve" | "importing" | "done";
+function needsStructureDecision(e: EntryState): boolean {
+  if (e.raw.structures.length === 0) return false;
+  if (e.resolution !== "auto-exact" && e.resolution !== "linkExisting") return false;
+  const candidate = linkedCandidate(e);
+  if (!candidate) return false;
+  const existingNames = new Set(candidate.rattachements.map((r) => r.raisonSociale.toLowerCase()));
+  return e.raw.structures.some((s) => !existingNames.has(s.toLowerCase()));
+}
+
+function isFullyResolved(e: EntryState): boolean {
+  if (e.resolution === null) return false;
+  if (needsStructureDecision(e) && e.structureRattachement === null) return false;
+  return true;
+}
+
+type Phase = "upload" | "configure" | "matching" | "resolve" | "importing" | "done";
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -194,17 +218,21 @@ function WarningRow({
   onUpdate: (u: Partial<EntryState>) => void;
 }) {
   const { raw, matchResult, open, resolution, pendingCandidate } = entry;
-  const resolved = resolution !== null;
+  const identityResolved = resolution !== null;
+  const structureNeeded = resolution === "linkExisting" && needsStructureDecision(entry);
+  const fullyResolved = isFullyResolved(entry);
   const status = matchResult.status;
   const label = `${raw.prenom ?? ""} ${raw.nom}`.trim();
   const candidate = matchResult.candidates[0] ?? null;
   const md = matchResult.matchDetail;
 
-  const rowBorder = resolved ? "border-zinc-100"
+  const rowBorder = fullyResolved ? "border-zinc-100"
+    : identityResolved && structureNeeded ? "border-amber-300"
     : status === "partial" ? "border-amber-200"
     : "border-blue-200";
 
-  const rowBg = resolved ? "bg-zinc-50/40"
+  const rowBg = fullyResolved ? "bg-zinc-50/40"
+    : identityResolved && structureNeeded ? "bg-amber-50/30"
     : status === "partial" ? "bg-amber-50/20"
     : "bg-blue-50/10";
 
@@ -223,7 +251,11 @@ function WarningRow({
           {raw.email && <span className="text-xs text-zinc-400 truncate">{raw.email}</span>}
         </span>
         <span className="shrink-0">
-          {resolved ? (
+          {identityResolved && structureNeeded ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-600">
+              <AlertTriangle size={10} /> Structure à traiter
+            </span>
+          ) : fullyResolved ? (
             <span className="inline-flex items-center gap-1 text-[10px] font-medium text-zinc-500">
               {resolution === "linkExisting" ? (
                 <><Check size={10} className="text-green-500" /> Lié</>
@@ -239,7 +271,7 @@ function WarningRow({
         </span>
       </button>
 
-      {open && !resolved && (
+      {open && !identityResolved && (
         <div className="px-3 pb-3 pt-2 border-t border-zinc-100 space-y-2.5">
 
           {/* ── PARTIAL ── */}
@@ -258,15 +290,56 @@ function WarningRow({
                   </p>
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => onUpdate({ resolution: "linkExisting", linkedPpId: candidate.id, open: false })}
-                  className="flex-1 min-w-40 text-xs px-3 py-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 text-left"
-                >
-                  <Check size={10} className="inline mr-1 opacity-60" />
-                  C&apos;est la même personne — lier
-                </button>
+              <div className="flex flex-wrap gap-2 items-center">
+                {(() => {
+                  const ppHasEmail = !!candidate.email;
+                  const excelHasEmail = !!raw.email;
+
+                  const linkBtn = (
+                    updateEmail: boolean,
+                    label: string,
+                    primary: boolean,
+                  ) => (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() =>
+                        onUpdate({
+                          resolution: "linkExisting",
+                          linkedPpId: candidate.id,
+                          updatePpEmail: updateEmail,
+                          open: false,
+                        })
+                      }
+                      className={`flex-1 min-w-40 text-xs px-3 py-1.5 rounded-lg border text-left leading-tight transition-colors ${
+                        primary
+                          ? "border-zinc-900 bg-zinc-900 hover:bg-zinc-700 text-white"
+                          : "border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700"
+                      }`}
+                    >
+                      <Check size={10} className="inline mr-1 opacity-60" />
+                      {label}
+                    </button>
+                  );
+
+                  if (md.emailMatch || !excelHasEmail) {
+                    return linkBtn(false, "C'est la même personne — lier", true);
+                  }
+                  if (ppHasEmail) {
+                    return (
+                      <>
+                        {linkBtn(false, `Garder · ${candidate.email}`, false)}
+                        {linkBtn(true, `Utiliser · ${raw.email}`, true)}
+                      </>
+                    );
+                  }
+                  return (
+                    <>
+                      {linkBtn(false, "Confirmer · sans email", false)}
+                      {linkBtn(true, `Ajouter · ${raw.email}`, true)}
+                    </>
+                  );
+                })()}
                 <button
                   type="button"
                   onClick={() => onUpdate({ resolution: "createNew", open: false })}
@@ -299,7 +372,17 @@ function WarningRow({
                       <button
                         key={c.id}
                         type="button"
-                        onClick={() => onUpdate({ resolution: "linkExisting", linkedPpId: c.id, open: false })}
+                        onClick={() => {
+                          const emailsMatch =
+                            raw.email && c.email
+                              ? c.email.toLowerCase() === raw.email.toLowerCase()
+                              : false;
+                          if (emailsMatch) {
+                            onUpdate({ resolution: "linkExisting", linkedPpId: c.id, updatePpEmail: false, open: false });
+                          } else {
+                            onUpdate({ pendingCandidate: c });
+                          }
+                        }}
                         className="text-left border border-zinc-200 rounded-lg p-2.5 hover:border-zinc-400 hover:bg-zinc-50 transition-colors"
                       >
                         <div className="text-xs font-semibold text-zinc-800">{c.prenom} {c.nom}</div>
@@ -309,7 +392,7 @@ function WarningRow({
                             <span className="px-1 py-0.5 rounded bg-blue-50 text-blue-700 text-[9px]">{c.barreau}</span>
                           )}
                           {c.entreprise && (
-                            <span className="px-1 py-0.5 rounded bg-zinc-50 text-zinc-500 text-[9px] max-w-[90px] truncate">{c.entreprise}</span>
+                            <span className="px-1 py-0.5 rounded bg-zinc-50 text-zinc-500 text-[9px] max-w-22.5 truncate">{c.entreprise}</span>
                           )}
                         </div>
                       </button>
@@ -340,12 +423,52 @@ function WarningRow({
                     <span className="text-zinc-600">
                       Sélection : <strong>{pendingCandidate.prenom} {pendingCandidate.nom}</strong>
                     </span>
+                    {pendingCandidate.email && (
+                      <span className="text-zinc-400 font-mono truncate">{pendingCandidate.email}</span>
+                    )}
                     <button
                       type="button"
                       onClick={() => onUpdate({ pendingCandidate: null })}
                       className="ml-auto text-zinc-400 hover:text-zinc-600"
+                      title="Rechoisir"
                     >
                       <RefreshCw size={11} />
+                    </button>
+                  </div>
+                  <p className="text-xs text-zinc-500">
+                    L&apos;email de la PP diffère de celui du fichier. Que conserver ?
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdate({
+                          resolution: "linkExisting",
+                          linkedPpId: pendingCandidate.id,
+                          updatePpEmail: false,
+                          pendingCandidate: null,
+                          open: false,
+                        })
+                      }
+                      className="flex-1 min-w-40 text-xs px-3 py-1.5 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-700 text-left leading-tight"
+                    >
+                      Garder{" "}
+                      <span className="font-mono text-zinc-400">{pendingCandidate.email ?? "—"}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdate({
+                          resolution: "linkExisting",
+                          linkedPpId: pendingCandidate.id,
+                          updatePpEmail: true,
+                          pendingCandidate: null,
+                          open: false,
+                        })
+                      }
+                      className="flex-1 min-w-40 text-xs px-3 py-1.5 rounded-lg border border-zinc-900 bg-zinc-900 hover:bg-zinc-700 text-white text-left leading-tight"
+                    >
+                      Utiliser <span className="font-mono">{raw.email ?? "—"}</span>
                     </button>
                   </div>
                 </>
@@ -355,9 +478,21 @@ function WarningRow({
         </div>
       )}
 
-      {open && resolved && (
+      {structureNeeded && (
+        <div className="px-3 py-2.5 border-t border-amber-100 bg-amber-50/20">
+          <StructureReconciliationWidget
+            structureNom={entry.raw.structures[0]}
+            existingRattachements={linkedCandidate(entry)?.rattachements ?? []}
+            decision={entry.structureRattachement}
+            onChange={(d) => onUpdate({ structureRattachement: d })}
+          />
+        </div>
+      )}
+
+      {open && identityResolved && !structureNeeded && (
         <div className="px-3 pb-2 pt-1.5 border-t border-zinc-100 text-[11px] text-zinc-400">
-          {resolution === "linkExisting" && "Lié à une PP existante — structure sera rattachée si renseignée."}
+          {resolution === "linkExisting" &&
+            `Lié à une PP existante${entry.updatePpEmail ? " · email mis à jour avec le fichier" : ""}.`}
           {resolution === "createNew" && "Nouvelle PP sera créée lors de l'import."}
           {resolution === "skip" && "Ligne ignorée, aucune action."}
         </div>
@@ -387,7 +522,7 @@ function FieldsInfo() {
         <p className="font-medium text-zinc-700 text-[11px] uppercase tracking-wide">Optionnels</p>
         <div className="flex flex-wrap gap-1.5">
           {[
-            "Email(s)", "Téléphone(s)", "Barreau", "Date serment",
+            "Id", "Email(s)", "Téléphone(s)", "Barreau", "Date serment",
             "Spécialité(s)", "Activité(s) dominante(s)", "Structure(s)", "Site Web",
           ].map((c) => (
             <code key={c} className="px-2 py-0.5 rounded bg-white border border-zinc-200 text-zinc-500 font-mono text-[11px]">{c}</code>
@@ -397,6 +532,7 @@ function FieldsInfo() {
       <p className="text-[11px] text-zinc-400 leading-relaxed">
         Les colonnes multi-valeurs (<code className="font-mono">Email(s)</code>, <code className="font-mono">Structure(s)</code>, <code className="font-mono">Téléphone(s)</code>) sont séparées par le caractère <code className="font-mono">|</code>.
         Si la structure indiquée n&apos;existe pas dans le CRM, elle sera créée automatiquement avec une recherche SIRENE.
+        Si une colonne <code className="font-mono">Id</code> est présente, le nom du logiciel source sera demandé pour enregistrer la correspondance d&apos;identifiant. Sinon, vous pourrez choisir d&apos;activer un rapprochement avec les fiches existantes du CRM.
       </p>
     </div>
   );
@@ -416,15 +552,26 @@ export function ImportPPModal({ onClose, onImported }: Props) {
   const [entries, setEntries] = useState<EntryState[]>([]);
   const [result, setResult] = useState<PPImportResult | null>(null);
 
+  // ─── Configure step state ───────────────────────────────────────────────────
+  const [pendingRows, setPendingRows] = useState<RawPP[]>([]);
+  const [hasIdColumn, setHasIdColumn] = useState(false);
+  const [availableSources, setAvailableSources] = useState<string[]>([]);
+  const [sourceMode, setSourceMode] = useState<"select" | "other">("select");
+  const [sourceLogiciel, setSourceLogiciel] = useState("");
+  const [sourceLogicielOther, setSourceLogicielOther] = useState("");
+  const [wantsMatching, setWantsMatching] = useState(true);
+  const [matchWithEmail, setMatchWithEmail] = useState(false);
+
+  const effectiveSourceLogiciel = (sourceMode === "other" ? sourceLogicielOther : sourceLogiciel).trim();
+
   function updateEntry(rowIndex: number, u: Partial<EntryState>) {
     setEntries((prev) => prev.map((e) => (e.raw.rowIndex === rowIndex ? { ...e, ...u } : e)));
   }
 
-  // ─── Step 1: parse + match ─────────────────────────────────────────────────
+  // ─── Step 1: parse → configure ───────────────────────────────────────────────
 
   async function handleFile(file: File) {
     setError(null);
-    setPhase("matching");
     try {
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer);
@@ -438,23 +585,60 @@ export function ImportPPModal({ onClose, onImported }: Props) {
         return;
       }
 
-      const matchInputs: PPImportMatchInput[] = parsed.map((p) => ({
-        rowIndex: p.rowIndex,
-        email: p.email,
-        nom: p.nom,
-        prenom: p.prenom,
-        barreau: p.barreau,
-      }));
+      const idColumnPresent = parsed.some((p) => p.idExterne);
+      setHasIdColumn(idColumnPresent);
+      setPendingRows(parsed);
+      setSourceMode("select");
+      setSourceLogiciel("");
+      setSourceLogicielOther("");
+      setWantsMatching(true);
+      setMatchWithEmail(false);
 
-      const res = await fetch("/api/personnes-physiques/import-xlsx/match", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(matchInputs),
-      });
-      if (!res.ok) throw new Error("Erreur lors de l'analyse des correspondances.");
-      const matchResults: PPImportMatchResult[] = await res.json();
+      if (idColumnPresent) {
+        try {
+          const res = await fetch("/api/personnes-physiques/import-xlsx/sources");
+          if (res.ok) setAvailableSources(await res.json());
+        } catch {
+          // Liste de suggestions optionnelle — l'utilisateur peut toujours saisir manuellement
+        }
+      }
 
-      const newEntries: EntryState[] = parsed.map((raw): EntryState => {
+      setPhase("configure");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erreur inconnue.");
+      setPhase("upload");
+    }
+  }
+
+  // ─── Step 2: match (honors configure choices) ───────────────────────────────
+
+  async function runMatch() {
+    setError(null);
+    setPhase("matching");
+    try {
+      let matchResults: PPImportMatchResult[];
+
+      if (!hasIdColumn && !wantsMatching) {
+        matchResults = pendingRows.map((p) => ({ rowIndex: p.rowIndex, status: "none", candidates: [] }));
+      } else {
+        const matchInputs: PPImportMatchInput[] = pendingRows.map((p) => ({
+          rowIndex: p.rowIndex,
+          email: !hasIdColumn && !matchWithEmail ? null : p.email,
+          nom: p.nom,
+          prenom: p.prenom,
+          barreau: p.barreau,
+        }));
+
+        const res = await fetch("/api/personnes-physiques/import-xlsx/match", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(matchInputs),
+        });
+        if (!res.ok) throw new Error("Erreur lors de l'analyse des correspondances.");
+        matchResults = await res.json();
+      }
+
+      const newEntries: EntryState[] = pendingRows.map((raw): EntryState => {
         const mr = matchResults.find((r) => r.rowIndex === raw.rowIndex)!;
         const resolution: Resolution =
           mr.status === "exact" ? "auto-exact"
@@ -467,6 +651,8 @@ export function ImportPPModal({ onClose, onImported }: Props) {
           resolution,
           linkedPpId: mr.status === "exact" ? (mr.candidates[0]?.id ?? null) : null,
           pendingCandidate: null,
+          structureRattachement: null,
+          updatePpEmail: false,
         };
       });
 
@@ -474,14 +660,14 @@ export function ImportPPModal({ onClose, onImported }: Props) {
       setPhase("resolve");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue.");
-      setPhase("upload");
+      setPhase("configure");
     }
   }
 
   // ─── Step 2: import ────────────────────────────────────────────────────────
 
   async function handleConfirm() {
-    const unresolved = entries.filter((e) => !isResolved(e));
+    const unresolved = entries.filter((e) => !isFullyResolved(e));
     if (unresolved.length > 0) {
       setError(`${unresolved.length} conflit${unresolved.length > 1 ? "s" : ""} non résolus.`);
       return;
@@ -490,7 +676,7 @@ export function ImportPPModal({ onClose, onImported }: Props) {
     setError(null);
     try {
       const payload: PPImportCreateInput[] = entries
-        .filter((e) => e.resolution !== "auto-exact" && e.resolution !== "skip")
+        .filter((e) => e.resolution !== "skip")
         .map((e) => ({
           rowIndex: e.raw.rowIndex,
           nom: e.raw.nom,
@@ -504,8 +690,12 @@ export function ImportPPModal({ onClose, onImported }: Props) {
           activiteDominante: e.raw.activiteDominante,
           structures: e.raw.structures,
           siteWeb: e.raw.siteWeb,
-          resolution: (e.resolution as "auto-create" | "createNew" | "linkExisting"),
+          resolution: (e.resolution as "auto-create" | "createNew" | "linkExisting" | "auto-exact"),
           linkedPpId: e.linkedPpId,
+          structureRattachement: e.structureRattachement,
+          updatePpEmail: e.updatePpEmail,
+          idExterne: e.raw.idExterne,
+          sourceLogiciel: e.raw.idExterne ? effectiveSourceLogiciel : null,
         }));
 
       if (payload.length === 0) {
@@ -534,15 +724,19 @@ export function ImportPPModal({ onClose, onImported }: Props) {
   // ─── Derived state ─────────────────────────────────────────────────────────
 
   const exactEntries = entries.filter((e) => e.matchResult.status === "exact");
+  // exact entries that need a structure decision are surfaced in the warnings section
+  const exactNeedingStructure = exactEntries.filter((e) => needsStructureDecision(e));
+  const exactClean = exactEntries.filter((e) => !needsStructureDecision(e));
   const noneEntries = entries.filter((e) => e.matchResult.status === "none");
   const warningEntries = entries.filter(
-    (e) => e.matchResult.status === "partial" || e.matchResult.status === "multi",
+    (e) =>
+      e.matchResult.status === "partial" ||
+      e.matchResult.status === "multi" ||
+      exactNeedingStructure.includes(e),
   );
-  const unresolvedCount = warningEntries.filter((e) => !isResolved(e)).length;
+  const unresolvedCount = warningEntries.filter((e) => !isFullyResolved(e)).length;
   const canImport = phase === "resolve" && unresolvedCount === 0;
-  const toImportCount = entries.filter(
-    (e) => e.resolution !== "auto-exact" && e.resolution !== "skip",
-  ).length;
+  const toImportCount = entries.filter((e) => e.resolution !== "skip").length;
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -611,6 +805,114 @@ export function ImportPPModal({ onClose, onImported }: Props) {
             </div>
           )}
 
+          {/* Configure */}
+          {phase === "configure" && (
+            <div className="flex flex-col gap-4">
+              {hasIdColumn ? (
+                <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3">
+                  <p className="text-sm font-semibold text-zinc-800">Logiciel source</p>
+                  <p className="text-xs text-zinc-500">
+                    Le fichier contient une colonne <code className="font-mono">Id</code>. Indiquez le logiciel
+                    dont provient cet identifiant — il sera enregistré pour relier chaque fiche à sa source externe.
+                  </p>
+                  {sourceMode === "select" ? (
+                    <select
+                      value={sourceLogiciel}
+                      onChange={(e) => {
+                        if (e.target.value === "__other__") {
+                          setSourceMode("other");
+                          setSourceLogicielOther("");
+                        } else {
+                          setSourceLogiciel(e.target.value);
+                        }
+                      }}
+                      className="w-full text-sm border border-zinc-300 rounded-lg px-3 py-2 bg-white text-zinc-700"
+                    >
+                      <option value="">— Sélectionner —</option>
+                      {availableSources.map((s) => (
+                        <option key={s} value={s}>{s}</option>
+                      ))}
+                      <option value="__other__">Autre…</option>
+                    </select>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={sourceLogicielOther}
+                        onChange={(e) => setSourceLogicielOther(e.target.value)}
+                        placeholder="Nom du logiciel"
+                        className="flex-1 text-sm border border-zinc-300 rounded-lg px-3 py-2"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { setSourceMode("select"); setSourceLogiciel(""); }}
+                        className="text-xs text-zinc-400 hover:text-zinc-600 underline underline-offset-2 shrink-0"
+                      >
+                        Choisir dans la liste
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3">
+                  <p className="text-sm font-semibold text-zinc-800">Rapprochement avec le CRM</p>
+                  <p className="text-xs text-zinc-500">
+                    Le fichier ne contient pas de colonne <code className="font-mono">Id</code>. Voulez-vous
+                    rapprocher les lignes des fiches déjà présentes dans le CRM ?
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWantsMatching(true)}
+                      className={`flex-1 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                        wantsMatching
+                          ? "border-zinc-400 bg-zinc-100 text-zinc-800 font-medium"
+                          : "border-zinc-200 bg-white text-zinc-500 hover:bg-zinc-50"
+                      }`}
+                    >
+                      Oui, rapprocher
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWantsMatching(false)}
+                      className={`flex-1 text-xs px-3 py-1.5 rounded-lg border transition-colors ${
+                        !wantsMatching
+                          ? "border-zinc-400 bg-zinc-100 text-zinc-800 font-medium"
+                          : "border-zinc-200 bg-white text-zinc-500 hover:bg-zinc-50"
+                      }`}
+                    >
+                      Non, tout créer
+                    </button>
+                  </div>
+                  {wantsMatching && (
+                    <div className="space-y-1.5 pt-1">
+                      <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wide">
+                        Champs utilisés pour le rapprochement
+                      </p>
+                      <label className="flex items-center gap-2 text-xs text-zinc-600">
+                        <input type="checkbox" checked readOnly disabled className="accent-zinc-700" />
+                        Nom + Prénom
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-zinc-600">
+                        <input
+                          type="checkbox"
+                          checked={matchWithEmail}
+                          onChange={(e) => setMatchWithEmail(e.target.checked)}
+                          className="accent-zinc-700"
+                        />
+                        Email
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
+              {error && (
+                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
+              )}
+            </div>
+          )}
+
           {/* Matching */}
           {phase === "matching" && (
             <div className="flex flex-col items-center gap-3 py-16">
@@ -674,7 +976,7 @@ export function ImportPPModal({ onClose, onImported }: Props) {
                           {e.raw.prenom ? `${e.raw.prenom} ${e.raw.nom}` : e.raw.nom}
                         </span>
                         {e.raw.email && (
-                          <span className="text-zinc-400 font-mono truncate max-w-[200px]">{e.raw.email}</span>
+                          <span className="text-zinc-400 font-mono truncate max-w-50">{e.raw.email}</span>
                         )}
                         {e.raw.barreau && (
                           <span className="text-blue-600 text-[10px] shrink-0">{e.raw.barreau}</span>
@@ -685,22 +987,54 @@ export function ImportPPModal({ onClose, onImported }: Props) {
                 </details>
               )}
 
-              {/* Déjà présents (collapsed) */}
-              {exactEntries.length > 0 && (
+              {/* exact avec structure à réconcilier → dans les warnings */}
+              {exactNeedingStructure.length > 0 && (
+                <div className="space-y-1.5">
+                  <h3 className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest">
+                    Organisation à mettre à jour ({exactNeedingStructure.length})
+                  </h3>
+                  {exactNeedingStructure.map((e) => {
+                    const candidate = linkedCandidate(e);
+                    const structureNom = e.raw.structures[0];
+                    return (
+                      <div key={e.raw.rowIndex} className="border border-zinc-200 rounded-lg overflow-hidden">
+                        <div className="flex items-center gap-2 px-3 py-2 bg-zinc-50/50 text-xs">
+                          <Check size={11} className="text-green-500 shrink-0" />
+                          <span className="flex-1 font-medium text-zinc-800">
+                            {e.raw.prenom ? `${e.raw.prenom} ${e.raw.nom}` : e.raw.nom}
+                          </span>
+                          {e.raw.email && <span className="text-zinc-400 font-mono truncate max-w-40">{e.raw.email}</span>}
+                        </div>
+                        <div className="px-3 py-2.5 border-t border-zinc-100">
+                          <StructureReconciliationWidget
+                            structureNom={structureNom}
+                            existingRattachements={candidate?.rattachements ?? []}
+                            decision={e.structureRattachement}
+                            onChange={(d) => updateEntry(e.raw.rowIndex, { structureRattachement: d })}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Déjà présents — sans conflit structure (collapsed) */}
+              {exactClean.length > 0 && (
                 <details>
                   <summary className="text-[10px] font-semibold text-zinc-400 uppercase tracking-widest cursor-pointer list-none flex items-center gap-1 select-none">
                     <ChevronRight size={11} />
-                    Déjà présents — ignorés ({exactEntries.length})
+                    Déjà présents — ignorés ({exactClean.length})
                   </summary>
                   <div className="mt-1.5 space-y-0.5">
-                    {exactEntries.map((e) => (
+                    {exactClean.map((e) => (
                       <div key={e.raw.rowIndex} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-zinc-50 text-xs">
                         <Check size={11} className="text-green-500 shrink-0" />
                         <span className="flex-1 text-zinc-700 truncate">
                           {e.raw.prenom ? `${e.raw.prenom} ${e.raw.nom}` : e.raw.nom}
                         </span>
                         {e.raw.email && (
-                          <span className="text-zinc-400 font-mono truncate max-w-[200px]">{e.raw.email}</span>
+                          <span className="text-zinc-400 font-mono truncate max-w-50">{e.raw.email}</span>
                         )}
                       </div>
                     ))}
@@ -756,6 +1090,17 @@ export function ImportPPModal({ onClose, onImported }: Props) {
           >
             {phase === "done" ? "Fermer" : "Annuler"}
           </button>
+
+          {phase === "configure" && (
+            <button
+              type="button"
+              onClick={() => void runMatch()}
+              disabled={hasIdColumn && !effectiveSourceLogiciel}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-zinc-900 text-white text-xs font-medium hover:bg-zinc-700 transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
+            >
+              Continuer
+            </button>
+          )}
 
           {phase === "resolve" && (
             <div className="flex items-center gap-3">
