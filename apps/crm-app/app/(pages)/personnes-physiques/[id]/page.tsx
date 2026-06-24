@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { BackButton } from "@/components/ui/back-button";
 import {
   User,
