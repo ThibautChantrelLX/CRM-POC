@@ -42,7 +42,9 @@ def main():
     parser = argparse.ArgumentParser(description="Extraction Barotech")
     parser.add_argument("--cookie", default=os.environ.get("BAROTECH_COOKIE", ""))
     parser.add_argument("--token", default=os.environ.get("BAROTECH_TOKEN", ""))
-    parser.add_argument("--base64", dest="base64_config", default=os.environ.get("BAROTECH_BASE64", ""))
+    parser.add_argument(
+        "--base64", dest="base64_config", default=os.environ.get("BAROTECH_BASE64", "")
+    )
     args = parser.parse_args()
     cookie = args.cookie
     token = args.token

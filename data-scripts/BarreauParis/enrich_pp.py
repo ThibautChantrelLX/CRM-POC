@@ -33,9 +33,13 @@ _DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(_DIR)
 _DATE = os.environ.get("EXTRACTION_DATE", datetime.date.today().strftime("%Y-%m-%d"))
 
-INPUT = os.path.join(ROOT, "output", "BarreauParis", f"{_DATE}_extraction_barreau_paris_pp.csv")
+INPUT = os.path.join(
+    ROOT, "output", "BarreauParis", f"{_DATE}_extraction_barreau_paris_pp.csv"
+)
 OUTPUT = INPUT  # mise à jour sur place
-CHECKPOINT = os.path.join(ROOT, "output", "BarreauParis", f".{_DATE}_enrich_pp_checkpoint.json")
+CHECKPOINT = os.path.join(
+    ROOT, "output", "BarreauParis", f".{_DATE}_enrich_pp_checkpoint.json"
+)
 DETAIL_URL = "https://apiresteannuairemiddleware.avocatparis.org/api/GetAvocatByCnbf"
 ENV_TOKEN = "BARREAU_PARIS_BEARER_TOKEN"
 

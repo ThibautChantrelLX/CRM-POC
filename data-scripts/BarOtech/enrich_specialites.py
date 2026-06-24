@@ -7,9 +7,6 @@ import datetime
 URL_PORTAIL = "https://portail.barotech.fr/_services/entity-grid-data.json/aa9a2081-0315-4c2f-8055-d2d74cbbc0c8"
 
 
-
-
-
 SPECIALITES = {
     0: "Droit bancaire et boursier",
     1: "Droit commercial, des affaires et de la concurrence",
@@ -85,7 +82,9 @@ def main():
     parser = argparse.ArgumentParser(description="Enrichissement spécialités Barotech")
     parser.add_argument("--cookie", default=os.environ.get("BAROTECH_COOKIE", ""))
     parser.add_argument("--token", default=os.environ.get("BAROTECH_TOKEN", ""))
-    parser.add_argument("--base64", dest="base64_config", default=os.environ.get("BAROTECH_BASE64", ""))
+    parser.add_argument(
+        "--base64", dest="base64_config", default=os.environ.get("BAROTECH_BASE64", "")
+    )
     args = parser.parse_args()
     cookie = args.cookie
     token = args.token

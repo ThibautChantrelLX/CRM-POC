@@ -29,24 +29,46 @@ def run(label, cmd, env):
 
 # ─── BarOtech ─────────────────────────────────────────────────────────────────
 
+
 def pipeline_barotech(args):
     date = datetime.date.today().strftime("%Y-%m-%d")
     env = {**os.environ, "EXTRACTION_DATE": date}
     creds = ["--cookie", args.cookie, "--token", args.token, "--base64", args.base64]
 
     run("1/5 — Extraction brute", [PY, "BarOtech/extraction_barotech.py", *creds], env)
-    run("2/5 — Enrichissement spécialités", [PY, "BarOtech/enrich_specialites.py", *creds], env)
-    run("3/5 — Enrichissement activités dominantes", [PY, "BarOtech/enrich_activites.py", *creds], env)
-    run("4/5 — Enrichissement fiches (case + date serment)", [PY, "BarOtech/enrich_fiches.py", "--cookie", args.cookie], env)
-    run("5/5 — Enrichissement structures SIRENE", [PY, "BarOtech/enrich_structures_sirene.py"], env)
+    run(
+        "2/5 — Enrichissement spécialités",
+        [PY, "BarOtech/enrich_specialites.py", *creds],
+        env,
+    )
+    run(
+        "3/5 — Enrichissement activités dominantes",
+        [PY, "BarOtech/enrich_activites.py", *creds],
+        env,
+    )
+    run(
+        "4/5 — Enrichissement fiches (case + date serment)",
+        [PY, "BarOtech/enrich_fiches.py", "--cookie", args.cookie],
+        env,
+    )
+    run(
+        "5/5 — Enrichissement structures SIRENE",
+        [PY, "BarOtech/enrich_structures_sirene.py"],
+        env,
+    )
 
     print("\n✅  Pipeline BarOtech terminée.")
     print(f"    CSV produits (préfixe {date}) :")
-    print(f"      output/BarOtech/{date}_extraction_barotech.csv  (avocats, toutes colonnes enrichies)")
-    print(f"      output/BarOtech/{date}_extraction_structures_sirene.csv  (structures / PM)")
+    print(
+        f"      output/BarOtech/{date}_extraction_barotech.csv  (avocats, toutes colonnes enrichies)"
+    )
+    print(
+        f"      output/BarOtech/{date}_extraction_structures_sirene.csv  (structures / PM)"
+    )
 
 
 # ─── BarreauAmiens ────────────────────────────────────────────────────────────
+
 
 def pipeline_amiens(args):
     date = datetime.date.today().strftime("%Y-%m-%d")
@@ -66,6 +88,7 @@ def pipeline_amiens(args):
 
 # ─── BarreauParis ─────────────────────────────────────────────────────────────
 
+
 def pipeline_paris(args):
     token_env = os.environ.get("BARREAU_PARIS_BEARER_TOKEN", "")
     token = args.token or token_env
@@ -76,9 +99,21 @@ def pipeline_paris(args):
     date = datetime.date.today().strftime("%Y-%m-%d")
     env = {**os.environ, "EXTRACTION_DATE": date}
 
-    run("1/3 — Extraction annuaire de Paris", [PY, "BarreauParis/extract.py", "--token", token], env)
-    run("2/3 — Post-traitement (split PP / Structures + SIRENE)", [PY, "BarreauParis/post_process.py"], env)
-    run("3/3 — Enrichissement fiches PP (structures, spécialités, date)", [PY, "BarreauParis/enrich_pp.py", "--token", token], env)
+    run(
+        "1/3 — Extraction annuaire de Paris",
+        [PY, "BarreauParis/extract.py", "--token", token],
+        env,
+    )
+    run(
+        "2/3 — Post-traitement (split PP / Structures + SIRENE)",
+        [PY, "BarreauParis/post_process.py"],
+        env,
+    )
+    run(
+        "3/3 — Enrichissement fiches PP (structures, spécialités, date)",
+        [PY, "BarreauParis/enrich_pp.py", "--token", token],
+        env,
+    )
 
     print("\n✅  Pipeline BarreauParis terminée.")
     print(f"    CSV produits (préfixe {date}) :")
@@ -88,6 +123,7 @@ def pipeline_paris(args):
 
 
 # ─── CLI ──────────────────────────────────────────────────────────────────────
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -104,18 +140,35 @@ exemples :
 
     # barotech
     p_bt = sub.add_parser("barotech", help="Pipeline complète BarOtech (5 étapes)")
-    p_bt.add_argument("--cookie", default=os.environ.get("BAROTECH_COOKIE", ""), required=not os.environ.get("BAROTECH_COOKIE"))
-    p_bt.add_argument("--token", default=os.environ.get("BAROTECH_TOKEN", ""), required=not os.environ.get("BAROTECH_TOKEN"))
-    p_bt.add_argument("--base64", dest="base64", default=os.environ.get("BAROTECH_BASE64", ""), required=not os.environ.get("BAROTECH_BASE64"))
+    p_bt.add_argument(
+        "--cookie",
+        default=os.environ.get("BAROTECH_COOKIE", ""),
+        required=not os.environ.get("BAROTECH_COOKIE"),
+    )
+    p_bt.add_argument(
+        "--token",
+        default=os.environ.get("BAROTECH_TOKEN", ""),
+        required=not os.environ.get("BAROTECH_TOKEN"),
+    )
+    p_bt.add_argument(
+        "--base64",
+        dest="base64",
+        default=os.environ.get("BAROTECH_BASE64", ""),
+        required=not os.environ.get("BAROTECH_BASE64"),
+    )
 
     # amiens
     p_am = sub.add_parser("amiens", help="Pipeline complète Barreau d'Amiens (1 étape)")
     p_am.add_argument("--nom", default="", help="Tester un seul nom")
-    p_am.add_argument("--delay", type=float, default=None, help="Délai entre requêtes (s)")
+    p_am.add_argument(
+        "--delay", type=float, default=None, help="Délai entre requêtes (s)"
+    )
 
     # paris
     p_pa = sub.add_parser("paris", help="Pipeline complète Barreau de Paris (3 étapes)")
-    p_pa.add_argument("--token", default=os.environ.get("BARREAU_PARIS_BEARER_TOKEN", ""))
+    p_pa.add_argument(
+        "--token", default=os.environ.get("BARREAU_PARIS_BEARER_TOKEN", "")
+    )
 
     args = parser.parse_args()
 

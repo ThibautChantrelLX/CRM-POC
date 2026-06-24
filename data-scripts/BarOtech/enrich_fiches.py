@@ -10,9 +10,6 @@ import datetime
 URL_PORTAIL = "https://portail.barotech.fr/_services/entity-grid-data.json/aa9a2081-0315-4c2f-8055-d2d74cbbc0c8"
 
 
-
-
-
 _DIR = os.path.dirname(os.path.abspath(__file__))
 _OUT_DIR = os.path.join(os.path.dirname(_DIR), "output", "BarOtech")
 os.makedirs(_OUT_DIR, exist_ok=True)
@@ -123,7 +120,9 @@ def main():
     start = time.time()
 
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = {executor.submit(fetch_fiche, cid, req_headers): (i, cid) for i, cid in todo}
+        futures = {
+            executor.submit(fetch_fiche, cid, req_headers): (i, cid) for i, cid in todo
+        }
         for future in as_completed(futures):
             i, cid = futures[future]
             contact_id, case, date = future.result()

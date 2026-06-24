@@ -44,8 +44,12 @@ CRITERIA_URL = (
 )
 CRITERIA_FILE = os.path.join(ROOT, "criteria.json")
 
-DEFAULT_OUTPUT = os.path.join(ROOT, "output", "BarreauParis", f"{_DATE}_extraction_barreau_paris.csv")
-PROGRESS_FILE = os.path.join(ROOT, "output", "BarreauParis", f".{_DATE}_bigrams_done.txt")
+DEFAULT_OUTPUT = os.path.join(
+    ROOT, "output", "BarreauParis", f"{_DATE}_extraction_barreau_paris.csv"
+)
+PROGRESS_FILE = os.path.join(
+    ROOT, "output", "BarreauParis", f".{_DATE}_bigrams_done.txt"
+)
 ENV_TOKEN = "BARREAU_PARIS_BEARER_TOKEN"
 
 # Seuil à partir duquel on subdivise un bigramme en trigrammes
