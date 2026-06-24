@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import type { OnChangeFn, SortingState } from "@tanstack/react-table";
-import { buildQueryParams, type FieldDef, type FilterCondition, type FilterState } from "@/lib/filters";
+import { buildQueryParams, type FieldDef, type FilterGroup, type FilterState } from "@/lib/filters";
 import { urlToState, stateToURL } from "@/lib/url-state";
 
 export type DataListStateOptions = {
@@ -15,7 +15,8 @@ export type DataListStateOptions = {
 export type DataListState = {
   // Derived from URL
   search: string;
-  conditions: FilterCondition[];
+  groups: FilterGroup[];
+  conditionCount: number;
   sortBy: string;
   sortOrder: "asc" | "desc";
   page: number;
@@ -28,9 +29,9 @@ export type DataListState = {
   setLimit: (limit: number) => void;
   setSorting: OnChangeFn<SortingState>;
   setSearch: (search: string) => void;
-  setConditions: (conditions: FilterCondition[]) => void;
+  setGroups: (groups: FilterGroup[]) => void;
   removeCondition: (id: string) => void;
-  clearConditions: () => void;
+  clearGroups: () => void;
 };
 
 export function useDataListState(
@@ -46,7 +47,6 @@ export function useDataListState(
   const filterState: FilterState = useMemo(
     () => ({
       ...urlToState(searchParams, fields),
-      // Apply defaults for fields not in URL
       sortBy: searchParams.get("sortBy") ?? defaultSortBy,
       sortOrder: (searchParams.get("sortOrder") as "asc" | "desc") ?? defaultSortOrder,
       limit: Number(searchParams.get("limit") ?? defaultLimit),
@@ -55,7 +55,12 @@ export function useDataListState(
     [searchParams],
   );
 
-  const params = useMemo(() => buildQueryParams(filterState, fields), [filterState]);
+  const params = useMemo(() => buildQueryParams(filterState, fields), [filterState, fields]);
+
+  const conditionCount = useMemo(
+    () => filterState.groups.reduce((acc, g) => acc + g.conditions.length, 0),
+    [filterState.groups],
+  );
 
   const sorting: SortingState = useMemo(
     () =>
@@ -77,6 +82,7 @@ export function useDataListState(
 
   return {
     ...filterState,
+    conditionCount,
     params,
     sorting,
     setPage: (page) => push({ page }),
@@ -93,9 +99,13 @@ export function useDataListState(
       });
     },
     setSearch: (search) => push({ search, page: 1 }),
-    setConditions: (conditions) => push({ conditions, page: 1 }),
-    removeCondition: (id) =>
-      push({ conditions: filterState.conditions.filter((c) => c.id !== id), page: 1 }),
-    clearConditions: () => push({ conditions: [], page: 1 }),
+    setGroups: (groups) => push({ groups, page: 1 }),
+    removeCondition: (id) => {
+      const updated = filterState.groups
+        .map((g) => ({ ...g, conditions: g.conditions.filter((c) => c.id !== id) }))
+        .filter((g) => g.conditions.length > 0);
+      push({ groups: updated, page: 1 });
+    },
+    clearGroups: () => push({ groups: [], page: 1 }),
   };
 }

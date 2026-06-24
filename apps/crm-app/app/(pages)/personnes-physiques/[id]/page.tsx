@@ -10,16 +10,20 @@ import {
   BarChart2,
   Shield,
   Info,
+  GraduationCap,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { getPersonnePhysiqueDetail } from "@/lib/server/modules/personnes-physiques/service";
 import { Avatar } from "@/components/ui/avatar";
 import { DetailSection } from "@/components/detail/DetailSection";
-import { InfoGrid } from "@/components/detail/InfoGrid";
+import { InfoGrid, type InfoItem } from "@/components/detail/InfoGrid";
 import { RattachementsList } from "@/components/detail/RattachementsList";
 import { PpDetailActions } from "@/components/pp/PpDetailActions";
 import { cn } from "@/lib/utils";
 import type { TypeRelationPp, StatutRgpd } from "@/lib/server/modules/personnes-physiques/dto";
-import { TYPE_RELATION_PP_OPTIONS } from "@/lib/server/modules/personnes-physiques/constants";
+import { TYPE_RELATION_PP_OPTIONS, profilTypeFromPrincipal } from "@/lib/server/modules/personnes-physiques/constants";
+import { splitEmails } from "@/lib/email-utils";
 
 // ─── Labels / badges ──────────────────────────────────────────────────────────
 
@@ -91,6 +95,9 @@ export default async function PersonnePhysiquePage({
   const pp = await getPersonnePhysiqueDetail(id);
   if (!pp) notFound();
 
+  const estAvocat = profilTypeFromPrincipal(pp.typeProfilPrincipal) === "AVOCAT";
+  const emails = splitEmails(pp.email);
+
   return (
     <div className="flex flex-col min-h-full">
       {/* Header */}
@@ -131,12 +138,20 @@ export default async function PersonnePhysiquePage({
                   { label: "Nom", value: pp.nom.toUpperCase() },
                   { label: "Prénom", value: pp.prenom },
                   {
-                    label: "Email",
-                    value: pp.email ? (
-                      <a href={`mailto:${pp.email}`} className="text-secondary-600 hover:underline flex items-center gap-1">
-                        <Mail size={12} />
-                        {pp.email}
-                      </a>
+                    label: emails.length > 1 ? "Emails" : "Email",
+                    value: emails.length > 0 ? (
+                      <div className="flex flex-col gap-1">
+                        {emails.map((email) => (
+                          <a
+                            key={email}
+                            href={`mailto:${email}`}
+                            className="text-secondary-600 hover:underline flex items-center gap-1"
+                          >
+                            <Mail size={12} />
+                            {email}
+                          </a>
+                        ))}
+                      </div>
                     ) : null,
                   },
                   {
@@ -168,8 +183,13 @@ export default async function PersonnePhysiquePage({
                 items={[
                   { label: "Profession", value: pp.profession },
                   { label: "Spécialité", value: pp.specialite, span: 2 },
-                  { label: "Barreau", value: pp.barreau },
-                  { label: "Date de serment", value: fmtDate(pp.dateSerment) },
+                  ...(estAvocat
+                    ? ([
+                        { label: "Activité dominante", value: pp.activiteDominante, span: 2 },
+                        { label: "Barreau", value: pp.barreau },
+                        { label: "Date de serment", value: fmtDate(pp.dateSerment) },
+                      ] satisfies InfoItem[])
+                    : []),
                   {
                     label: "Type de relation",
                     value: (
@@ -297,6 +317,41 @@ export default async function PersonnePhysiquePage({
                 ppId={pp.id}
                 ppNom={`${pp.prenom ?? ""} ${pp.nom}`.trim()}
               />
+            </DetailSection>
+
+            {/* Formations */}
+            <DetailSection
+              title={`Formations (${pp.participations.length})`}
+              icon={GraduationCap}
+            >
+              {pp.participations.length === 0 ? (
+                <p className="text-sm text-zinc-400">Aucune participation enregistrée</p>
+              ) : (
+                <div className="divide-y divide-zinc-100">
+                  {pp.participations.map((p) => (
+                    <div key={p.id} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+                      <div className="mt-0.5 shrink-0">
+                        {p.present ? (
+                          <CheckCircle2 size={14} className="text-green-500" />
+                        ) : (
+                          <XCircle size={14} className="text-zinc-300" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <Link
+                          href={`/formations/${p.formationId}`}
+                          className="text-xs font-medium text-zinc-800 hover:text-secondary-700 hover:underline truncate block"
+                        >
+                          {p.intituleCourt ?? p.intitule}
+                        </Link>
+                        <p className="text-[11px] text-zinc-400 mt-0.5">
+                          {[p.numero, p.dateDebut && fmtDate(p.dateDebut)].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </DetailSection>
           </div>
         </div>

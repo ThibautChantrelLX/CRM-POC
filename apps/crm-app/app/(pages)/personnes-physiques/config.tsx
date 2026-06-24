@@ -3,6 +3,7 @@ import { Mail, Phone, Smartphone } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { FieldDef } from "@/lib/filters";
+import { splitEmails } from "@/lib/email-utils";
 import type {
   PersonnePhysiqueListItem,
   TypeRelationPp,
@@ -16,8 +17,27 @@ export const PP_FIELDS: FieldDef[] = [
   { key: "nom", label: "Nom", type: "text", param: "nom" },
   { key: "prenom", label: "Prénom", type: "text", param: "prenom" },
   { key: "email", label: "Email", type: "text", param: "email" },
-  { key: "profession", label: "Profession", type: "text", param: "profession" },
-  { key: "specialite", label: "Spécialité", type: "text", param: "specialite" },
+  {
+    key: "profession",
+    label: "Profession",
+    type: "select",
+    param: "profession",
+    optionsUrl: "/api/personnes-physiques/professions",
+  },
+  {
+    key: "specialite",
+    label: "Spécialité",
+    type: "select",
+    param: "specialite",
+    optionsUrl: "/api/personnes-physiques/specialites",
+  },
+  {
+    key: "activiteDominante",
+    label: "Activité dominante",
+    type: "select",
+    param: "activiteDominante",
+    optionsUrl: "/api/personnes-physiques/activites-dominantes",
+  },
   {
     key: "barreau",
     label: "Barreau",
@@ -54,6 +74,26 @@ export const PP_FIELDS: FieldDef[] = [
     type: "date",
     paramGte: "creerLeApres",
     paramLte: "creerLeAvant",
+  },
+  {
+    key: "minFormations",
+    label: "A participé à X formations",
+    type: "number",
+    param: "minFormations",
+  },
+  {
+    key: "satisfaction",
+    label: "Satisfaction",
+    type: "number-range",
+    paramGte: "satisfMin",
+    paramLte: "satisfMax",
+  },
+  {
+    key: "formationIds",
+    label: "Formations suivies",
+    type: "select",
+    param: "formationIds",
+    optionsUrl: "/api/personnes-physiques/formations",
   },
 ];
 
@@ -118,17 +158,26 @@ export const PP_COLUMNS: ColumnDef<PersonnePhysiqueListItem, any>[] = [
     enableSorting: true,
     cell: ({ getValue }) => {
       const v = getValue<string | null>();
-      return v ? (
-        <a
-          href={`mailto:${v}`}
-          onClick={(e) => e.stopPropagation()}
-          className="flex items-center gap-1.5 text-secondary-600 hover:underline max-w-50"
-        >
-          <Mail size={12} className="shrink-0 text-secondary-400" />
-          <span className="truncate">{v}</span>
-        </a>
-      ) : (
-        <span className="text-zinc-300">—</span>
+      if (!v) return <span className="text-zinc-300">—</span>;
+      const emails = splitEmails(v);
+      const first = emails[0];
+      const rest = emails.length - 1;
+      return (
+        <div className="flex items-center gap-1.5">
+          <a
+            href={`mailto:${first}`}
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1.5 text-secondary-600 hover:underline max-w-50"
+          >
+            <Mail size={12} className="shrink-0 text-secondary-400" />
+            <span className="truncate">{first}</span>
+          </a>
+          {rest > 0 && (
+            <span className="text-[10px] font-semibold text-zinc-400 bg-zinc-100 rounded-full px-1.5 py-0.5 shrink-0">
+              +{rest}
+            </span>
+          )}
+        </div>
       );
     },
   }),

@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { Search, Loader2, UserCheck } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Loader2, UserCheck } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls } from "@/components/ui/form-field";
+import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
+
+const SEARCH_DEBOUNCE_MS = 400;
 
 type PmResult = {
   id: string;
@@ -32,25 +35,29 @@ export function StepRattachementsPm({ ppId, onDone }: Props) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  const search = useCallback(async () => {
-    if (!query.trim()) return;
-    setIsSearching(true);
-    setHasSearched(true);
-    try {
-      const params = new URLSearchParams({ search: query.trim(), limit: "20" });
-      const res = await fetch(`/api/personnes-morales?${params}`);
-      const data = await res.json();
-      setResults(data.data ?? []);
-    } catch {
-      setResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [query]);
+  const debouncedQuery = useDebouncedValue(query, SEARCH_DEBOUNCE_MS);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") search();
-  };
+  useEffect(() => {
+    const trimmed = debouncedQuery.trim();
+    if (!trimmed) return;
+    let cancelled = false;
+    const run = async () => {
+      setIsSearching(true);
+      setHasSearched(true);
+      const params = new URLSearchParams({ search: trimmed, limit: "20" });
+      try {
+        const res = await fetch(`/api/personnes-morales?${params}`);
+        const data = await res.json();
+        if (!cancelled) setResults(data.data ?? []);
+      } catch {
+        if (!cancelled) setResults([]);
+      } finally {
+        if (!cancelled) setIsSearching(false);
+      }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [debouncedQuery]);
 
   const handleSubmit = async () => {
     if (!selected) return;
@@ -100,32 +107,23 @@ export function StepRattachementsPm({ ppId, onDone }: Props) {
     <div className="px-6 py-5 space-y-4">
       {/* Recherche PM */}
       <div className="bg-zinc-50 border border-zinc-100 rounded-xl p-4 space-y-3">
-        <p className="text-xs font-medium text-zinc-500">Rechercher une organisation</p>
-        <div className="flex gap-2">
-          <input
-            className={inputCls + " flex-1"}
-            value={query}
-            onChange={(e) => { setQuery(e.target.value); setSelected(null); }}
-            onKeyDown={handleKeyDown}
-            placeholder="Nom, SIRET…"
-          />
-          <button
-            type="button"
-            onClick={search}
-            disabled={isSearching || !query.trim()}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-500 text-white text-sm rounded-lg hover:bg-primary-600 transition cursor-pointer disabled:opacity-50"
-          >
-            {isSearching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-            Rechercher
-          </button>
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium text-zinc-500">Rechercher une organisation</p>
+          {isSearching && <Loader2 size={12} className="animate-spin text-zinc-400" />}
         </div>
+        <input
+          className={inputCls + " w-full"}
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setSelected(null); }}
+          placeholder="Nom, SIRET…"
+        />
       </div>
 
-      {hasSearched && results.length === 0 && !isSearching && (
+      {!!query.trim() && hasSearched && results.length === 0 && !isSearching && (
         <p className="text-xs text-zinc-400 text-center py-2">Aucun résultat.</p>
       )}
 
-      {results.length > 0 && (
+      {!!query.trim() && results.length > 0 && (
         <div className="border border-zinc-100 rounded-xl overflow-hidden bg-white divide-y divide-zinc-50 max-h-48 overflow-y-auto">
           {results.map((pm) => {
             const isSel = selected?.id === pm.id;

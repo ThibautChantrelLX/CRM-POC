@@ -1,10 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Check, AlertTriangle, Globe, Plus, X } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
+import { Modal } from "@/components/ui/modal";
 import { FormField, inputCls, selectCls } from "@/components/ui/form-field";
-import { TYPE_RELATION_PP_OPTIONS } from "@/lib/server/modules/personnes-physiques/constants";
+import { PpDuplicatesDropdown } from "@/components/pp/PpDuplicatesDropdown";
+import { PpAttachPmSection } from "@/components/pp/PpAttachPmSection";
+import { usePpEmailCheck } from "@/lib/hooks/usePpEmailCheck";
+import { usePpPhoneCheck, type PpPhoneCheckResult } from "@/lib/hooks/usePpPhoneCheck";
+import { cn } from "@/lib/utils";
+import {
+  PP_ATTACH_PM_STORAGE_KEY,
+  type PmAttachInfo,
+} from "@/lib/client/personnes-morales";
+import { TYPE_RELATION_PP_OPTIONS, profilTypeFromPrincipal } from "@/lib/server/modules/personnes-physiques/constants";
+import { splitEmails } from "@/lib/email-utils";
 import type {
   TypeRelationPp,
   StatutRgpd,
@@ -17,6 +30,7 @@ type FormState = {
   nom: string;
   prenom: string;
   email: string;
+  extraEmails: string[];
   telephone: string;
   portable: string;
   typeRelation: TypeRelationPp;
@@ -45,6 +59,7 @@ const EMPTY: FormState = {
   nom: "",
   prenom: "",
   email: "",
+  extraEmails: [],
   telephone: "",
   portable: "",
   typeRelation: "CONTACT",
@@ -65,21 +80,16 @@ const EMPTY: FormState = {
   situationFamiliale: "",
 };
 
-function profilTypeFromPrincipal(t: string | null | undefined): ProfilType {
-  if (!t) return "PARTICULIER";
-  if (t === "PARTICULIER") return "PARTICULIER";
-  if (t === "AVOCAT_INTERNE" || t === "AVOCAT_EXTERNE") return "AVOCAT";
-  return "PRO";
-}
-
 function fromDetail(pp: PersonnePhysiqueDetail): FormState {
   const profilType = profilTypeFromPrincipal(pp.typeProfilPrincipal);
+  const emails = splitEmails(pp.email);
   return {
     ...EMPTY,
     profilType,
     nom: pp.nom,
     prenom: pp.prenom ?? "",
-    email: pp.email ?? "",
+    email: emails[0] ?? "",
+    extraEmails: emails.slice(1),
     telephone: pp.telephone ?? "",
     portable: pp.portable ?? "",
     typeRelation: pp.typeRelation,
@@ -104,6 +114,44 @@ function fromDetail(pp: PersonnePhysiqueDetail): FormState {
   };
 }
 
+const DRAFT_STORAGE_KEY = "pp-create-draft";
+
+type DraftState = { form: FormState; attachedPm: PmAttachInfo | null };
+
+// Domaines d'emails grand public : on ne propose pas de les associer à une organisation
+const GENERIC_EMAIL_DOMAINS = new Set([
+  "gmail.com", "googlemail.com",
+  "outlook.com", "outlook.fr", "hotmail.com", "hotmail.fr", "live.com", "live.fr", "msn.com",
+  "yahoo.com", "yahoo.fr",
+  "icloud.com", "me.com", "mac.com",
+  "free.fr", "orange.fr", "wanadoo.fr", "sfr.fr", "laposte.net", "bbox.fr", "neuf.fr",
+  "gmx.com", "gmx.fr", "aol.com", "protonmail.com", "yopmail.com",
+]);
+
+function emailDomain(email: string): string | null {
+  const at = email.lastIndexOf("@");
+  if (at === -1) return null;
+  const domain = email.slice(at + 1).trim().toLowerCase();
+  return domain || null;
+}
+
+function PhoneDuplicateWarning({ check, onSelect }: { check: PpPhoneCheckResult; onSelect: () => void }) {
+  if (check.status !== "taken") return null;
+  return (
+    <p className="flex items-center gap-1 text-xs text-amber-600">
+      <AlertTriangle size={12} className="shrink-0" />
+      Déjà utilisé par{" "}
+      <Link
+        href={`/personnes-physiques/${check.match.id}`}
+        onClick={onSelect}
+        className="font-medium underline underline-offset-2 hover:text-amber-700"
+      >
+        {[check.match.prenom, check.match.nom].filter(Boolean).join(" ")}
+      </Link>
+    </p>
+  );
+}
+
 const PROFIL_TABS: { value: ProfilType; label: string }[] = [
   { value: "PARTICULIER", label: "Particulier" },
   { value: "AVOCAT", label: "Avocat" },
@@ -116,11 +164,78 @@ type Props =
 
 export function PpForm(props: Props) {
   const router = useRouter();
+  const isCreate = props.mode === "create";
   const [form, setForm] = useState<FormState>(
     props.mode === "edit" ? fromDetail(props.initialData) : EMPTY,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [identityFocused, setIdentityFocused] = useState(false);
+  const [attachedPm, setAttachedPm] = useState<PmAttachInfo | null>(null);
+  const [domainPrompt, setDomainPrompt] = useState<{ domain: string; pm: PmAttachInfo } | null>(null);
+  const domainPromptResolveRef = useRef<((associate: boolean) => void) | null>(null);
+  const ppId = props.mode === "edit" ? props.ppId : undefined;
+  const emailCheck = usePpEmailCheck(form.email, ppId);
+  const emailTaken = emailCheck.status === "taken";
+  // 4 slots fixes (hooks sans condition, slot vide → idle)
+  const extraCheck0 = usePpEmailCheck(form.extraEmails[0] ?? "", ppId);
+  const extraCheck1 = usePpEmailCheck(form.extraEmails[1] ?? "", ppId);
+  const extraCheck2 = usePpEmailCheck(form.extraEmails[2] ?? "", ppId);
+  const extraCheck3 = usePpEmailCheck(form.extraEmails[3] ?? "", ppId);
+  const extraEmailChecks = [extraCheck0, extraCheck1, extraCheck2, extraCheck3];
+  const anyExtraEmailTaken = extraEmailChecks.slice(0, form.extraEmails.length).some(c => c.status === "taken");
+  const telephoneCheck = usePpPhoneCheck("telephone", isCreate ? form.telephone : "");
+  const portableCheck = usePpPhoneCheck("portable", isCreate ? form.portable : "");
+
+  // Restaure le brouillon laissé avant de consulter une fiche depuis la liste de doublons,
+  // ou la PM nouvellement créée depuis la recherche de rattachement
+  useEffect(() => {
+    if (!isCreate) return;
+    void (async () => {
+      try {
+        const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
+        if (raw) {
+          const draft = JSON.parse(raw) as DraftState;
+          setForm(draft.form);
+          setAttachedPm(draft.attachedPm);
+          sessionStorage.removeItem(DRAFT_STORAGE_KEY);
+        }
+      } catch {}
+      try {
+        const rawPm = sessionStorage.getItem(PP_ATTACH_PM_STORAGE_KEY);
+        if (rawPm) {
+          setAttachedPm(JSON.parse(rawPm) as PmAttachInfo);
+          sessionStorage.removeItem(PP_ATTACH_PM_STORAGE_KEY);
+        }
+      } catch {}
+    })();
+  }, [isCreate]);
+
+  const saveDraft = () => {
+    if (!isCreate) return;
+    try {
+      sessionStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ form, attachedPm } satisfies DraftState));
+    } catch {}
+  };
+
+  const handleCreateNewPm = (query: string) => {
+    saveDraft();
+    const params = new URLSearchParams({ returnTo: "pp-create" });
+    if (query) params.set("raisonSociale", query);
+    router.push(`/personnes-morales/nouveau?${params}`);
+  };
+
+  const askDomainAssociation = (domain: string, pm: PmAttachInfo): Promise<boolean> =>
+    new Promise((resolve) => {
+      domainPromptResolveRef.current = resolve;
+      setDomainPrompt({ domain, pm });
+    });
+
+  const resolveDomainPrompt = (associate: boolean) => {
+    domainPromptResolveRef.current?.(associate);
+    domainPromptResolveRef.current = null;
+    setDomainPrompt(null);
+  };
 
   const patch =
     (key: keyof FormState) =>
@@ -135,13 +250,17 @@ export function PpForm(props: Props) {
 
   const handleSubmit = async () => {
     if (!form.nom.trim()) return;
+    if (isCreate && !form.email.trim()) return;
+    if (emailTaken || anyExtraEmailTaken) return;
     setIsSubmitting(true);
     setError(null);
     try {
+      const allEmails = [form.email.trim(), ...form.extraEmails.map(e => e.trim())].filter(Boolean);
+      const emailValue = allEmails.length > 0 ? allEmails.join("|") : undefined;
       const body = {
         nom: form.nom.trim(),
         prenom: form.prenom || undefined,
-        email: form.email || undefined,
+        email: emailValue,
         telephone: form.telephone || undefined,
         portable: form.portable || undefined,
         typeRelation: form.typeRelation,
@@ -188,6 +307,31 @@ export function PpForm(props: Props) {
 
       const pp = await res.json();
       const targetId = props.mode === "create" ? pp.id : props.ppId;
+
+      if (isCreate) {
+        try { sessionStorage.removeItem(DRAFT_STORAGE_KEY); } catch {}
+
+        if (attachedPm) {
+          await fetch("/api/rattachements", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ personnePhysiqueId: pp.id, personneMoraleId: attachedPm.id }),
+          }).catch(() => {});
+
+          const domain = emailDomain(form.email);
+          if (domain && !GENERIC_EMAIL_DOMAINS.has(domain) && attachedPm.nomDomaine !== domain) {
+            const associate = await askDomainAssociation(domain, attachedPm);
+            if (associate) {
+              await fetch(`/api/personnes-morales/${attachedPm.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ nomDomaine: domain }),
+              }).catch(() => {});
+            }
+          }
+        }
+      }
+
       router.push(`/personnes-physiques/${targetId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erreur inconnue");
@@ -226,13 +370,24 @@ export function PpForm(props: Props) {
       {/* Identité */}
       <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Identité</h3>
-        <div className="grid grid-cols-2 gap-4">
+        <div
+          className="relative grid grid-cols-2 gap-4"
+          onFocus={() => setIdentityFocused(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              setIdentityFocused(false);
+            }
+          }}
+        >
           <FormField label="Nom" required>
             <input className={inputCls} value={form.nom} onChange={patch("nom")} placeholder="DUPONT" />
           </FormField>
           <FormField label="Prénom">
             <input className={inputCls} value={form.prenom} onChange={patch("prenom")} placeholder="Jean" />
           </FormField>
+          {isCreate && identityFocused && (
+            <PpDuplicatesDropdown nom={form.nom} prenom={form.prenom} onSelect={saveDraft} />
+          )}
         </div>
       </section>
 
@@ -240,17 +395,161 @@ export function PpForm(props: Props) {
       <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-4">
         <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">Coordonnées</h3>
         <div className="grid grid-cols-2 gap-4">
-          <FormField label="Email">
-            <input type="email" className={inputCls} value={form.email} onChange={patch("email")} placeholder="jean.dupont@cabinet.fr" />
-          </FormField>
+
+          {/* Email — pleine largeur, multi-email */}
+          <div className="col-span-2 flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium text-zinc-500 uppercase tracking-wide">
+                Email{isCreate && <span className="text-red-500 ml-0.5">*</span>}
+              </label>
+              {form.extraEmails.length < 4 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({ ...prev, extraEmails: [...prev.extraEmails, ""] }))
+                  }
+                  className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 transition-colors"
+                >
+                  <Plus size={12} />
+                  Ajouter un email
+                </button>
+              )}
+            </div>
+
+            {/* Email principal */}
+            <input
+              type="email"
+              className={cn(
+                inputCls,
+                emailCheck.status === "available" &&
+                  "border-green-400 focus:border-green-400 focus:ring-green-500/10",
+                emailCheck.status === "taken" &&
+                  "border-red-400 focus:border-red-400 focus:ring-red-500/10",
+              )}
+              value={form.email}
+              onChange={patch("email")}
+              placeholder="jean.dupont@cabinet.fr"
+            />
+            {emailCheck.status === "available" && (
+              <p className="flex items-center gap-1 text-xs text-green-600">
+                <Check size={12} /> Email disponible
+              </p>
+            )}
+            {emailCheck.status === "taken" && (
+              <p className="flex items-center gap-1 text-xs text-red-600">
+                <AlertTriangle size={12} className="shrink-0" />
+                Déjà utilisé par{" "}
+                <Link
+                  href={`/personnes-physiques/${emailCheck.match.id}`}
+                  onClick={saveDraft}
+                  className="font-medium underline underline-offset-2 hover:text-red-700"
+                >
+                  {[emailCheck.match.prenom, emailCheck.match.nom].filter(Boolean).join(" ")}
+                </Link>
+              </p>
+            )}
+
+            {/* Emails supplémentaires */}
+            {form.extraEmails.map((extraEmail, i) => {
+              const check = extraEmailChecks[i];
+              return (
+                <div key={i} className="flex items-start gap-2 mt-1">
+                  <div className="flex flex-col gap-1 flex-1">
+                    <input
+                      type="email"
+                      className={cn(
+                        inputCls,
+                        check.status === "available" && extraEmail &&
+                          "border-green-400 focus:border-green-400 focus:ring-green-500/10",
+                        check.status === "taken" &&
+                          "border-red-400 focus:border-red-400 focus:ring-red-500/10",
+                      )}
+                      value={extraEmail}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          extraEmails: prev.extraEmails.map((x, j) =>
+                            j === i ? e.target.value : x,
+                          ),
+                        }))
+                      }
+                      placeholder="autre@cabinet.fr"
+                    />
+                    {check.status === "available" && extraEmail && (
+                      <p className="flex items-center gap-1 text-xs text-green-600">
+                        <Check size={12} /> Email disponible
+                      </p>
+                    )}
+                    {check.status === "taken" && (
+                      <p className="flex items-center gap-1 text-xs text-red-600">
+                        <AlertTriangle size={12} className="shrink-0" />
+                        Déjà utilisé par{" "}
+                        <Link
+                          href={`/personnes-physiques/${check.match.id}`}
+                          onClick={saveDraft}
+                          className="font-medium underline underline-offset-2 hover:text-red-700"
+                        >
+                          {[check.match.prenom, check.match.nom].filter(Boolean).join(" ")}
+                        </Link>
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    title="Supprimer cet email"
+                    onClick={() =>
+                      setForm((prev) => ({
+                        ...prev,
+                        extraEmails: prev.extraEmails.filter((_, j) => j !== i),
+                      }))
+                    }
+                    className="mt-2 text-zinc-300 hover:text-red-400 transition-colors p-0.5"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
           <FormField label="Téléphone">
-            <input className={inputCls} value={form.telephone} onChange={patch("telephone")} placeholder="01 23 45 67 89" />
+            <input
+              className={cn(
+                inputCls,
+                isCreate && telephoneCheck.status === "taken" &&
+                  "border-amber-400 focus:border-amber-400 focus:ring-amber-500/10",
+              )}
+              value={form.telephone}
+              onChange={patch("telephone")}
+              placeholder="01 23 45 67 89"
+            />
+            {isCreate && <PhoneDuplicateWarning check={telephoneCheck} onSelect={saveDraft} />}
           </FormField>
-          <FormField label="Portable" className="col-span-2">
-            <input className={inputCls} value={form.portable} onChange={patch("portable")} placeholder="06 12 34 56 78" />
+          <FormField label="Portable">
+            <input
+              className={cn(
+                inputCls,
+                isCreate && portableCheck.status === "taken" &&
+                  "border-amber-400 focus:border-amber-400 focus:ring-amber-500/10",
+              )}
+              value={form.portable}
+              onChange={patch("portable")}
+              placeholder="06 12 34 56 78"
+            />
+            {isCreate && <PhoneDuplicateWarning check={portableCheck} onSelect={saveDraft} />}
           </FormField>
         </div>
       </section>
+
+      {/* Rattachement à une organisation */}
+      {isCreate && (
+        <section className="bg-white rounded-xl border border-zinc-200 p-5 space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+            Rattachement à une organisation
+          </h3>
+          <PpAttachPmSection value={attachedPm} onChange={setAttachedPm} onCreateNew={handleCreateNewPm} />
+        </section>
+      )}
 
       {/* Profil avocat */}
       {form.profilType === "AVOCAT" && (
@@ -380,10 +679,49 @@ export function PpForm(props: Props) {
         >
           Annuler
         </button>
-        <SubmitButton isLoading={isSubmitting} onClick={handleSubmit} disabled={!form.nom.trim()}>
+        <SubmitButton
+          isLoading={isSubmitting}
+          onClick={handleSubmit}
+          disabled={!form.nom.trim() || (isCreate && !form.email.trim()) || emailTaken || anyExtraEmailTaken}
+        >
           {props.mode === "create" ? "Créer la personne physique" : "Enregistrer les modifications"}
         </SubmitButton>
       </div>
+
+      <Modal
+        open={domainPrompt !== null}
+        onClose={() => resolveDomainPrompt(false)}
+        title="Associer le domaine à l'organisation"
+        size="sm"
+      >
+        {domainPrompt && (
+          <div className="px-6 py-5 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary-50 flex items-center justify-center shrink-0">
+                <Globe size={16} className="text-primary-600" />
+              </div>
+              <p className="text-sm text-zinc-600">
+                L&apos;email renseigné utilise le domaine{" "}
+                <span className="font-medium text-zinc-900">@{domainPrompt.domain}</span>.
+                Souhaitez-vous l&apos;associer à l&apos;organisation{" "}
+                <span className="font-medium text-zinc-900">{domainPrompt.pm.raisonSociale}</span> ?
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 pb-1">
+              <button
+                type="button"
+                onClick={() => resolveDomainPrompt(false)}
+                className="px-4 py-2 text-sm font-medium rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-50 transition cursor-pointer"
+              >
+                Non merci
+              </button>
+              <SubmitButton onClick={() => resolveDomainPrompt(true)}>
+                Associer le domaine
+              </SubmitButton>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }

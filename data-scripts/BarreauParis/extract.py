@@ -29,11 +29,13 @@ from typing import Any, Dict, Iterable, Optional, Tuple
 
 import requests
 from dotenv import load_dotenv
+import datetime
 
 load_dotenv()
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(_DIR)
+_DATE = os.environ.get("EXTRACTION_DATE", datetime.date.today().strftime("%Y-%m-%d"))
 
 SEARCH_URL = "https://apiresteannuairemiddleware.avocatparis.org/api/GetCombinedAvocatStructureFluxDatas"
 DETAIL_URL = "https://apiresteannuairemiddleware.avocatparis.org/api/GetAvocatByCnbf"
@@ -42,10 +44,8 @@ CRITERIA_URL = (
 )
 CRITERIA_FILE = os.path.join(ROOT, "criteria.json")
 
-DEFAULT_OUTPUT = os.path.join(
-    ROOT, "output", "BarreauParis", "extraction_barreau_paris.csv"
-)
-PROGRESS_FILE = os.path.join(ROOT, "output", "BarreauParis", ".bigrams_done.txt")
+DEFAULT_OUTPUT = os.path.join(ROOT, "output", "BarreauParis", f"{_DATE}_extraction_barreau_paris.csv")
+PROGRESS_FILE = os.path.join(ROOT, "output", "BarreauParis", f".{_DATE}_bigrams_done.txt")
 ENV_TOKEN = "BARREAU_PARIS_BEARER_TOKEN"
 
 # Seuil à partir duquel on subdivise un bigramme en trigrammes

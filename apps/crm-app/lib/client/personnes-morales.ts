@@ -5,6 +5,18 @@ import type {
   UpdatePersonneMoraleInput,
 } from "@/lib/server/modules/personnes-morales/dto";
 
+export type PmAttachInfo = {
+  id: string;
+  raisonSociale: string;
+  siretSiren: string | null;
+  typeStructure: string | null;
+  nomDomaine: string | null;
+};
+
+/** Clé sessionStorage utilisée pour transmettre la PM nouvellement créée
+ *  lors d'un retour vers le formulaire de création de personne physique. */
+export const PP_ATTACH_PM_STORAGE_KEY = "pp-create-attach-pm";
+
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: "Unknown error" }));

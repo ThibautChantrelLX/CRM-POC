@@ -3,11 +3,15 @@ import os
 import time
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import datetime
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
-INPUT_CSV = os.path.join(_DIR, "extraction_barotech_specialities_activites.csv")
-OUTPUT_CSV = os.path.join(_DIR, "extraction_structures_sirene.csv")
-PROGRESS = os.path.join(_DIR, ".sirene_progress.csv")
+_OUT_DIR = os.path.join(os.path.dirname(_DIR), "output", "BarOtech")
+os.makedirs(_OUT_DIR, exist_ok=True)
+_DATE = os.environ.get("EXTRACTION_DATE", datetime.date.today().strftime("%Y-%m-%d"))
+INPUT_CSV = os.path.join(_OUT_DIR, f"{_DATE}_extraction_barotech.csv")
+OUTPUT_CSV = os.path.join(_OUT_DIR, f"{_DATE}_extraction_structures_sirene.csv")
+PROGRESS = os.path.join(_OUT_DIR, f".{_DATE}_sirene_progress.csv")
 
 SIRENE_URL = "https://recherche-entreprises.api.gouv.fr/search"
 MAX_WORKERS = 5  # API publique : rester raisonnable

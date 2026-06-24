@@ -7,7 +7,8 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "db": "tsx prisma/run.ts"
+    "db": "tsx prisma/run.ts",
+    "prepare": "cd ../.. && git config core.hooksPath .githooks"
   },
   "prisma": {
     "seed": "tsx prisma/seed_entities.ts"
@@ -27,6 +28,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "tailwind-merge": "^3.5.0",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {

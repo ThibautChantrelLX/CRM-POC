@@ -7,7 +7,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { AdvancedFilters } from "@/components/ui/advanced-filters";
 import { FilterBadges } from "@/components/ui/filter-badges";
 import { cn } from "@/lib/utils";
-import type { FieldDef, FilterCondition } from "@/lib/filters";
+import type { FieldDef, FilterGroup } from "@/lib/filters";
 
 type DataListPageProps<T> = {
   title: string;
@@ -28,11 +28,12 @@ type DataListPageProps<T> = {
   onPageChange: (page: number) => void;
   onLimitChange: (limit: number) => void;
   // Filters
-  conditions: FilterCondition[];
+  groups: FilterGroup[];
+  conditionCount: number;
   searchValue: string;
-  onApplyFilters: (conditions: FilterCondition[]) => void;
+  onApplyGroups: (groups: FilterGroup[]) => void;
   onRemoveCondition: (id: string) => void;
-  onClearConditions: () => void;
+  onClearGroups: () => void;
   onSearch: (value: string) => void;
   // Row interaction
   onRowClick?: (row: T) => void;
@@ -55,21 +56,20 @@ export function DataListPage<T>({
   onSortingChange,
   onPageChange,
   onLimitChange,
-  conditions,
+  groups,
+  conditionCount,
   searchValue,
-  onApplyFilters,
+  onApplyGroups,
   onRemoveCondition,
-  onClearConditions,
+  onClearGroups,
   onSearch,
   onRowClick,
   actionSlot,
 }: DataListPageProps<T>) {
-  // Local input value (immediate feedback), synced with URL via effect
   const [searchInput, setSearchInput] = useState(searchValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isTypingRef = useRef(false);
 
-  // Sync input when URL changes externally (back/forward navigation)
   useEffect(() => {
     if (!isTypingRef.current) setSearchInput(searchValue);
   }, [searchValue]);
@@ -118,16 +118,16 @@ export function DataListPage<T>({
               onClick={openFilters}
               className={cn(
                 "flex items-center gap-2 px-4 py-2 rounded-lg border text-sm font-medium transition-colors",
-                conditions.length > 0
+                conditionCount > 0
                   ? "border-primary-400 bg-primary-50 text-primary-700"
                   : "border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50",
               )}
             >
               <SlidersHorizontal size={15} />
               Filtres
-              {conditions.length > 0 && (
+              {conditionCount > 0 && (
                 <span className="bg-primary-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                  {conditions.length}
+                  {conditionCount}
                 </span>
               )}
             </button>
@@ -136,8 +136,8 @@ export function DataListPage<T>({
               <AdvancedFilters
                 key={filterKey}
                 fields={fields}
-                initialConditions={conditions}
-                onApply={onApplyFilters}
+                initialGroups={groups}
+                onApply={onApplyGroups}
                 onClose={() => setFilterOpen(false)}
               />
             )}
@@ -146,13 +146,14 @@ export function DataListPage<T>({
       </div>
 
       {/* ── Active filter badges ───────────────────────────── */}
-      {conditions.length > 0 && (
+      {conditionCount > 0 && (
         <div className="bg-white border-b border-zinc-100 pt-2 pb-2">
           <FilterBadges
-            conditions={conditions}
+            groups={groups}
             fields={fields}
+            conditionCount={conditionCount}
             onRemove={onRemoveCondition}
-            onClearAll={onClearConditions}
+            onClearAll={onClearGroups}
           />
         </div>
       )}

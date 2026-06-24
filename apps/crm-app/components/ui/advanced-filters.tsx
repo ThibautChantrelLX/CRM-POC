@@ -10,6 +10,7 @@ import {
   makeId,
   type FieldDef,
   type FilterCondition,
+  type FilterGroup,
 } from "@/lib/filters";
 
 type SelectOption = { value: string; label: string };
@@ -18,37 +19,78 @@ type SelectOption = { value: string; label: string };
 
 type Props = {
   fields: FieldDef[];
-  initialConditions: FilterCondition[];
-  onApply: (conditions: FilterCondition[]) => void;
+  initialGroups: FilterGroup[];
+  onApply: (groups: FilterGroup[]) => void;
   onClose: () => void;
 };
 
-export function AdvancedFilters({ fields, initialConditions, onApply, onClose }: Props) {
-  const [conditions, setConditions] = useState<FilterCondition[]>(initialConditions);
-  const [addOpen, setAddOpen] = useState(false);
+export function AdvancedFilters({ fields, initialGroups, onApply, onClose }: Props) {
+  const [groups, setGroups] = useState<FilterGroup[]>(
+    initialGroups.length > 0 ? initialGroups : [{ id: makeId(), conditions: [] }],
+  );
+  const [expandedGroupId, setExpandedGroupId] = useState<string | null>(null);
 
-  const add = (field: FieldDef) => {
-    setConditions((prev) => [
-      ...prev,
-      {
-        id: makeId(),
-        fieldKey: field.key,
-        operator: defaultOperator(field),
-        value: defaultValue(field),
-      },
-    ]);
-    setAddOpen(false);
+  const addGroup = () => {
+    const newGroup: FilterGroup = { id: makeId(), conditions: [] };
+    setGroups((prev) => [...prev, newGroup]);
   };
 
-  const remove = (id: string) =>
-    setConditions((prev) => prev.filter((c) => c.id !== id));
+  const removeGroup = (id: string) =>
+    setGroups((prev) => prev.filter((g) => g.id !== id));
 
-  const update = (id: string, patch: Partial<FilterCondition>) =>
-    setConditions((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+  const addConditionToGroup = (groupId: string, field: FieldDef) => {
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              conditions: [
+                ...g.conditions,
+                {
+                  id: makeId(),
+                  fieldKey: field.key,
+                  operator: defaultOperator(field),
+                  value: defaultValue(field),
+                },
+              ],
+            }
+          : g,
+      ),
+    );
+    setExpandedGroupId(null);
+  };
 
-  const reset = () => setConditions([]);
+  const removeConditionFromGroup = (groupId: string, condId: string) =>
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? { ...g, conditions: g.conditions.filter((c) => c.id !== condId) }
+          : g,
+      ),
+    );
 
-  const fieldMap = new Map(fields.map((f) => [f.key, f]));
+  const updateConditionInGroup = (
+    groupId: string,
+    condId: string,
+    patch: Partial<FilterCondition>,
+  ) =>
+    setGroups((prev) =>
+      prev.map((g) =>
+        g.id === groupId
+          ? {
+              ...g,
+              conditions: g.conditions.map((c) => (c.id === condId ? { ...c, ...patch } : c)),
+            }
+          : g,
+      ),
+    );
+
+  const reset = () => {
+    setGroups([{ id: makeId(), conditions: [] }]);
+    setExpandedGroupId(null);
+  };
+
+  const isMultiGroup = groups.length > 1;
 
   return (
     <>
@@ -56,70 +98,55 @@ export function AdvancedFilters({ fields, initialConditions, onApply, onClose }:
       <div className="fixed inset-0 z-20" onClick={onClose} />
 
       {/* Panel */}
-      <div className="absolute right-0 top-full mt-2 z-30 bg-white rounded-xl border border-zinc-200 shadow-xl w-[360px] flex flex-col">
+      <div className="absolute right-0 top-full mt-2 z-30 bg-white rounded-xl border border-zinc-200 shadow-xl w-100 flex flex-col max-h-145">
         {/* Header */}
         <div className="px-5 py-4 border-b border-zinc-100 shrink-0">
           <div className="font-semibold text-zinc-900">Filtres avancés</div>
-          <div className="text-xs text-zinc-400 mt-0.5">Combinez plusieurs conditions</div>
+          <div className="text-xs text-zinc-400 mt-0.5">
+            ET au sein d&apos;un groupe · OU entre les groupes
+          </div>
         </div>
 
-        {/* Conditions — scrollable, ne contient PAS le bouton d'ajout
-            pour éviter que le dropdown ne soit rogné par overflow */}
-        {conditions.length > 0 && (
-          <div className="overflow-y-auto max-h-[300px] px-4 pt-3 pb-1 flex flex-col gap-2.5">
-            {conditions.map((cond) => {
-              const field = fieldMap.get(cond.fieldKey);
-              if (!field) return null;
-              return (
-                <ConditionRow
-                  key={cond.id}
-                  condition={cond}
-                  field={field}
-                  onRemove={() => remove(cond.id)}
-                  onChange={(patch) => update(cond.id, patch)}
-                />
-              );
-            })}
-          </div>
-        )}
+        {/* Scrollable content */}
+        <div className="overflow-y-auto flex-1 px-4 py-3 flex flex-col gap-2.5">
+          {groups.map((group, idx) => (
+            <div key={group.id}>
+              {isMultiGroup && idx > 0 && (
+                <div className="flex items-center gap-2 my-1">
+                  <div className="flex-1 h-px bg-zinc-200" />
+                  <span className="text-xs font-bold text-primary-600 bg-primary-50 border border-primary-200 rounded-full px-2.5 py-0.5">
+                    OU
+                  </span>
+                  <div className="flex-1 h-px bg-zinc-200" />
+                </div>
+              )}
 
-        {/* Bouton "Ajouter une condition" — EN DEHORS du conteneur scrollable
-            afin que son dropdown ne soit pas rogné par overflow:auto */}
-        <div className="px-4 py-3 relative shrink-0">
+              <GroupCard
+                group={group}
+                groupIndex={idx}
+                fields={fields}
+                showHeader={isMultiGroup}
+                canRemove={isMultiGroup}
+                isAddOpen={expandedGroupId === group.id}
+                onToggleAdd={() =>
+                  setExpandedGroupId((prev) => (prev === group.id ? null : group.id))
+                }
+                onAddCondition={(f) => addConditionToGroup(group.id, f)}
+                onRemoveGroup={() => removeGroup(group.id)}
+                onRemoveCondition={(cId) => removeConditionFromGroup(group.id, cId)}
+                onUpdateCondition={(cId, patch) => updateConditionInGroup(group.id, cId, patch)}
+              />
+            </div>
+          ))}
+
           <button
             type="button"
-            onClick={() => setAddOpen((o) => !o)}
-            className="w-full flex items-center justify-between px-4 py-2.5 rounded-lg border-2 border-dashed border-primary-300 text-sm text-primary-600 hover:bg-primary-50 transition-colors"
+            onClick={addGroup}
+            className="flex items-center justify-center gap-1.5 w-full px-4 py-2 rounded-lg border-2 border-dashed border-zinc-300 text-sm text-zinc-500 hover:border-primary-300 hover:text-primary-600 hover:bg-primary-50 transition-colors mt-1"
           >
-            <span className="flex items-center gap-1.5">
-              <Plus size={14} />
-              Ajouter une condition
-            </span>
-            <ChevronDown
-              size={14}
-              className={cn("transition-transform duration-150", addOpen && "rotate-180")}
-            />
+            <Plus size={14} />
+            Ajouter un groupe (OU)
           </button>
-
-          {addOpen && (
-            <>
-              {/* Backdrop pour fermer le sous-menu */}
-              <div className="fixed inset-0 z-30" onClick={() => setAddOpen(false)} />
-              {/* Dropdown */}
-              <div className="absolute top-full mt-1.5 left-4 right-4 z-40 bg-white border border-zinc-200 rounded-xl shadow-lg py-1 overflow-y-auto max-h-52">
-                {fields.map((f) => (
-                  <button
-                    key={f.key}
-                    type="button"
-                    onClick={() => add(f)}
-                    className="w-full text-left px-4 py-2 text-sm text-zinc-700 hover:bg-primary-50 hover:text-primary-700 transition-colors"
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
         </div>
 
         {/* Footer */}
@@ -134,7 +161,7 @@ export function AdvancedFilters({ fields, initialConditions, onApply, onClose }:
           <button
             type="button"
             onClick={() => {
-              onApply(conditions);
+              onApply(groups);
               onClose();
             }}
             className="flex-1 px-4 py-2 rounded-lg bg-primary-500 text-white text-sm font-semibold hover:bg-primary-600 transition-colors"
@@ -144,6 +171,102 @@ export function AdvancedFilters({ fields, initialConditions, onApply, onClose }:
         </div>
       </div>
     </>
+  );
+}
+
+// ─── Group card ───────────────────────────────────────────────────────────────
+
+function GroupCard({
+  group,
+  groupIndex,
+  fields,
+  showHeader,
+  canRemove,
+  isAddOpen,
+  onToggleAdd,
+  onAddCondition,
+  onRemoveGroup,
+  onRemoveCondition,
+  onUpdateCondition,
+}: {
+  group: FilterGroup;
+  groupIndex: number;
+  fields: FieldDef[];
+  showHeader: boolean;
+  canRemove: boolean;
+  isAddOpen: boolean;
+  onToggleAdd: () => void;
+  onAddCondition: (f: FieldDef) => void;
+  onRemoveGroup: () => void;
+  onRemoveCondition: (id: string) => void;
+  onUpdateCondition: (id: string, patch: Partial<FilterCondition>) => void;
+}) {
+  const fieldMap = new Map(fields.map((f) => [f.key, f]));
+
+  return (
+    <div className="rounded-xl border border-zinc-200">
+      {showHeader && (
+        <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-50 border-b border-zinc-200 rounded-t-xl">
+          <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">
+            Groupe {groupIndex + 1}
+          </span>
+          {canRemove && (
+            <button
+              type="button"
+              onClick={onRemoveGroup}
+              className="text-zinc-400 hover:text-zinc-600 transition-colors"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="px-3 py-2.5 flex flex-col gap-2">
+        {group.conditions.map((cond) => {
+          const field = fieldMap.get(cond.fieldKey);
+          if (!field) return null;
+          return (
+            <ConditionRow
+              key={cond.id}
+              condition={cond}
+              field={field}
+              onRemove={() => onRemoveCondition(cond.id)}
+              onChange={(patch) => onUpdateCondition(cond.id, patch)}
+            />
+          );
+        })}
+
+        {/* Inline accordion — expands in-place, no floating dropdown */}
+        <button
+          type="button"
+          onClick={onToggleAdd}
+          className="w-full flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed border-primary-300 text-sm text-primary-600 hover:bg-primary-50 transition-colors"
+        >
+          <Plus size={13} />
+          <span className="flex-1 text-left">Ajouter une condition</span>
+          <ChevronDown
+            size={13}
+            className={cn("transition-transform duration-150", isAddOpen && "rotate-180")}
+          />
+        </button>
+
+        {isAddOpen && (
+          <div className="rounded-lg border border-zinc-200 bg-white py-1">
+            {fields.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                onClick={() => onAddCondition(f)}
+                className="w-full text-left px-4 py-2 text-sm text-zinc-700 hover:bg-primary-50 hover:text-primary-700 transition-colors"
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -173,6 +296,8 @@ function ConditionRow({
         </button>
       </div>
       {field.type === "text" && <TextRow condition={condition} onChange={onChange} />}
+      {field.type === "number" && <NumberRow condition={condition} onChange={onChange} />}
+      {field.type === "number-range" && <NumberRangeRow condition={condition} onChange={onChange} />}
       {field.type === "select" && field.optionsUrl && (
         <SelectSearchRow condition={condition} field={field} onChange={onChange} />
       )}
@@ -207,6 +332,70 @@ function TextRow({
   );
 }
 
+function NumberRow({
+  condition,
+  onChange,
+}: {
+  condition: FilterCondition;
+  onChange: (p: Partial<FilterCondition>) => void;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-zinc-400 shrink-0">Au moins</span>
+      <input
+        type="number"
+        min={1}
+        placeholder="1"
+        value={condition.value as string}
+        onChange={(e) => onChange({ value: e.target.value })}
+        className="w-20 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400"
+      />
+      <span className="text-xs text-zinc-400">formation(s)</span>
+    </div>
+  );
+}
+
+function NumberRangeRow({
+  condition,
+  onChange,
+}: {
+  condition: FilterCondition;
+  onChange: (p: Partial<FilterCondition>) => void;
+}) {
+  const raw = typeof condition.value === "string" ? condition.value : "|";
+  const [min, max] = raw.includes("|") ? raw.split("|") : ["", ""];
+
+  const update = (newMin: string, newMax: string) => {
+    onChange({ value: `${newMin}|${newMax}` });
+  };
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-zinc-400 shrink-0">Entre</span>
+      <input
+        type="number"
+        min={0}
+        max={100}
+        placeholder="0"
+        value={min}
+        onChange={(e) => update(e.target.value, max)}
+        className="w-16 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400"
+      />
+      <span className="text-xs text-zinc-400">et</span>
+      <input
+        type="number"
+        min={0}
+        max={100}
+        placeholder="100"
+        value={max}
+        onChange={(e) => update(min, e.target.value)}
+        className="w-16 px-2.5 py-1.5 rounded-md border border-zinc-200 text-sm focus:outline-none focus:border-primary-400"
+      />
+      <span className="text-xs text-zinc-400">%</span>
+    </div>
+  );
+}
+
 function SelectRow({
   condition,
   field,
@@ -218,9 +407,7 @@ function SelectRow({
 }) {
   const selected = (condition.value as string[]) ?? [];
   const toggle = (v: string) => {
-    const next = selected.includes(v)
-      ? selected.filter((x) => x !== v)
-      : [...selected, v];
+    const next = selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v];
     onChange({ value: next });
   };
   return (
@@ -260,17 +447,21 @@ function SelectSearchRow({
     if (!field.optionsUrl) return;
     fetch(field.optionsUrl)
       .then((r) => r.json())
-      .then((data: string[]) =>
-        setOptions(data.map((v) => ({ value: v, label: v })))
-      )
+      .then((data: unknown) => {
+        const arr = data as Array<string | { value: string; label: string }>;
+        if (!arr.length) return;
+        if (typeof arr[0] === "string") {
+          setOptions((arr as string[]).map((v) => ({ value: v, label: v })));
+        } else {
+          setOptions((arr as { value: string; label: string }[]).map(({ value, label }) => ({ value, label })));
+        }
+      })
       .catch(() => {});
   }, [field.optionsUrl]);
 
   const selected = (condition.value as string[]) ?? [];
   const toggle = (v: string) => {
-    const next = selected.includes(v)
-      ? selected.filter((x) => x !== v)
-      : [...selected, v];
+    const next = selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v];
     onChange({ value: next });
   };
 
@@ -289,17 +480,20 @@ function SelectSearchRow({
       />
       {selected.length > 0 && (
         <div className="flex flex-wrap gap-1">
-          {selected.map((v) => (
-            <span
-              key={v}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-500 text-white text-xs font-medium"
-            >
-              {v}
-              <button type="button" onClick={() => toggle(v)} className="hover:opacity-75">
-                <X size={10} />
-              </button>
-            </span>
-          ))}
+          {selected.map((v) => {
+            const label = options.find((o) => o.value === v)?.label ?? v;
+            return (
+              <span
+                key={v}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary-500 text-white text-xs font-medium"
+              >
+                {label}
+                <button type="button" onClick={() => toggle(v)} className="hover:opacity-75">
+                  <X size={10} />
+                </button>
+              </span>
+            );
+          })}
         </div>
       )}
       <div className="max-h-35 overflow-y-auto flex flex-col gap-0.5 pr-1">

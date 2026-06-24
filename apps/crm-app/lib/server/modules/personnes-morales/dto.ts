@@ -114,6 +114,7 @@ export type CreatePersonneMoraleInput = {
   secteurActivite?: string;
   categorieEntreprise?: string;
   nomDomaine?: string;
+  maisonMereId?: string | null;
   adresse?: {
     rue?: string;
     complementAdresse?: string;

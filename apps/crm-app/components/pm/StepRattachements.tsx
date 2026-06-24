@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   CheckCircle,
-  Search,
   ChevronLeft,
   Loader2,
   X,
@@ -12,6 +11,9 @@ import {
 } from "lucide-react";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FormField, inputCls } from "@/components/ui/form-field";
+import { useDebouncedValue } from "@/lib/hooks/useDebouncedValue";
+
+const SEARCH_DEBOUNCE_MS = 400;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,36 +87,52 @@ export function StepRattachements({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  const debouncedNom = useDebouncedValue(nom, SEARCH_DEBOUNCE_MS);
+  const debouncedPrenom = useDebouncedValue(prenom, SEARCH_DEBOUNCE_MS);
+  const debouncedEmail = useDebouncedValue(email, SEARCH_DEBOUNCE_MS);
+  const debouncedProfession = useDebouncedValue(profession, SEARCH_DEBOUNCE_MS);
+  const debouncedSpecialite = useDebouncedValue(specialite, SEARCH_DEBOUNCE_MS);
+  const debouncedBarreau = useDebouncedValue(barreau, SEARCH_DEBOUNCE_MS);
+
   const buildSearchUrl = useCallback(() => {
     const params = new URLSearchParams({ limit: "30" });
-    if (nom.trim()) params.set("nom", nom.trim());
-    if (prenom.trim()) params.set("prenom", prenom.trim());
-    if (email.trim()) params.set("email", email.trim());
-    if (profession.trim()) params.set("profession", profession.trim());
-    if (specialite.trim()) params.set("specialite", specialite.trim());
-    if (barreau.trim()) params.set("barreau", barreau.trim());
+    if (debouncedNom.trim()) params.set("nom", debouncedNom.trim());
+    if (debouncedPrenom.trim()) params.set("prenom", debouncedPrenom.trim());
+    if (debouncedEmail.trim()) params.set("email", debouncedEmail.trim());
+    if (debouncedProfession.trim()) params.set("profession", debouncedProfession.trim());
+    if (debouncedSpecialite.trim()) params.set("specialite", debouncedSpecialite.trim());
+    if (debouncedBarreau.trim()) params.set("barreau", debouncedBarreau.trim());
     return `/api/personnes-physiques?${params}`;
-  }, [nom, prenom, email, profession, specialite, barreau]);
+  }, [debouncedNom, debouncedPrenom, debouncedEmail, debouncedProfession, debouncedSpecialite, debouncedBarreau]);
 
-  const searchPp = useCallback(async () => {
-    const hasQuery = nom || prenom || email || profession || specialite || barreau;
+  const hasAnyQuery = !!(nom.trim() || prenom.trim() || email.trim() || profession.trim() || specialite.trim() || barreau.trim());
+
+  useEffect(() => {
+    const hasQuery =
+      debouncedNom.trim() ||
+      debouncedPrenom.trim() ||
+      debouncedEmail.trim() ||
+      debouncedProfession.trim() ||
+      debouncedSpecialite.trim() ||
+      debouncedBarreau.trim();
     if (!hasQuery) return;
-    setIsSearching(true);
-    setHasSearched(true);
-    try {
-      const res = await fetch(buildSearchUrl());
-      const data = await res.json();
-      setPpResults(data.data ?? []);
-    } catch {
-      setPpResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  }, [buildSearchUrl, nom, prenom, email, profession, specialite, barreau]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") searchPp();
-  };
+    let cancelled = false;
+    const run = async () => {
+      setIsSearching(true);
+      setHasSearched(true);
+      try {
+        const res = await fetch(buildSearchUrl());
+        const data = await res.json();
+        if (!cancelled) setPpResults(data.data ?? []);
+      } catch {
+        if (!cancelled) setPpResults([]);
+      } finally {
+        if (!cancelled) setIsSearching(false);
+      }
+    };
+    void run();
+    return () => { cancelled = true; };
+  }, [buildSearchUrl, debouncedNom, debouncedPrenom, debouncedEmail, debouncedProfession, debouncedSpecialite, debouncedBarreau]);
 
   const toggleSelected = (pp: PpResult) => {
     setSelected((prev) => {
@@ -323,37 +341,29 @@ export function StepRattachements({
       )}
 
       <div className="bg-zinc-50 border border-zinc-100 rounded-xl p-4 space-y-3">
-        <p className="text-xs font-medium text-zinc-500">
-          Rechercher une personne physique
-        </p>
-        <div className="grid grid-cols-3 gap-2">
-          <input className={inputCls} value={nom} onChange={(e) => setNom(e.target.value)} onKeyDown={handleKeyDown} placeholder="Nom" />
-          <input className={inputCls} value={prenom} onChange={(e) => setPrenom(e.target.value)} onKeyDown={handleKeyDown} placeholder="Prénom" />
-          <input className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={handleKeyDown} placeholder="Email" />
+        <div className="flex items-center gap-2">
+          <p className="text-xs font-medium text-zinc-500">
+            Rechercher une personne physique
+          </p>
+          {isSearching && <Loader2 size={12} className="animate-spin text-zinc-400" />}
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <input className={inputCls} value={profession} onChange={(e) => setProfession(e.target.value)} onKeyDown={handleKeyDown} placeholder="Profession / Activité" />
-          <input className={inputCls} value={specialite} onChange={(e) => setSpecialite(e.target.value)} onKeyDown={handleKeyDown} placeholder="Spécialité" />
-          <input className={inputCls} value={barreau} onChange={(e) => setBarreau(e.target.value)} onKeyDown={handleKeyDown} placeholder="Barreau" />
+          <input className={inputCls} value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom" />
+          <input className={inputCls} value={prenom} onChange={(e) => setPrenom(e.target.value)} placeholder="Prénom" />
+          <input className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" />
         </div>
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={searchPp}
-            disabled={isSearching}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-500 text-white text-sm rounded-lg hover:bg-primary-600 transition cursor-pointer disabled:opacity-50"
-          >
-            {isSearching ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
-            Rechercher
-          </button>
+        <div className="grid grid-cols-3 gap-2">
+          <input className={inputCls} value={profession} onChange={(e) => setProfession(e.target.value)} placeholder="Profession / Activité" />
+          <input className={inputCls} value={specialite} onChange={(e) => setSpecialite(e.target.value)} placeholder="Spécialité" />
+          <input className={inputCls} value={barreau} onChange={(e) => setBarreau(e.target.value)} placeholder="Barreau" />
         </div>
       </div>
 
-      {hasSearched && ppResults.length === 0 && !isSearching && (
+      {hasAnyQuery && hasSearched && ppResults.length === 0 && !isSearching && (
         <p className="text-xs text-zinc-400 text-center py-2">Aucun résultat.</p>
       )}
 
-      {ppResults.length > 0 && (
+      {hasAnyQuery && ppResults.length > 0 && (
         <div className="border border-zinc-100 rounded-xl overflow-hidden bg-white divide-y divide-zinc-50 max-h-52 overflow-y-auto">
           {ppResults.map((pp) => {
             const isSel = selected.has(pp.id);

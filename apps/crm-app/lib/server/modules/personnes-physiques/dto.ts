@@ -33,19 +33,39 @@ export type PersonnePhysiqueListItem = {
   } | null;
 };
 
+export type PersonnePhysiqueGroupFilter = {
+  nom?: string;
+  prenom?: string;
+  email?: string;
+  profession?: string[];
+  specialite?: string[];
+  activiteDominante?: string[];
+  typeRelation?: TypeRelationPp[];
+  barreau?: string[];
+  creerLeApres?: string;
+  creerLeAvant?: string;
+  dernierEmailApres?: string;
+  dernierEmailAvant?: string;
+  dateSermentApres?: string;
+  dateSermentAvant?: string;
+  minFormations?: number;
+  formationIds?: string[];
+};
+
 export type PersonnePhysiqueListQuery = {
   page?: number;
   limit?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   search?: string;
-  // Filtres texte (contains)
+  // Filtres texte (contains) — chemin simple (1 groupe)
   nom?: string;
   prenom?: string;
   email?: string;
-  profession?: string;
-  specialite?: string;
   // Filtres multi-select
+  profession?: string[];
+  specialite?: string[];
+  activiteDominante?: string[];
   typeRelation?: TypeRelationPp[];
   statutRgpd?: StatutRgpd[];
   barreau?: string[];
@@ -60,6 +80,47 @@ export type PersonnePhysiqueListQuery = {
   dernierEmailAvant?: string;
   dateSermentApres?: string;
   dateSermentAvant?: string;
+  // Filtres formations
+  minFormations?: number;
+  formationIds?: string[];
+  satisfMin?: number;
+  satisfMax?: number;
+  // Groupes OR (chemin multi-groupes)
+  groups?: PersonnePhysiqueGroupFilter[];
+};
+
+export type PersonnePhysiqueExportItem = {
+  id: string;
+  nom: string;
+  prenom: string | null;
+  email: string | null;
+  telephone: string | null;
+  portable: string | null;
+  profession: string | null;
+  specialite: string | null;
+  barreau: string | null;
+  dateSerment: string | null;
+  activiteDominante: string | null;
+  typeRelation: TypeRelationPp;
+  statutRgpd: StatutRgpd | null;
+  actif: boolean;
+  optInEmail: boolean;
+  optInSms: boolean;
+  optOutGlobal: boolean;
+  emailInvalide: boolean;
+  totalEmails: number | null;
+  dernierEmailLe: string | null;
+  creerLe: string;
+  modifierLe: string;
+  rattachements: {
+    raisonSociale: string;
+    siretSirenPm: string | null;
+    titreFonction: string | null;
+    dateDebut: string | null;
+    dateFin: string | null;
+    emailPm: string | null;
+    telephonePm: string | null;
+  }[];
 };
 
 export type PersonnePhysiqueListResponse = {
@@ -123,6 +184,17 @@ export type PersonnePhysiqueDetail = {
   creerPar: string | null;
   modifierPar: string | null;
   // Relations
+  participations: {
+    id: number;
+    formationId: string;
+    intitule: string;
+    intituleCourt: string | null;
+    numero: string;
+    dateDebut: string | null;
+    dateFin: string | null;
+    present: boolean;
+    dateInscription: string | null;
+  }[];
   adresse: {
     rue: string | null;
     complementAdresse: string | null;

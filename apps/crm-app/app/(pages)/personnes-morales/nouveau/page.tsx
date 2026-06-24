@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { ArrowLeft, Building2 } from "lucide-react";
 import { PmCreateForm } from "@/components/pm/PmCreateForm";
@@ -23,7 +24,9 @@ export default function PersonneMoraleNouvellePage() {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto">
-        <PmCreateForm />
+        <Suspense>
+          <PmCreateForm />
+        </Suspense>
       </div>
     </div>
   );

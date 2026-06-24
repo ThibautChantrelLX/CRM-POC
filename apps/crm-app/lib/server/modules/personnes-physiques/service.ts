@@ -3,6 +3,8 @@ import { prisma } from "@/lib/server/prisma";
 import type {
   CreatePersonnePhysiqueInput,
   PersonnePhysiqueDetail,
+  PersonnePhysiqueExportItem,
+  PersonnePhysiqueGroupFilter,
   PersonnePhysiqueListItem,
   PersonnePhysiqueListQuery,
   PersonnePhysiqueListResponse,
@@ -29,7 +31,65 @@ function fmtDate(d: Date | null | undefined): string | null {
 
 // ─── List ─────────────────────────────────────────────────────────────────────
 
-function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereInput {
+function buildGroupConditions(
+  q: PersonnePhysiqueGroupFilter,
+): Prisma.PersonnePhysiqueWhereInput[] {
+  const and: Prisma.PersonnePhysiqueWhereInput[] = [];
+
+  if (q.nom) and.push({ nom: ilike(q.nom) });
+  if (q.prenom) and.push({ prenom: ilike(q.prenom) });
+  if (q.email) and.push({ email: ilike(q.email) });
+  if (q.profession?.length) and.push({
+    OR: [
+      { profilAvocat: { profession: { in: q.profession } } },
+      { profilPro: { profession: { in: q.profession } } },
+    ],
+  });
+  if (q.specialite?.length) and.push({
+    OR: [
+      { profilAvocat: { specialite: { in: q.specialite } } },
+      { profilPro: { specialite: { in: q.specialite } } },
+    ],
+  });
+  if (q.activiteDominante?.length)
+    and.push({ profilAvocat: { activiteDominante: { in: q.activiteDominante } } });
+  if (q.typeRelation?.length) and.push({ typeRelation: { in: q.typeRelation } });
+  if (q.barreau?.length) and.push({ profilAvocat: { barreau: { in: q.barreau } } });
+
+  if (q.creerLeApres || q.creerLeAvant) {
+    and.push({
+      creerLe: {
+        ...(q.creerLeApres && { gte: new Date(q.creerLeApres) }),
+        ...(q.creerLeAvant && { lte: new Date(q.creerLeAvant) }),
+      },
+    });
+  }
+  if (q.dernierEmailApres || q.dernierEmailAvant) {
+    and.push({
+      dernierEmailLe: {
+        ...(q.dernierEmailApres && { gte: new Date(q.dernierEmailApres) }),
+        ...(q.dernierEmailAvant && { lte: new Date(q.dernierEmailAvant) }),
+      },
+    });
+  }
+  if (q.dateSermentApres || q.dateSermentAvant) {
+    and.push({
+      profilAvocat: {
+        dateSerment: {
+          ...(q.dateSermentApres && { gte: new Date(q.dateSermentApres) }),
+          ...(q.dateSermentAvant && { lte: new Date(q.dateSermentAvant) }),
+        },
+      },
+    });
+  }
+
+  return and;
+}
+
+function buildWhere(
+  q: PersonnePhysiqueListQuery,
+  formationCountIds?: string[] | null,
+): Prisma.PersonnePhysiqueWhereInput {
   const and: Prisma.PersonnePhysiqueWhereInput[] = [];
 
   if (q.search) {
@@ -48,13 +108,19 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
   if (q.nom) and.push({ nom: ilike(q.nom) });
   if (q.prenom) and.push({ prenom: ilike(q.prenom) });
   if (q.email) and.push({ email: ilike(q.email) });
-  if (q.profession) and.push({
+  if (q.profession?.length) and.push({
     OR: [
-      { profilAvocat: { profession: ilike(q.profession) } },
-      { profilPro: { profession: ilike(q.profession) } },
+      { profilAvocat: { profession: { in: q.profession } } },
+      { profilPro: { profession: { in: q.profession } } },
     ],
   });
-  if (q.specialite) and.push({ profilAvocat: { specialite: ilike(q.specialite) } });
+  if (q.specialite?.length) and.push({
+    OR: [
+      { profilAvocat: { specialite: { in: q.specialite } } },
+      { profilPro: { specialite: { in: q.specialite } } },
+    ],
+  });
+  if (q.activiteDominante?.length) and.push({ profilAvocat: { activiteDominante: { in: q.activiteDominante } } });
 
   if (q.typeRelation?.length) and.push({ typeRelation: { in: q.typeRelation } });
   if (q.statutRgpd?.length) and.push({ statutRgpd: { in: q.statutRgpd } });
@@ -91,6 +157,36 @@ function buildWhere(q: PersonnePhysiqueListQuery): Prisma.PersonnePhysiqueWhereI
     });
   }
 
+  if (q.minFormations === 1)
+    and.push({ participations: { some: {} } });
+  if (formationCountIds !== null && formationCountIds !== undefined)
+    and.push({ id: { in: formationCountIds } });
+  if (q.formationIds?.length)
+    and.push({ participations: { some: { formationId: { in: q.formationIds } } } });
+  if (q.satisfMin !== undefined || q.satisfMax !== undefined) {
+    and.push({
+      participations: {
+        some: {
+          satisfaction: {
+            not: null,
+            ...(q.satisfMin !== undefined && { gte: q.satisfMin }),
+            ...(q.satisfMax !== undefined && { lte: q.satisfMax }),
+          },
+        },
+      },
+    });
+  }
+
+  if (q.groups?.length === 1) {
+    and.push(...buildGroupConditions(q.groups[0]));
+  } else if (q.groups && q.groups.length > 1) {
+    const orClauses = q.groups
+      .map((g) => buildGroupConditions(g))
+      .filter((gc) => gc.length > 0)
+      .map((gc) => (gc.length === 1 ? gc[0] : { AND: gc }));
+    if (orClauses.length > 0) and.push({ OR: orClauses });
+  }
+
   return and.length ? { AND: and } : {};
 }
 
@@ -101,7 +197,25 @@ export async function fetchPersonnesPhysiques(
   const limit = Math.min(100, Math.max(1, q.limit ?? 20));
   const sortBy = ALLOWED_SORT[q.sortBy ?? ""] ? q.sortBy! : "nom";
   const sortOrder = q.sortOrder === "desc" ? "desc" : "asc";
-  const where = buildWhere(q);
+
+  // Filtre "au moins N formations" — nécessite une sous-requête SQL pour N > 1
+  let formationCountIds: string[] | null = null;
+  if (q.minFormations && q.minFormations >= 1) {
+    if (q.minFormations === 1) {
+      // Cas simple géré dans buildWhere via Prisma
+    } else {
+      const rows = await prisma.$queryRaw<{ id: string }[]>`
+        SELECT personne_physique_id::text AS id
+        FROM participations_formations
+        WHERE personne_physique_id IS NOT NULL
+        GROUP BY personne_physique_id
+        HAVING COUNT(*) >= ${BigInt(q.minFormations)}
+      `;
+      formationCountIds = rows.map((r) => r.id);
+    }
+  }
+
+  const where = buildWhere(q, formationCountIds);
 
   const [total, rows] = await Promise.all([
     prisma.personnePhysique.count({ where }),
@@ -132,6 +246,72 @@ export async function fetchPersonnesPhysiques(
   return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
+// ─── Export ───────────────────────────────────────────────────────────────────
+
+export async function exportPersonnesPhysiques(
+  q: PersonnePhysiqueListQuery,
+): Promise<PersonnePhysiqueExportItem[]> {
+  const where = buildWhere(q);
+
+  const rows = await prisma.personnePhysique.findMany({
+    where,
+    orderBy: { nom: "asc" },
+    take: 10000,
+    include: {
+      profilAvocat: {
+        select: {
+          profession: true, specialite: true, barreau: true,
+          dateSerment: true, activiteDominante: true,
+        },
+      },
+      profilPro: { select: { profession: true, specialite: true } },
+      rattachements: {
+        include: {
+          personneMorale: { select: { raisonSociale: true, siretSiren: true, email: true, telephone: true } },
+        },
+        orderBy: [
+          { dateFin: { sort: "asc", nulls: "first" } },
+          { dateDebut: "desc" },
+        ],
+      },
+    },
+  });
+
+  return rows.map((r) => ({
+    id: r.id,
+    nom: r.nom,
+    prenom: r.prenom,
+    email: r.email,
+    telephone: r.telephone,
+    portable: r.portable,
+    profession: r.profilAvocat?.profession ?? r.profilPro?.profession ?? null,
+    specialite: r.profilAvocat?.specialite ?? r.profilPro?.specialite ?? null,
+    barreau: r.profilAvocat?.barreau ?? null,
+    dateSerment: fmtDate(r.profilAvocat?.dateSerment),
+    activiteDominante: r.profilAvocat?.activiteDominante ?? null,
+    typeRelation: r.typeRelation as PersonnePhysiqueExportItem["typeRelation"],
+    statutRgpd: r.statutRgpd as PersonnePhysiqueExportItem["statutRgpd"],
+    actif: r.actif,
+    optInEmail: r.optInEmail,
+    optInSms: r.optInSms,
+    optOutGlobal: r.optOutGlobal,
+    emailInvalide: r.emailInvalide,
+    totalEmails: r.totalEmails,
+    dernierEmailLe: fmtDate(r.dernierEmailLe),
+    creerLe: (r.creerLe as Date).toISOString().split("T")[0],
+    modifierLe: (r.modifierLe as Date).toISOString().split("T")[0],
+    rattachements: r.rattachements.map((ratt) => ({
+      raisonSociale: ratt.personneMorale.raisonSociale,
+      siretSirenPm: ratt.personneMorale.siretSiren,
+      titreFonction: ratt.titreFonction,
+      dateDebut: fmtDate(ratt.dateDebut as Date | null),
+      dateFin: fmtDate(ratt.dateFin),
+      emailPm: ratt.personneMorale.email,
+      telephonePm: ratt.personneMorale.telephone,
+    })),
+  }));
+}
+
 // ─── Detail (liste + rattachements) ───────────────────────────────────────────
 
 export async function getPersonnePhysiqueDetail(
@@ -160,6 +340,21 @@ export async function getPersonnePhysiqueDetail(
           { dateFin: { sort: "asc", nulls: "first" } },
           { dateDebut: "desc" },
         ],
+      },
+      participations: {
+        include: {
+          formation: {
+            select: {
+              id: true,
+              numero: true,
+              intitule: true,
+              intituleCourt: true,
+              dateDebut: true,
+              dateFin: true,
+            },
+          },
+        },
+        orderBy: { formation: { dateDebut: "desc" } },
       },
     },
   });
@@ -213,6 +408,17 @@ export async function getPersonnePhysiqueDetail(
       dateDebut: fmtDate(r.dateDebut as Date),
       dateFin: fmtDate(r.dateFin),
       personneMorale: r.personneMorale,
+    })),
+    participations: pp.participations.map((p) => ({
+      id: p.id,
+      formationId: p.formation.id,
+      intitule: p.formation.intitule,
+      intituleCourt: p.formation.intituleCourt,
+      numero: p.formation.numero,
+      dateDebut: fmtDate(p.formation.dateDebut),
+      dateFin: fmtDate(p.formation.dateFin),
+      present: p.present,
+      dateInscription: fmtDate(p.dateInscription),
     })),
   };
 }
