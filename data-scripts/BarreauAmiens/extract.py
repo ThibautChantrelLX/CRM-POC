@@ -23,14 +23,16 @@ import time
 
 import requests
 from bs4 import BeautifulSoup
+import datetime
 
 _DIR  = os.path.dirname(os.path.abspath(__file__))
 ROOT  = os.path.dirname(_DIR)
+_DATE = os.environ.get("EXTRACTION_DATE", datetime.date.today().strftime("%Y-%m-%d"))
 
 BASE_URL   = 'https://www.barreau-amiens.avocat.fr'
 SEARCH_URL = f'{BASE_URL}/annuaire/result'
 
-DEFAULT_OUTPUT = os.path.join(ROOT, 'output', 'BarreauAmiens', 'extraction_barreau_amiens.csv')
+DEFAULT_OUTPUT = os.path.join(ROOT, 'output', 'BarreauAmiens', f'{_DATE}_extraction_barreau_amiens.csv')
 
 REQ_HEADERS = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

@@ -2,11 +2,12 @@
 
 import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Plus } from "lucide-react";
+import { Download, Plus, Upload } from "lucide-react";
 import { DataListPage } from "@/components/data-list/DataListPage";
 import { useDataListState } from "@/lib/hooks/useDataListState";
 import { usePersonnesPhysiques } from "@/lib/hooks/usePersonnesPhysiques";
 import { ExportModal } from "@/components/pp/ExportModal";
+import { ImportPPModal } from "@/components/personnes-physiques/ImportPPModal";
 import { PP_FIELDS, PP_COLUMNS } from "./config";
 import type { PersonnePhysiqueListItem } from "@/lib/server/modules/personnes-physiques/dto";
 
@@ -15,6 +16,7 @@ function PersonnesPhysiquesContent() {
   const ds = useDataListState(PP_FIELDS, { defaultSortBy: "nom" });
   const { data, isLoading, isFetching } = usePersonnesPhysiques(ds.params);
   const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   return (
     <>
@@ -51,6 +53,13 @@ function PersonnesPhysiquesContent() {
               Exporter
             </button>
             <button
+              onClick={() => setImportOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50 transition cursor-pointer"
+            >
+              <Upload size={15} />
+              Importer
+            </button>
+            <button
               onClick={() => router.push("/personnes-physiques/nouveau")}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-500 text-white text-sm font-medium rounded-lg hover:bg-primary-600 transition cursor-pointer"
             >
@@ -67,6 +76,16 @@ function PersonnesPhysiquesContent() {
         params={ds.params}
         total={data?.total ?? 0}
       />
+
+      {importOpen && (
+        <ImportPPModal
+          onClose={() => setImportOpen(false)}
+          onImported={() => {
+            setImportOpen(false);
+            router.refresh();
+          }}
+        />
+      )}
     </>
   );
 }

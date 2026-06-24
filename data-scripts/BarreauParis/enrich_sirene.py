@@ -15,11 +15,13 @@ import unicodedata
 
 import requests
 import xlrd
+import datetime
 
 _DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(_DIR)
+_DATE = os.environ.get("EXTRACTION_DATE", datetime.date.today().strftime("%Y-%m-%d"))
 
-INPUT = os.path.join(ROOT, "output", "BarreauParis", "extraction_barreau_paris.csv")
+INPUT = os.path.join(ROOT, "output", "BarreauParis", f"{_DATE}_extraction_barreau_paris.csv")
 OUTPUT = os.path.join(
     ROOT, "output", "BarreauParis", "extraction_structures_barreau_paris.csv"
 )
