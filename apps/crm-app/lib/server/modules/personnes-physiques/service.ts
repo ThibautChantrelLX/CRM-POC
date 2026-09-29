@@ -190,6 +190,19 @@ function buildWhere(
   return and.length ? { AND: and } : {};
 }
 
+/** Filtre "au moins N formations" — nécessite une sous-requête SQL pour N > 1 (N = 1 géré dans buildWhere). */
+async function resolveFormationCountIds(q: PersonnePhysiqueListQuery): Promise<string[] | null> {
+  if (!q.minFormations || q.minFormations <= 1) return null;
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT personne_physique_id::text AS id
+    FROM participations_formations
+    WHERE personne_physique_id IS NOT NULL
+    GROUP BY personne_physique_id
+    HAVING COUNT(*) >= ${BigInt(q.minFormations)}
+  `;
+  return rows.map((r) => r.id);
+}
+
 export async function fetchPersonnesPhysiques(
   q: PersonnePhysiqueListQuery,
 ): Promise<PersonnePhysiqueListResponse> {
@@ -198,24 +211,7 @@ export async function fetchPersonnesPhysiques(
   const sortBy = ALLOWED_SORT[q.sortBy ?? ""] ? q.sortBy! : "nom";
   const sortOrder = q.sortOrder === "desc" ? "desc" : "asc";
 
-  // Filtre "au moins N formations" — nécessite une sous-requête SQL pour N > 1
-  let formationCountIds: string[] | null = null;
-  if (q.minFormations && q.minFormations >= 1) {
-    if (q.minFormations === 1) {
-      // Cas simple géré dans buildWhere via Prisma
-    } else {
-      const rows = await prisma.$queryRaw<{ id: string }[]>`
-        SELECT personne_physique_id::text AS id
-        FROM participations_formations
-        WHERE personne_physique_id IS NOT NULL
-        GROUP BY personne_physique_id
-        HAVING COUNT(*) >= ${BigInt(q.minFormations)}
-      `;
-      formationCountIds = rows.map((r) => r.id);
-    }
-  }
-
-  const where = buildWhere(q, formationCountIds);
+  const where = buildWhere(q, await resolveFormationCountIds(q));
 
   const [total, rows] = await Promise.all([
     prisma.personnePhysique.count({ where }),
@@ -248,15 +244,17 @@ export async function fetchPersonnesPhysiques(
 
 // ─── Export ───────────────────────────────────────────────────────────────────
 
-export async function exportPersonnesPhysiques(
-  q: PersonnePhysiqueListQuery,
-): Promise<PersonnePhysiqueExportItem[]> {
-  const where = buildWhere(q);
-
-  const rows = await prisma.personnePhysique.findMany({
+function fetchExportBatch(
+  where: ReturnType<typeof buildWhere>,
+  take: number,
+  cursor?: string,
+) {
+  return prisma.personnePhysique.findMany({
     where,
-    orderBy: { nom: "asc" },
-    take: 10000,
+    // id en tie-breaker : ordre stable requis pour la pagination par curseur
+    orderBy: [{ nom: "asc" }, { id: "asc" }],
+    take,
+    ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     include: {
       profilAvocat: {
         select: {
@@ -276,6 +274,24 @@ export async function exportPersonnesPhysiques(
       },
     },
   });
+}
+
+export async function exportPersonnesPhysiques(
+  q: PersonnePhysiqueListQuery,
+): Promise<PersonnePhysiqueExportItem[]> {
+  const where = buildWhere(q, await resolveFormationCountIds(q));
+
+  // Lecture par lots (pagination par curseur) pour exporter toutes les lignes
+  // sans charger l'ensemble des rattachements en une seule requête.
+  const BATCH_SIZE = 5000;
+  const rows: Awaited<ReturnType<typeof fetchExportBatch>> = [];
+  let cursor: string | undefined;
+  for (;;) {
+    const batch = await fetchExportBatch(where, BATCH_SIZE, cursor);
+    rows.push(...batch);
+    if (batch.length < BATCH_SIZE) break;
+    cursor = batch[batch.length - 1].id;
+  }
 
   return rows.map((r) => ({
     id: r.id,
