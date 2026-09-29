@@ -1,74 +1,31 @@
 import { NextResponse } from "next/server";
 import { exportPersonnesPhysiques } from "@/lib/server/modules/personnes-physiques/service";
-import type {
-  PersonnePhysiqueGroupFilter,
-  PersonnePhysiqueListQuery,
-  TypeRelationPp,
-  StatutRgpd,
-} from "@/lib/server/modules/personnes-physiques/dto";
+import { buildPersonnesPhysiquesXlsx } from "@/lib/server/modules/personnes-physiques/export-xlsx";
+import { parsePersonnePhysiqueListQuery } from "@/lib/server/modules/personnes-physiques/query-params";
+import type { PersonnePhysiqueExportOptions } from "@/lib/server/modules/personnes-physiques/dto";
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const g = (k: string) => searchParams.get(k) || undefined;
+// Filtres dans la query string (mêmes params que la liste), options d'export dans le body.
+export async function POST(request: Request) {
+  const query = parsePersonnePhysiqueListQuery(new URL(request.url).searchParams);
 
-  const query: PersonnePhysiqueListQuery = {
-    sortBy: g("sortBy"),
-    sortOrder: (g("sortOrder") as "asc" | "desc") || undefined,
-    search: g("search"),
-    nom: g("nom"),
-    prenom: g("prenom"),
-    email: g("email"),
-    profession: searchParams.getAll("profession"),
-    specialite: searchParams.getAll("specialite"),
-    activiteDominante: searchParams.getAll("activiteDominante"),
-    typeRelation: searchParams.getAll("typeRelation") as TypeRelationPp[],
-    statutRgpd: searchParams.getAll("statutRgpd") as StatutRgpd[],
-    barreau: searchParams.getAll("barreau"),
-    actif: searchParams.has("actif") ? searchParams.get("actif") === "true" : undefined,
-    creerLeApres: g("creerLeApres"),
-    creerLeAvant: g("creerLeAvant"),
-    dernierEmailApres: g("dernierEmailApres"),
-    dernierEmailAvant: g("dernierEmailAvant"),
-    dateSermentApres: g("dateSermentApres"),
-    dateSermentAvant: g("dateSermentAvant"),
-  };
-
-  const groupsRaw = searchParams.get("groups");
-  if (groupsRaw) {
-    try {
-      const parsed = JSON.parse(groupsRaw) as Array<Record<string, unknown>>;
-      query.groups = parsed.map((obj): PersonnePhysiqueGroupFilter => ({
-        nom: typeof obj.nom === "string" ? obj.nom : undefined,
-        prenom: typeof obj.prenom === "string" ? obj.prenom : undefined,
-        email: typeof obj.email === "string" ? obj.email : undefined,
-        profession: Array.isArray(obj.profession) ? (obj.profession as string[]) : undefined,
-        specialite: Array.isArray(obj.specialite) ? (obj.specialite as string[]) : undefined,
-        activiteDominante: Array.isArray(obj.activiteDominante)
-          ? (obj.activiteDominante as string[])
-          : undefined,
-        typeRelation: Array.isArray(obj.typeRelation)
-          ? (obj.typeRelation as TypeRelationPp[])
-          : undefined,
-        barreau: Array.isArray(obj.barreau) ? (obj.barreau as string[]) : undefined,
-        creerLeApres: typeof obj.creerLeApres === "string" ? obj.creerLeApres : undefined,
-        creerLeAvant: typeof obj.creerLeAvant === "string" ? obj.creerLeAvant : undefined,
-        dernierEmailApres:
-          typeof obj.dernierEmailApres === "string" ? obj.dernierEmailApres : undefined,
-        dernierEmailAvant:
-          typeof obj.dernierEmailAvant === "string" ? obj.dernierEmailAvant : undefined,
-        dateSermentApres:
-          typeof obj.dateSermentApres === "string" ? obj.dateSermentApres : undefined,
-        dateSermentAvant:
-          typeof obj.dateSermentAvant === "string" ? obj.dateSermentAvant : undefined,
-      }));
-    } catch {
-      // invalid JSON, ignore
-    }
+  let options: PersonnePhysiqueExportOptions;
+  try {
+    options = await request.json();
+    if (!options?.fields || !options?.ratt) throw new Error();
+  } catch {
+    return NextResponse.json({ error: "Options d'export invalides" }, { status: 400 });
   }
 
   try {
     const data = await exportPersonnesPhysiques(query);
-    return NextResponse.json(data);
+    const file = buildPersonnesPhysiquesXlsx(data, options.fields, options.ratt);
+    const date = new Date().toISOString().split("T")[0];
+    return new Response(new Uint8Array(file), {
+      headers: {
+        "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "Content-Disposition": `attachment; filename="export-pp-${date}.xlsx"`,
+      },
+    });
   } catch (err) {
     console.error(err);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

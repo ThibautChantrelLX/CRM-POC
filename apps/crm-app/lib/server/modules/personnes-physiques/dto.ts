@@ -123,6 +123,29 @@ export type PersonnePhysiqueExportItem = {
   }[];
 };
 
+export type PersonnePhysiqueExportFields = {
+  nom: boolean; prenom: boolean; email: boolean; emailProOnly: boolean; telephone: boolean; portable: boolean;
+  profession: boolean; specialite: boolean; barreau: boolean; dateSerment: boolean; activiteDominante: boolean;
+  typeRelation: boolean; statutRgpd: boolean; actif: boolean;
+  optInEmail: boolean; optInSms: boolean; optOutGlobal: boolean; emailInvalide: boolean;
+  totalEmails: boolean; dernierEmailLe: boolean;
+  creerLe: boolean; modifierLe: boolean;
+};
+
+export type PersonnePhysiqueExportRattachement = {
+  include: boolean;
+  scope: "actifs" | "tous";
+  mode: "colonne" | "ligne";
+  raisonSociale: boolean; siretSirenPm: boolean; titreFonction: boolean;
+  dateDebut: boolean; dateFin: boolean;
+  emailPm: boolean; telephonePm: boolean;
+};
+
+export type PersonnePhysiqueExportOptions = {
+  fields: PersonnePhysiqueExportFields;
+  ratt: PersonnePhysiqueExportRattachement;
+};
+
 export type PersonnePhysiqueListResponse = {
   data: PersonnePhysiqueListItem[];
   total: number;

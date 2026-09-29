@@ -1,0 +1,78 @@
+import type {
+  PersonnePhysiqueGroupFilter,
+  PersonnePhysiqueListQuery,
+  TypeRelationPp,
+  StatutRgpd,
+} from "./dto";
+
+/** Parse les filtres de la liste PP depuis les query params (partagé liste / export). */
+export function parsePersonnePhysiqueListQuery(
+  searchParams: URLSearchParams,
+): PersonnePhysiqueListQuery {
+  const g = (k: string) => searchParams.get(k) || undefined;
+
+  const query: PersonnePhysiqueListQuery = {
+    page: searchParams.has("page") ? Number(searchParams.get("page")) : undefined,
+    limit: searchParams.has("limit") ? Number(searchParams.get("limit")) : undefined,
+    sortBy: g("sortBy"),
+    sortOrder: (g("sortOrder") as "asc" | "desc") || undefined,
+    search: g("search"),
+    nom: g("nom"),
+    prenom: g("prenom"),
+    email: g("email"),
+    profession: searchParams.getAll("profession"),
+    specialite: searchParams.getAll("specialite"),
+    activiteDominante: searchParams.getAll("activiteDominante"),
+    typeRelation: searchParams.getAll("typeRelation") as TypeRelationPp[],
+    statutRgpd: searchParams.getAll("statutRgpd") as StatutRgpd[],
+    barreau: searchParams.getAll("barreau"),
+    actif: searchParams.has("actif") ? searchParams.get("actif") === "true" : undefined,
+    minFormations: searchParams.has("minFormations")
+      ? Number(searchParams.get("minFormations"))
+      : undefined,
+    formationIds: searchParams.getAll("formationIds"),
+    satisfMin: searchParams.has("satisfMin") ? Number(searchParams.get("satisfMin")) / 100 : undefined,
+    satisfMax: searchParams.has("satisfMax") ? Number(searchParams.get("satisfMax")) / 100 : undefined,
+    creerLeApres: g("creerLeApres"),
+    creerLeAvant: g("creerLeAvant"),
+    dernierEmailApres: g("dernierEmailApres"),
+    dernierEmailAvant: g("dernierEmailAvant"),
+    dateSermentApres: g("dateSermentApres"),
+    dateSermentAvant: g("dateSermentAvant"),
+  };
+
+  const groupsRaw = searchParams.get("groups");
+  if (groupsRaw) {
+    try {
+      const parsed = JSON.parse(groupsRaw) as Array<Record<string, unknown>>;
+      query.groups = parsed.map((obj): PersonnePhysiqueGroupFilter => ({
+        nom: typeof obj.nom === "string" ? obj.nom : undefined,
+        prenom: typeof obj.prenom === "string" ? obj.prenom : undefined,
+        email: typeof obj.email === "string" ? obj.email : undefined,
+        profession: Array.isArray(obj.profession) ? (obj.profession as string[]) : undefined,
+        specialite: Array.isArray(obj.specialite) ? (obj.specialite as string[]) : undefined,
+        activiteDominante: Array.isArray(obj.activiteDominante)
+          ? (obj.activiteDominante as string[])
+          : undefined,
+        typeRelation: Array.isArray(obj.typeRelation)
+          ? (obj.typeRelation as TypeRelationPp[])
+          : undefined,
+        barreau: Array.isArray(obj.barreau) ? (obj.barreau as string[]) : undefined,
+        creerLeApres: typeof obj.creerLeApres === "string" ? obj.creerLeApres : undefined,
+        creerLeAvant: typeof obj.creerLeAvant === "string" ? obj.creerLeAvant : undefined,
+        dernierEmailApres:
+          typeof obj.dernierEmailApres === "string" ? obj.dernierEmailApres : undefined,
+        dernierEmailAvant:
+          typeof obj.dernierEmailAvant === "string" ? obj.dernierEmailAvant : undefined,
+        dateSermentApres:
+          typeof obj.dateSermentApres === "string" ? obj.dateSermentApres : undefined,
+        dateSermentAvant:
+          typeof obj.dateSermentAvant === "string" ? obj.dateSermentAvant : undefined,
+      }));
+    } catch {
+      // invalid JSON, ignore
+    }
+  }
+
+  return query;
+}
